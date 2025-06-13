@@ -1,0 +1,55 @@
+body {
+  background: #181c24;
+  color: #e6e6e6;
+  font-family: 'Inter', Arial, sans-serif;
+  margin: 2em;
+}
+h1 {
+  color: #f6baff;
+  letter-spacing: -1px;
+}
+.note-card {
+  background: #232736;
+  border-radius: 14px;
+  box-shadow: 0 4px 24px #0006;
+  margin: 1em 0;
+  padding: 1.2em 2em;
+  transition: box-shadow 0.2s;
+}
+.note-card:hover {
+  box-shadow: 0 8px 32px #000b;
+}
+.tags {
+  color: #81aaff;
+  font-size: 0.95em;
+  margin-top: 0.4em;
+}
+.summary {
+  color: #eee;
+  margin: 0.8em 0;
+}
+a {
+  text-decoration: none;
+  color: #81aaff;
+  font-weight: 600;
+  font-size: 1.2em;
+}
+input, button {
+  background: #2a2e3e;
+  border: 1px solid #353951;
+  color: #e6e6e6;
+  border-radius: 6px;
+  padding: 0.5em 1em;
+  font-size: 1em;
+  margin: 0.2em;
+}
+input:focus, button:focus {
+  outline: 2px solid #f6baff;
+}
+button {
+  background: linear-gradient(90deg, #4e44ce 0%, #f6baff 100%);
+  color: #181c24;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+}

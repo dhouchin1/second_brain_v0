@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Second Brain Dashboard</title>
+  <link rel="stylesheet" href="/static/css/dark.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* Responsive sidebar styles */
+    #sidebar {
+      position:fixed; right:24px; top:38px; width:270px; background:#232736; color:#eee;
+      border-radius:12px; box-shadow:0 2px 24px #0006; padding:1.2em 1em 2em 1em;
+      z-index:10; min-height:210px; max-height:80vh; overflow-y:auto;
+      display:block;
+    }
+    @media (max-width: 950px) {
+      #sidebar { display:none; }
+    }
+    #calendar {
+      margin:1em 0 1em 0; text-align:center;
+      background:#1a1f2b; border-radius:10px; padding:0.8em 0.5em;
+    }
+    #calendar input[type="date"] {
+      background:#292d3d; border:none; color:#fff; border-radius:8px;
+      padding:0.5em; font-size:1em; margin-top:0.5em; text-align:center;
+    }
+    .activity-list { margin:0.8em 0 0 0; padding:0; list-style:none;}
+    .activity-item { font-size:1em; color:#c2d8ff; margin-bottom:0.5em;}
+    .activity-type { font-size:0.95em; color:#8ee6ff; margin-left:0.3em;}
+    .activity-date { font-size:0.89em; color:#999;}
+    /* For mobile: sidebar shows below content */
+    @media (max-width: 600px) {
+      #sidebar { display:block; position:static; width:100%; box-shadow:none; border-radius:0; margin-bottom:1em;}
+    }
+    /* Profile avatar styles */
+    #profile-widget {
+      position:absolute; top:20px; right:320px; text-align:right;
+    }
+    @media (max-width:950px) {
+      #profile-widget { display:none; }
+    }
+    .avatar { background:#232736; color:#e6e6e6; border-radius:50%; padding:0.5em 0.75em; font-size:1.1em; font-weight:bold; box-shadow:0 2px 6px #0003;}
+  </style>
+</head>
+<body>
+  <div id="success-banner"></div>
+  <div id="profile-widget">
+    <span style="font-weight:600; color:#f6baff;">Hello, Dan!</span><br>
+    <span class="avatar">DH</span>
+  </div>
+
+  <h1 style="margin-bottom:0.7em;">
+    <span style="font-size:1.6em; vertical-align:middle;">🧠</span> Second Brain Timeline
+    <button class="add-btn" onclick="showCaptureModal()">+ New Entry</button>
+  </h1>
+
+  <form method="get" style="margin-bottom:1em;">
+    <input name="q" placeholder="Search..." value="{{ q or '' }}">
+    <button type="submit">Search</button>
+  </form>
+
+  <!-- Filter bar -->
+  <div style="margin-bottom:1.4em;">
+    <span style="font-weight:600;">Filter:</span>
+    <a href="/" style="margin-right:1em; color:#f6baff;">All</a>
+    <a href="/?type=note" style="margin-right:1em; color:#81aaff;">Text</a>
+    <a href="/?type=audio" style="margin-right:1em; color:#6ff;">Audio</a>
+    {% set tag_set = set() %}
+    {% for note in notes %}
+      {% for tag in note['tags'].split(',') if tag %}
+        {% set _ = tag_set.add(tag) %}
+      {% endfor %}
+    {% endfor %}
+    {% for tag in tag_set %}
+      <a href="/?tag={{ tag }}" style="margin-right:0.7em; background:#292d3d; color:#81aaff; padding:2px 10px; border-radius:12px;">#{{ tag }}</a>
+    {% endfor %}
+  </div>
+
+  <!-- Timeline content and sidebar layout -->
+  <div style="display:flex; flex-direction:row; gap:32px;">
+    <div style="flex:1 1 0; min-width:0;">
+      <!-- Group notes by date -->
+      {% set today_notes = [] %}
+      {% set week_notes = [] %}
+      {% set older_notes = [] %}
+      {% for note in notes %}
+        {% set note_date = note['timestamp'][:10] if note['timestamp'] else 'Unknown' %}
+        {% if note_date == today|string %}
+          {% do today_notes.append(note) %}
+        {% elif note_date > week_ago|string %}
+          {% do week_notes.append(note) %}
+        {% else %}
+          {% do older_notes.append(note) %}
+        {% endif %}
+      {% endfor %}
+
+      {% if today_notes %}
+        <h2 style="color:#f6baff;margin-top:1em;">Today</h2>
+        {% for note in today_notes %}
+          <div class="note-card" onclick="window.location='/detail/{{ note['id'] }}'">
+            <h3>
+              <a href="/detail/{{ note['id'] }}" style="color:#81aaff;">
+                {% if note['type'] == 'audio' %}🎤{% endif %}
+                {{ note['title'] }}
+              </a>
+            </h3>
+            <div class="tags">#{{ note['tags']|replace(',', ' #') }}</div>
+            <div class="summary">{{ note['summary'] }}</div>
+            <small>{{ note['timestamp'] or 'Unknown date' }} | {{ note['type'] }}</small>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% if week_notes %}
+        <h2 style="color:#81aaff;margin-top:1em;">This Week</h2>
+        {% for note in week_notes %}
+          <div class="note-card" onclick="window.location='/detail/{{ note['id'] }}'">
+            <h3>
+              <a href="/detail/{{ note['id'] }}" style="color:#81aaff;">
+                {% if note['type'] == 'audio' %}🎤{% endif %}
+                {{ note['title'] }}
+              </a>
+            </h3>
+            <div class="tags">#{{ note['tags']|replace(',', ' #') }}</div>
+            <div class="summary">{{ note['summary'] }}</div>
+            <small>{{ note['timestamp'] or 'Unknown date' }} | {{ note['type'] }}</small>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% if older_notes %}
+        <h2 style="color:#6ff;margin-top:1em;">Earlier</h2>
+        {% for note in older_notes %}
+          <div class="note-card" onclick="window.location='/detail/{{ note['id'] }}'">
+            <h3>
+              <a href="/detail/{{ note['id'] }}" style="color:#81aaff;">
+                {% if note['type'] == 'audio' %}🎤{% endif %}
+                {{ note['title'] }}
+              </a>
+            </h3>
+            <div class="tags">#{{ note['tags']|replace(',', ' #') }}</div>
+            <div class="summary">{{ note['summary'] }}</div>
+            <small>{{ note['timestamp'] or 'Unknown date' }} | {{ note['type'] }}</small>
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% if not notes %}
+        <p>No notes found.</p>
+      {% endif %}
+    </div>
+
+    <!-- Sidebar: Recent Activity + Calendar -->
+    <div id="sidebar">
+      <h3 style="color:#f6baff; margin-bottom:0.7em;">Recent Activity</h3>
+      <ul class="activity-list">
+        {% for note in notes[:5] %}
+          <li class="activity-item">
+            {% if note['type'] == 'audio' %}<span style="font-size:1.2em;">🎤</span>{% else %}<span style="font-size:1.2em;">📝</span>{% endif %}
+            <a href="/detail/{{ note['id'] }}" style="color:#81aaff;">{{ note['title'] }}</a>
+            <span class="activity-date">{{ note['timestamp'][:16] if note['timestamp'] else '' }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <div id="calendar">
+        <div style="font-weight:600; color:#f6baff; margin-bottom:4px;">Jump to Date</div>
+        <form method="get">
+          <input type="date" name="calendar" onchange="this.form.submit()" value="{{ q if q and q|length==10 else '' }}">
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Capture Modal -->
+  <div id="capture-modal">
+    <div>
+      <h2>Quick Capture</h2>
+      <form id="capture-form" method="post" action="/capture" enctype="multipart/form-data">
+        <input type="text" name="note" placeholder="Write a quick note..." style="width:100%;margin-bottom:8px;"><br>
+        <input type="text" name="tags" placeholder="#tags (comma separated)" style="width:100%;margin-bottom:8px;"><br>
+        <label>Or record/upload audio:</label><br>
+        <input type="file" name="file" accept="audio/*" style="margin-bottom:8px;"><br>
+        <button type="submit">Save</button>
+        <button type="button" onclick="hideCaptureModal()" style="background:#333;color:#ccc;margin-left:8px;">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function showCaptureModal() {
+      document.getElementById('capture-modal').style.display = 'block';
+    }
+    function hideCaptureModal() {
+      document.getElementById('capture-modal').style.display = 'none';
+    }
+
+    // Success message banner handler
+    function showSuccess(msg) {
+      var banner = document.getElementById('success-banner');
+      banner.innerText = msg;
+      banner.style.display = "block";
+      setTimeout(function(){ banner.style.display = "none"; }, 2200);
+    }
+
+    // Intercept the capture form and show the success banner
+    document.getElementById('capture-form').onsubmit = async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      let resp = await fetch("/capture", { method: "POST", body: formData });
+      if (resp.ok) {
+        showSuccess("Note captured!");
+        this.reset();
+        hideCaptureModal();
+        setTimeout(()=>window.location.reload(), 800); // reload to show the new note
+      } else {
+        showSuccess("Error saving note.");
+      }
+    }
+  </script>
+</body>
+</html>

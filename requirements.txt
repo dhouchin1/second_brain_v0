@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+jinja2
+watchdog
+python-frontmatter
+requests
+pydantic

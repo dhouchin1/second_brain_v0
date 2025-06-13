@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ note['title'] }} - Second Brain</title>
+  <link rel="stylesheet" href="/static/css/dark.css">
+  <style>
+    body { background:#181b28; color:#d3e3fc; font-family: 'Inter', Arial, sans-serif;}
+    .note-box { background:#232736; border-radius:14px; margin:2em auto; padding:2.2em; box-shadow:0 2px 22px #0004; max-width:660px; }
+    .note-title { font-size:1.3em; font-weight:bold; color:#7dd5fc;}
+    .note-summary { background:#222848; border-radius:10px; padding:1em; color:#eee8ff; margin-top:1.3em; font-size:1.05em; }
+    .action-item { background:#1dd5af; color:#181b28; font-weight:bold; border-radius:7px; padding:2px 9px; margin-right:7px; }
+    .ai-badge { background:#7f7eff; color:white; border-radius:8px; padding:2px 7px; font-size:0.89em; margin-left:6px;}
+    .tags { color:#81aaff; font-size:1em; margin-top:14px;}
+    .tags a { color:#50d8fc; text-decoration:none; font-weight:bold;}
+    .meta { color:#a4b8d8; margin-top:8px; font-size:0.97em;}
+    .back-btn { display:inline-block; margin-top:1.8em; color:#ffbaff; background:#232738; border-radius:8px; padding:0.5em 1.2em;}
+  </style>
+</head>
+<body>
+  <div class="note-box">
+    <div class="note-title">{{ note['title'] }}</div>
+    <div class="meta">{{ note['timestamp'] }} — <span style="color:#fad488;">{{ note['type'] }}</span></div>
+    <div class="tags">
+      {% for tag in note['tags'].split(',') if tag.strip() %}
+        <a href="/?tag={{ tag.strip() }}">#{{ tag.strip() }}</a>
+      {% endfor %}
+    </div>
+    <div class="note-summary">
+      <span class="ai-badge">AI summary</span> {{ note['summary'] }}
+      {% if note.get('summary') and 'action' in note['summary'].lower() %}
+        <br><span class="action-item">Action Item detected</span>
+      {% endif %}
+    </div>
+    {% if note['type'] == 'audio' %}
+      <audio controls style="width:100%;margin-top:1.6em;">
+        <source src="/audio/{{ note['title']|replace(' ', '_') }}.wav" type="audio/wav">
+        Your browser does not support the audio element.
+      </audio>
+    {% endif %}
+    {% if related %}
+      <div style="margin-top:2em; background:#202a3a; border-radius:8px; padding:0.7em;">
+        <strong>Mentioned in other notes:</strong>
+        <ul>
+          {% for n in related %}
+            <li><a href="/detail/{{ n.id }}">{{ n.title }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <a href="/" class="back-btn">← Back to Timeline</a>
+  </div>
+</body>
+</html>
