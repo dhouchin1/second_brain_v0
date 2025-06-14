@@ -1,7 +1,7 @@
 import pathlib
 import sqlite3
 from datetime import datetime
-from fastapi import FastAPI, Request, Form, UploadFile, File, Body
+from fastapi import FastAPI, Request, Form, UploadFile, File, Body, Query
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -215,6 +215,49 @@ async def webhook_apple(data: dict = Body(...)):
     conn.commit()
     conn.close()
     return {"status": "ok"}
+
+# ---- Activity Timeline ----
+@app.get("/activity")
+def activity_timeline(
+    request: Request,
+    activity_type: str = Query("all", alias="type"),
+    start: str = "",
+    end: str = "",
+):
+    conn = get_conn()
+    c = conn.cursor()
+
+    base_query = "SELECT id, summary, type, timestamp FROM notes"
+    conditions = []
+    params: list[str] = []
+    if activity_type and activity_type != "all":
+        conditions.append("type = ?")
+        params.append(activity_type)
+    if start:
+        conditions.append("date(timestamp) >= date(?)")
+        params.append(start)
+    if end:
+        conditions.append("date(timestamp) <= date(?)")
+        params.append(end)
+    if conditions:
+        base_query += " WHERE " + " AND ".join(conditions)
+    base_query += " ORDER BY timestamp DESC LIMIT 100"
+
+    rows = c.execute(base_query, params).fetchall()
+    activities = [
+        dict(zip([col[0] for col in c.description], row)) for row in rows
+    ]
+    conn.close()
+    return templates.TemplateResponse(
+        "activity_timeline.html",
+        {
+            "request": request,
+            "activities": activities,
+            "activity_type": activity_type,
+            "start": start,
+            "end": end,
+        },
+    )
 
 # ---- Health Check ----
 @app.get("/health")

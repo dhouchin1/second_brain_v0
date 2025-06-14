@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Activity Timeline</title>
+  <link rel="stylesheet" href="/static/css/dark.css">
+  <style>
+    body { background:#181b28; color:#d3e3fc; font-family:'Inter', Arial, sans-serif; }
+    .timeline { max-width:820px; margin:2em auto; }
+    .activity-item {
+      display:flex; gap:1em; align-items:flex-start;
+      background:#202a3a; border-radius:10px; padding:1em 1.2em;
+      margin-bottom:1em; box-shadow:0 2px 10px #0003;
+    }
+    .bubble-time {
+      background:#232c4e; color:#81aaff;
+      padding:0.5em 0.8em; border-radius:50px;
+      font-weight:bold; min-width:70px; text-align:center;
+      margin-top:4px;
+    }
+    .activity-type {
+      color:#ffb47d; font-size:0.9em; margin-bottom:0.25em;
+    }
+    .activity-summary { color:#d1c8ff; }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center; margin-bottom:1.4em;">Activity Timeline</h1>
+  <form method="get" style="text-align:center; margin-bottom:1.6em;">
+    <select name="type">
+      <option value="all" {% if activity_type=='all' %}selected{% endif %}>All</option>
+      <option value="note" {% if activity_type=='note' %}selected{% endif %}>Notes</option>
+      <option value="meeting" {% if activity_type=='meeting' %}selected{% endif %}>Meetings</option>
+      <option value="capture" {% if activity_type=='capture' %}selected{% endif %}>Captures</option>
+    </select>
+    <input type="date" name="start" value="{{ start }}">
+    <input type="date" name="end" value="{{ end }}">
+    <button type="submit">Filter</button>
+  </form>
+
+  <div class="timeline">
+    {% for item in activities %}
+      <div class="activity-item">
+        <div class="bubble-time">{{ item.timestamp[11:16] }}</div>
+        <div>
+          <div class="activity-type">{{ item.type }}</div>
+          <div class="activity-summary">{{ item.summary }}</div>
+        </div>
+      </div>
+    {% endfor %}
+    {% if not activities %}
+      <p style="text-align:center;color:#f0a8bf;">No activity found.</p>
+    {% endif %}
+  </div>
+</body>
+</html>
