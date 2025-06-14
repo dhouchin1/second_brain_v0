@@ -21,10 +21,15 @@
       color:#ffb47d; font-size:0.9em; margin-bottom:0.25em;
     }
     .activity-summary { color:#d1c8ff; }
+    .quick-item { background:#253040; }
   </style>
 </head>
 <body>
   <h1 style="text-align:center; margin-bottom:1.4em;">Activity Timeline</h1>
+  <div id="quick-capture" style="text-align:center;margin-bottom:1.4em;">
+    <input type="text" id="quick-input" placeholder="Quick capture..." style="width:60%;padding:0.6em;border-radius:8px;background:#242a36;color:#d3e3fc;border:1px solid #353951;">
+    <button id="quick-save" style="padding:0.6em 1em;border-radius:8px;">Save</button>
+  </div>
   <form method="get" style="text-align:center; margin-bottom:1.6em;">
     <select name="type">
       <option value="all" {% if activity_type=='all' %}selected{% endif %}>All</option>
@@ -51,5 +56,32 @@
       <p style="text-align:center;color:#f0a8bf;">No activity found.</p>
     {% endif %}
   </div>
+  <script>
+    function renderQuickCaptures() {
+      const container = document.querySelector('.timeline');
+      if(!container) return;
+      const items = JSON.parse(localStorage.getItem('quickCaptures') || '[]');
+      items.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+      container.querySelectorAll('.quick-item').forEach(el=>el.remove());
+      for(const it of items){
+        const div = document.createElement('div');
+        div.className = 'activity-item quick-item';
+        const t = new Date(it.timestamp).toTimeString().slice(0,5);
+        div.innerHTML = `<div class="bubble-time">${t}</div><div><div class="activity-type">quick</div><div class="activity-summary">${it.summary}</div></div>`;
+        container.prepend(div);
+      }
+    }
+    document.getElementById('quick-save').addEventListener('click', () => {
+      const inp = document.getElementById('quick-input');
+      const text = inp.value.trim();
+      if(!text) return;
+      const items = JSON.parse(localStorage.getItem('quickCaptures') || '[]');
+      items.push({summary:text,timestamp:new Date().toISOString()});
+      localStorage.setItem('quickCaptures', JSON.stringify(items));
+      inp.value='';
+      renderQuickCaptures();
+    });
+    window.addEventListener('DOMContentLoaded', renderQuickCaptures);
+  </script>
 </body>
 </html>
