@@ -244,7 +244,6 @@ async def webhook_apple(data: dict = Body(...)):
     conn.close()
     return {"status": "ok"}
 
-<<<<<<< HEAD
 # ---- Activity Timeline ----
 @app.get("/activity")
 def activity_timeline(
@@ -289,8 +288,6 @@ def activity_timeline(
     )
 
 # ---- Health Check ----
-=======
->>>>>>> 8884517 (Initial commmit of second_brain)
 @app.get("/health")
 def health():
     conn = get_conn()
