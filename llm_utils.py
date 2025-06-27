@@ -5,9 +5,11 @@ OLLAMA_API_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3.2"
 
 def ollama_summarize(text, prompt=None):
+    print(f"[ollama_summarize] Called with text: {repr(text[:200])}")  # Print the first 200 chars
     if not text or not text.strip():
         return ""
-    system_prompt = prompt or "Summarize the following text as a helpful meeting note with main points and action items:"
+    #system_prompt = prompt or "Summarize the following text as a helpful meeting note with main points and action items:"
+    system_prompt = prompt or "Summarize and extract action items from this transcript of conversation snippet or note."
     data = {
         "model": OLLAMA_MODEL,
         "prompt": f"{system_prompt}\n\n{text}\n\nSummary:"
@@ -25,7 +27,32 @@ def ollama_summarize(text, prompt=None):
                         summary += obj["response"]
                 except Exception as e:
                     print("Ollama stream parse error:", e, line)
+                    print(f"[ollama_summarize] Returning summary: {repr(summary[:200])}")
         return summary.strip()
     except Exception as e:
         print("Ollama exception:", e)
     return ""
+
+def ollama_generate_title(text):
+    if not text or not text.strip():
+        return "Untitled Note"
+    prompt = (
+        "Generate a concise, descriptive title (max 10 words) for the following note or meeting transcript. "
+        "Avoid generic phrases like 'Meeting Transcript' or 'Recording.' "
+        "Only respond with the title, no extra commentary.\n\n"
+        f"{text}\n\nTitle:"
+    )
+    try:
+        resp = requests.post(
+            OLLAMA_API_URL, json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True}, timeout=60
+        )
+        title = ""
+        for line in resp.iter_lines():
+            if line:
+                obj = json.loads(line.decode("utf-8"))
+                if "response" in obj:
+                    title += obj["response"]
+        return title.strip().strip('"') or "Untitled Note"
+    except Exception as e:
+        print("Ollama title exception:", e)
+        return "Untitled Note"

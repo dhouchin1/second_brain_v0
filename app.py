@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from collections import defaultdict
 import subprocess
 import os
-from llm_utils import ollama_summarize
+from llm_utils import ollama_summarize, ollama_generate_title
 from markupsafe import Markup, escape
 import re
 
@@ -24,7 +24,6 @@ app = FastAPI()
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
-# ---- Highlight Filter for Search ----
 def highlight(text, term):
     if not text or not term:
         return text
@@ -32,7 +31,6 @@ def highlight(text, term):
     return Markup(pattern.sub(lambda m: f"<mark>{escape(m.group(0))}</mark>", text))
 templates.env.filters['highlight'] = highlight
 
-# ---- Database Initialization ----
 def get_conn():
     return sqlite3.connect(str(DB_PATH))
 
@@ -46,29 +44,33 @@ def init_db():
             summary TEXT,
             tags TEXT,
             type TEXT,
-            timestamp TEXT
+            timestamp TEXT,
+            audio_filename TEXT,
+            content TEXT
         )
     ''')
     c.execute('''
         CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
-            title, summary, tags, content='notes', content_rowid='id'
+            title, summary, tags, content, content='notes', content_rowid='id'
         )
     ''')
     conn.commit()
     conn.close()
 init_db()  # Ensure tables are ready
 
-# ---- Audio Transcription ----
 def transcribe_audio(audio_path):
-    wav_path = audio_path.with_suffix('.wav')
-    # Convert to .wav if needed
-    if audio_path.suffix.lower() != ".wav":
-        subprocess.run([
-            "ffmpeg", "-y", "-i", str(audio_path), str(wav_path)
-        ], capture_output=True)
-    else:
-        wav_path = audio_path
-    out_txt_path = wav_path.with_suffix('.txt')
+    import time
+    wav_path = audio_path.with_suffix('.converted.wav')
+    ffmpeg_cmd = [
+        "ffmpeg", "-y", "-i", str(audio_path),
+        "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(wav_path)
+    ]
+    result = subprocess.run(ffmpeg_cmd, capture_output=True)
+    if result.returncode != 0:
+        print("ffmpeg failed to convert audio:", result.stderr)
+        return "", None
+    print(f"Converted audio: {wav_path} (size: {os.path.getsize(wav_path)} bytes)")
+    out_txt_path = wav_path.with_suffix(wav_path.suffix + '.txt')
     whisper_cmd = [
         str(WHISPER_CPP_PATH),
         "-m", str(WHISPER_MODEL_PATH),
@@ -76,13 +78,22 @@ def transcribe_audio(audio_path):
         "-otxt"
     ]
     result = subprocess.run(whisper_cmd, capture_output=True, text=True)
-    if result.returncode == 0 and out_txt_path.exists():
-        return out_txt_path.read_text().strip()
-    else:
-        print("Whisper.cpp failed:", result.stderr)
-        return ""
+    print(f"Looking for transcript at: {out_txt_path}")
 
-# ---- Find Related Notes ----
+    # Wait for up to 2 seconds for the file to be written
+    for _ in range(20):
+        if out_txt_path.exists() and out_txt_path.stat().st_size > 0:
+            break
+        time.sleep(0.1)
+    if out_txt_path.exists() and out_txt_path.stat().st_size > 0:
+        content = out_txt_path.read_text().strip()
+        print(f"Transcript content: '{content}'")
+        return content, wav_path.name
+    else:
+        print("Whisper.cpp failed or output file missing/empty")
+        return "", wav_path.name
+
+    
 def find_related_notes(note_id, tags, conn):
     tag_list = [t.strip() for t in (tags or "").split(",") if t.strip()]
     if not tag_list:
@@ -94,7 +105,6 @@ def find_related_notes(note_id, tags, conn):
     rows = conn.execute(sql, params).fetchall()
     return [{"id": row[0], "title": row[1]} for row in rows]
 
-# ---- Timeline Dashboard ----
 @app.get("/")
 def dashboard(request: Request, q: str = "", tag: str = ""):
     conn = get_conn()
@@ -112,7 +122,6 @@ def dashboard(request: Request, q: str = "", tag: str = ""):
     else:
         rows = c.execute("SELECT * FROM notes ORDER BY timestamp DESC LIMIT 100").fetchall()
     notes = [dict(zip([col[0] for col in c.description], row)) for row in rows]
-    # Group notes by day
     notes_by_day = defaultdict(list)
     for note in notes:
         day = note["timestamp"][:10] if note.get("timestamp") else "Unknown"
@@ -127,7 +136,6 @@ def dashboard(request: Request, q: str = "", tag: str = ""):
         },
     )
 
-# ---- Detail View ----
 @app.get("/detail/{note_id}")
 def detail(request: Request, note_id: int):
     conn = get_conn()
@@ -142,7 +150,6 @@ def detail(request: Request, note_id: int):
         {"request": request, "note": note, "related": related}
     )
 
-# ---- Audio Serving ----
 @app.get("/audio/{filename}")
 def get_audio(filename: str):
     audio_path = AUDIO_DIR / filename
@@ -150,7 +157,6 @@ def get_audio(filename: str):
         return FileResponse(str(audio_path))
     return {"error": "Audio not found"}
 
-# ---- Note & Audio Capture ----
 @app.post("/capture")
 async def capture(
     request: Request,
@@ -158,10 +164,12 @@ async def capture(
     tags: str = Form(""),
     file: UploadFile = File(None)
 ):
-    text = note.strip()
+    content = note.strip()
     note_type = "note"
-    transcript = ""
+    summary = ""
+    title = ""
     audio_filename = None
+
     if file:
         AUDIO_DIR.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d-%H%M")
@@ -169,32 +177,52 @@ async def capture(
         audio_path = AUDIO_DIR / safe_name
         with open(audio_path, "wb") as out_f:
             out_f.write(await file.read())
-        transcript = transcribe_audio(audio_path)
-        text = transcript or f"[Transcription failed for {safe_name}]"
+        transcript, converted_name = transcribe_audio(audio_path)
+        audio_filename = converted_name
+        if transcript:
+            content = transcript
+            print(f"[capture] Transcript to summarize: {repr(content[:200])}")
+            # AI TITLE!
+            title = ollama_generate_title(transcript)
+            if not title or title.lower().startswith("untitled"):
+                # fallback: first line, 60 chars max
+                title = transcript.splitlines()[0][:60] if transcript.strip() else "[Audio Note]"
+            summary = ollama_summarize(transcript)
+        else:
+            title = f"[Transcription failed for {safe_name}]"
+            content = ""
+            summary = title
         note_type = "audio"
-        audio_filename = safe_name
-    summary = ollama_summarize(text)
+    else:
+        print(f"[capture] Note content to summarize: {repr(content[:200])}")
+        # AI TITLE!
+        title = ollama_generate_title(content) if content else "[No Title]"
+        if not title or title.lower().startswith("untitled"):
+            title = content[:60] if content else "[No Title]"
+        summary = ollama_summarize(content)
+        audio_filename = None
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"About to insert note. Title: '{title}', summary: '{summary}', audio_filename: '{audio_filename}'")
     conn = get_conn()
     c = conn.cursor()
     c.execute(
-        "INSERT INTO notes (title, summary, tags, type, timestamp) VALUES (?, ?, ?, ?, ?)",
-        (text[:60] + "..." if len(text) > 60 else text, summary, tags, note_type, now)
+        "INSERT INTO notes (title, content, summary, tags, type, timestamp, audio_filename) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (title, content, summary, tags, note_type, now, audio_filename)
     )
     conn.commit()
-    # Optionally, keep FTS index up to date
     note_id = c.lastrowid
     c.execute(
-        "INSERT INTO notes_fts(rowid, title, summary, tags) VALUES (?, ?, ?, ?)",
-        (note_id, text[:60] + "..." if len(text) > 60 else text, summary, tags)
+        "INSERT INTO notes_fts(rowid, title, summary, tags, content) VALUES (?, ?, ?, ?, ?)",
+        (note_id, title, summary, tags, content)
     )
     conn.commit()
     conn.close()
     return RedirectResponse("/", status_code=302)
 
-# ---- Apple Shortcuts/Webhook ----
 @app.post("/webhook/apple")
 async def webhook_apple(data: dict = Body(...)):
+    print("APPLE WEBHOOK RECEIVED:", data)
     note = data.get("note", "")
     tags = data.get("tags", "")
     note_type = data.get("type", "apple")
@@ -203,19 +231,20 @@ async def webhook_apple(data: dict = Body(...)):
     conn = get_conn()
     c = conn.cursor()
     c.execute(
-        "INSERT INTO notes (title, summary, tags, type, timestamp) VALUES (?, ?, ?, ?, ?)",
-        (note[:60] + "..." if len(note) > 60 else note, summary, tags, note_type, now)
+        "INSERT INTO notes (title, content, summary, tags, type, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+        (note[:60] + "..." if len(note) > 60 else note, note, summary, tags, note_type, now)
     )
     conn.commit()
     note_id = c.lastrowid
     c.execute(
-        "INSERT INTO notes_fts(rowid, title, summary, tags) VALUES (?, ?, ?, ?)",
-        (note_id, note[:60] + "..." if len(note) > 60 else note, summary, tags)
+        "INSERT INTO notes_fts(rowid, title, summary, tags, content) VALUES (?, ?, ?, ?, ?)",
+        (note_id, note[:60] + "..." if len(note) > 60 else note, summary, tags, note)
     )
     conn.commit()
     conn.close()
     return {"status": "ok"}
 
+<<<<<<< HEAD
 # ---- Activity Timeline ----
 @app.get("/activity")
 def activity_timeline(
@@ -260,6 +289,8 @@ def activity_timeline(
     )
 
 # ---- Health Check ----
+=======
+>>>>>>> 8884517 (Initial commmit of second_brain)
 @app.get("/health")
 def health():
     conn = get_conn()

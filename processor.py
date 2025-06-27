@@ -36,7 +36,22 @@ def summarize_with_ollama(transcript: str, model="llama3") -> dict:
     import requests
     # Make sure your Ollama API is running locally
     url = "http://localhost:11434/api/generate"
-    prompt = f"Summarize and extract action items from this meeting transcript:\n\n{transcript}\n\nRespond in JSON with 'summary', 'tags', 'actions'."
+    ###prompt = f"Summarize and extract action items from this meeting transcript:\n\n{transcript}\n\nRespond in JSON with 'summary', 'tags', 'actions'."
+    prompt = (
+    "You are an intelligent note-taking assistant. Analyze the following text, which could be a conversation, personal note, meeting, idea, or any other type of content."
+    "\n\n"
+    "Provide a concise summary of the main points or content. "
+    "If there are clear action items (such as tasks, next steps, or follow-ups), list them. "
+    "Also, suggest relevant tags for categorization. "
+    "If any section (summary, action items, tags) is not applicable, leave it blank or an empty list."
+    "\n\n"
+    "Respond in JSON with keys: 'summary', 'tags', 'actions'."
+    "\n\n"
+    "Text:\n"
+    f"{transcript}"
+    "\n\n"
+    "JSON:"
+    )
     payload = {"model": model, "prompt": prompt, "stream": False}
     response = requests.post(url, json=payload)
     if response.status_code == 200:
