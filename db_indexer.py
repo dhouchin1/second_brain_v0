@@ -1,12 +1,10 @@
 import sqlite3
-from pathlib import Path
 import frontmatter
-
-VAULT_PATH = Path("/Users/dhouchin/Obsidian/SecondBrain")
-DB_PATH = VAULT_PATH / "secondbrain_index.db"
+from config import settings
 
 def create_db():
-    conn = sqlite3.connect(DB_PATH)
+    db_path = settings.vault_path / "secondbrain_index.db"
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute("""
     CREATE TABLE IF NOT EXISTS notes (
@@ -24,9 +22,10 @@ def create_db():
     conn.close()
 
 def index_vault():
-    conn = sqlite3.connect(DB_PATH)
+    db_path = settings.vault_path / "secondbrain_index.db"
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    for note_path in VAULT_PATH.glob("*.md"):
+    for note_path in settings.vault_path.glob("*.md"):
         try:
             post = frontmatter.load(note_path)
             fm = post.metadata
@@ -37,7 +36,7 @@ def index_vault():
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 note_id,
-                str(note_path.relative_to(VAULT_PATH)),
+                str(note_path.relative_to(settings.vault_path)),
                 fm.get("title", note_path.stem),
                 fm.get("timestamp"),
                 fm.get("type", "note"),

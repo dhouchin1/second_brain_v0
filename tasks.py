@@ -6,16 +6,11 @@ from datetime import datetime
 from typing import Optional
 
 from llm_utils import ollama_summarize, ollama_generate_title
-
-BASE_DIR = pathlib.Path(__file__).parent.resolve()
-DB_PATH = BASE_DIR / "notes.db"
-AUDIO_DIR = BASE_DIR / "audio"
-WHISPER_CPP_PATH = BASE_DIR / "whisper.cpp/build/bin/whisper-cli"
-WHISPER_MODEL_PATH = BASE_DIR / "whisper.cpp/models/ggml-base.en.bin"
+from config import settings
 
 
 def get_conn():
-    return sqlite3.connect(str(DB_PATH))
+    return sqlite3.connect(str(settings.db_path))
 
 
 def transcribe_audio(audio_path: pathlib.Path):
@@ -30,8 +25,8 @@ def transcribe_audio(audio_path: pathlib.Path):
         return "", None
     out_txt_path = wav_path.with_suffix(wav_path.suffix + '.txt')
     whisper_cmd = [
-        str(WHISPER_CPP_PATH),
-        "-m", str(WHISPER_MODEL_PATH),
+        str(settings.whisper_cpp_path),
+        "-m", str(settings.whisper_model_path),
         "-f", str(wav_path),
         "-otxt",
     ]
@@ -61,7 +56,7 @@ def process_note(note_id: int):
     audio_filename: Optional[str] = note.get("audio_filename")
 
     if note_type == "audio" and audio_filename:
-        audio_path = AUDIO_DIR / audio_filename
+        audio_path = settings.audio_dir / audio_filename
         transcript, converted_name = transcribe_audio(audio_path)
         if transcript:
             content = transcript

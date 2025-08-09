@@ -3,12 +3,7 @@ from pathlib import Path
 import uuid
 import shutil
 import os
-
-# Set these to match your setup
-VAULT_PATH = Path("/Users/dhouchin/Obsidian/SecondBrain")
-AUDIO_PATH = VAULT_PATH / "audio"
-WHISPER_CPP_PATH = Path("/Users/dhouchin/second_brain/whisper.cpp/build/bin/whisper-cli")
-WHISPER_MODEL = Path("/Users/dhouchin/second_brain/whisper.cpp/models/ggml-base.en.bin")
+from config import settings
 
 def convert_to_wav(input_path: Path) -> Path:
     if input_path.suffix.lower() == ".wav":
@@ -20,8 +15,8 @@ def convert_to_wav(input_path: Path) -> Path:
 def transcribe_with_whisper(audio_path: Path) -> str:
     out_txt_path = audio_path.with_suffix('.txt')
     cmd = [
-        str(WHISPER_CPP_PATH),
-        "-m", str(WHISPER_MODEL),
+        str(settings.whisper_cpp_path),
+        "-m", str(settings.whisper_model_path),
         "-f", str(audio_path),
         "-otxt"
     ]
@@ -66,7 +61,7 @@ def create_note_from_audio(audio_path: Path, transcript: str, summary: str, tags
     tags = tags or []
     actions = actions or []
     note_id = audio_path.stem
-    md_file = VAULT_PATH / f"{note_id}.md"
+    md_file = settings.vault_path / f"{note_id}.md"
     yaml_header = "---\n"
     yaml_header += f"audio: {audio_path.name}\n"
     yaml_header += f"tags: {tags}\n"

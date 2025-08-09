@@ -1,4 +1,3 @@
-import pathlib
 import sqlite3
 from datetime import datetime
 from fastapi import FastAPI, Request, Form, UploadFile, File, Body, Query, BackgroundTasks
@@ -12,18 +11,12 @@ from llm_utils import ollama_summarize, ollama_generate_title
 from tasks import process_note
 from markupsafe import Markup, escape
 import re
-
-# ---- Config ----
-BASE_DIR = pathlib.Path(__file__).parent.resolve()
-DB_PATH = BASE_DIR / "notes.db"
-AUDIO_DIR = BASE_DIR / "audio"
-WHISPER_CPP_PATH = BASE_DIR / "whisper.cpp/build/bin/whisper-cli"
-WHISPER_MODEL_PATH = BASE_DIR / "whisper.cpp/models/ggml-base.en.bin"
+from config import settings
 
 # ---- FastAPI Setup ----
 app = FastAPI()
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(settings.base_dir / "templates"))
+app.mount("/static", StaticFiles(directory=str(settings.base_dir / "static")), name="static")
 
 def highlight(text, term):
     if not text or not term:
@@ -33,7 +26,7 @@ def highlight(text, term):
 templates.env.filters['highlight'] = highlight
 
 def get_conn():
-    return sqlite3.connect(str(DB_PATH))
+    return sqlite3.connect(str(settings.db_path))
 
 def init_db():
     conn = get_conn()
@@ -79,8 +72,8 @@ def transcribe_audio(audio_path):
     print(f"Converted audio: {wav_path} (size: {os.path.getsize(wav_path)} bytes)")
     out_txt_path = wav_path.with_suffix(wav_path.suffix + '.txt')
     whisper_cmd = [
-        str(WHISPER_CPP_PATH),
-        "-m", str(WHISPER_MODEL_PATH),
+        str(settings.whisper_cpp_path),
+        "-m", str(settings.whisper_model_path),
         "-f", str(wav_path),
         "-otxt"
     ]
@@ -159,7 +152,7 @@ def detail(request: Request, note_id: int):
 
 @app.get("/audio/{filename}")
 def get_audio(filename: str):
-    audio_path = AUDIO_DIR / filename
+    audio_path = settings.audio_dir / filename
     if audio_path.exists():
         return FileResponse(str(audio_path))
     return {"error": "Audio not found"}
@@ -177,10 +170,10 @@ async def capture(
     audio_filename = None
 
     if file:
-        AUDIO_DIR.mkdir(exist_ok=True)
+        settings.audio_dir.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d-%H%M")
         safe_name = f"{timestamp}-{file.filename.replace(' ', '_')}"
-        audio_path = AUDIO_DIR / safe_name
+        audio_path = settings.audio_dir / safe_name
         with open(audio_path, "wb") as out_f:
             out_f.write(await file.read())
         audio_filename = safe_name
