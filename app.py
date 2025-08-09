@@ -157,6 +157,73 @@ def detail(request: Request, note_id: int):
         {"request": request, "note": note, "related": related}
     )
 
+@app.get("/edit/{note_id}")
+def edit_get(request: Request, note_id: int):
+    conn = get_conn()
+    c = conn.cursor()
+    row = c.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone()
+    if not row:
+        conn.close()
+        return RedirectResponse("/", status_code=302)
+    note = dict(zip([col[0] for col in c.description], row))
+    conn.close()
+    return templates.TemplateResponse(
+        "edit.html", {"request": request, "note": note}
+    )
+
+@app.post("/edit/{note_id}")
+def edit_post(
+    request: Request,
+    note_id: int,
+    content: str = Form(""),
+    tags: str = Form(""),
+):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "UPDATE notes SET content = ?, tags = ? WHERE id = ?",
+        (content, tags, note_id),
+    )
+    row = c.execute(
+        "SELECT title, summary FROM notes WHERE id = ?",
+        (note_id,),
+    ).fetchone()
+    if row:
+        title, summary = row
+        c.execute("DELETE FROM notes_fts WHERE rowid = ?", (note_id,))
+        c.execute(
+            "INSERT INTO notes_fts(rowid, title, summary, tags, content) VALUES (?, ?, ?, ?, ?)",
+            (note_id, title, summary, tags, content),
+        )
+    conn.commit()
+    conn.close()
+    if "application/json" in request.headers.get("accept", ""):
+        return {"status": "ok"}
+    return RedirectResponse(f"/detail/{note_id}", status_code=302)
+
+@app.post("/delete/{note_id}")
+def delete_note(request: Request, note_id: int):
+    conn = get_conn()
+    c = conn.cursor()
+    row = c.execute(
+        "SELECT audio_filename FROM notes WHERE id = ?",
+        (note_id,),
+    ).fetchone()
+    if row and row[0]:
+        audio_path = AUDIO_DIR / row[0]
+        converted = audio_path.with_suffix('.converted.wav')
+        transcript = pathlib.Path(str(converted) + '.txt')
+        for p in [audio_path, converted, transcript]:
+            if p.exists():
+                p.unlink()
+    c.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+    c.execute("DELETE FROM notes_fts WHERE rowid = ?", (note_id,))
+    conn.commit()
+    conn.close()
+    if "application/json" in request.headers.get("accept", ""):
+        return {"status": "deleted"}
+    return RedirectResponse("/", status_code=302)
+
 @app.get("/audio/{filename}")
 def get_audio(filename: str):
     audio_path = AUDIO_DIR / filename

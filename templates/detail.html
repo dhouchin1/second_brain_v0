@@ -60,9 +60,15 @@
             </span>
           {% endif %}
         </div>
-        <span class="text-xs text-gray-400 font-mono">
-          {{ note.timestamp or '' }}
-        </span>
+        <div class="flex items-center gap-2">
+          <a href="/edit/{{ note.id }}" class="text-blue-500 text-xs hover:underline">Edit</a>
+          <form method="post" action="/delete/{{ note.id }}" onsubmit="return confirm('Delete note?');">
+            <button type="submit" class="text-red-500 text-xs">Delete</button>
+          </form>
+          <span class="text-xs text-gray-400 font-mono">
+            {{ note.timestamp or '' }}
+          </span>
+        </div>
       </div>
       <!-- Title -->
       <div class="font-extrabold text-2xl md:text-3xl text-[#232a3c] break-words leading-tight tracking-tight mb-1">{{ note.title }}</div>
