@@ -5,3 +5,4 @@ watchdog
 python-frontmatter
 requests
 pydantic
+pydantic-settings

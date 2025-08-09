@@ -115,9 +115,18 @@ See the code in processor.py or ask for automation scripts!
 
 
 🛠️ Configuration
-Edit app.py to update vault/audio/model paths
+Configuration is managed via environment variables read by `config.py`.
+The following variables are available (defaults shown):
 
-Tweak the prompts in llm_utils.py for custom AI summarization/tagging
+- `DB_PATH` – path to the SQLite notes database (default: `<repo>/notes.db`)
+- `VAULT_PATH` – path to your Obsidian vault (default: project root)
+- `AUDIO_DIR` – directory for uploaded audio files (default: `<repo>/audio`)
+- `WHISPER_CPP_PATH` – path to whisper.cpp binary (default: `<repo>/whisper.cpp/build/bin/whisper-cli`)
+- `WHISPER_MODEL_PATH` – path to Whisper model file (default: `<repo>/whisper.cpp/models/ggml-base.en.bin`)
+- `OLLAMA_API_URL` – Ollama API endpoint (default: `http://localhost:11434/api/generate`)
+- `OLLAMA_MODEL` – Ollama model name (default: `llama3.2`)
+
+Tweak the prompts in `llm_utils.py` for custom AI summarization/tagging
 
 🤝 Contributing
 PRs, issues, and feature requests welcome!

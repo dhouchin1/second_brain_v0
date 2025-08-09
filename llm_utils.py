@@ -1,8 +1,6 @@
 import requests
 import json
-
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2"
+from config import settings
 
 def ollama_summarize(text, prompt=None):
     print(f"[ollama_summarize] Called with text: {repr(text[:200])}")  # Print the first 200 chars
@@ -11,11 +9,11 @@ def ollama_summarize(text, prompt=None):
     #system_prompt = prompt or "Summarize the following text as a helpful meeting note with main points and action items:"
     system_prompt = prompt or "Summarize and extract action items from this transcript of conversation snippet or note."
     data = {
-        "model": OLLAMA_MODEL,
+        "model": settings.ollama_model,
         "prompt": f"{system_prompt}\n\n{text}\n\nSummary:"
     }
     try:
-        resp = requests.post(OLLAMA_API_URL, json=data, stream=True, timeout=120)
+        resp = requests.post(settings.ollama_api_url, json=data, stream=True, timeout=120)
         summary = ""
         # Ollama streams JSON lines, so iterate each line and build up the response
         for line in resp.iter_lines():
@@ -44,7 +42,7 @@ def ollama_generate_title(text):
     )
     try:
         resp = requests.post(
-            OLLAMA_API_URL, json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True}, timeout=60
+            settings.ollama_api_url, json={"model": settings.ollama_model, "prompt": prompt, "stream": True}, timeout=60
         )
         title = ""
         for line in resp.iter_lines():
