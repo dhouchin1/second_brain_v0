@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Note – Second Brain</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="/static/brain-logo.png" />
+  <style>
+    body { background: #181b24; font-family: 'Inter', Arial, sans-serif; }
+    ::-webkit-scrollbar { width: 8px; background: #23243a; }
+    ::-webkit-scrollbar-thumb { background: #36374c; border-radius: 6px; }
+  </style>
+</head>
+<body class="min-h-screen text-[#232a3c] bg-[#181b24]">
+  <header class="w-full pt-6 pb-4 flex flex-col items-center border-b border-[#26283c] bg-[#191b24]">
+    <div class="flex items-center gap-3 mb-1">
+      <img src="/static/brain-logo.png" alt="Second Brain Logo" class="h-8 w-8">
+      <a href="/" class="text-2xl font-extrabold text-pink-200 hover:text-pink-300 transition tracking-tight drop-shadow">
+        Second Brain
+      </a>
+    </div>
+    <p class="text-blue-300 text-xs mt-0.5">Edit your note below.</p>
+  </header>
+
+  <main class="max-w-2xl mx-auto p-4">
+    <section class="bg-white/90 shadow-xl border border-[#ebe5f8] rounded-2xl px-8 py-7 my-8 flex flex-col gap-4">
+      <h2 class="text-xl font-bold text-[#232a3c]">Editing: {{ note.title }}</h2>
+      <form method="post" class="flex flex-col gap-4">
+        <div class="flex flex-col gap-2">
+          <label for="content" class="text-blue-700 text-sm font-semibold">Content</label>
+          <textarea id="content" name="content" rows="10" class="rounded-lg border border-[#232c4e] bg-[#232c4e] text-blue-100 px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none">{{ note.content }}</textarea>
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="tags" class="text-blue-700 text-sm font-semibold">Tags</label>
+          <input id="tags" type="text" name="tags" value="{{ note.tags }}" class="rounded-lg border border-[#232c4e] bg-[#232c4e] text-blue-100 px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+        </div>
+        <div class="flex gap-3 items-center">
+          <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-lg transition">Save</button>
+          <a href="/detail/{{ note.id }}" class="text-pink-500 hover:underline">Cancel</a>
+        </div>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

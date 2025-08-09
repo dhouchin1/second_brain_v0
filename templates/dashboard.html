@@ -151,7 +151,13 @@
                   Note
                 {% endif %}
               </span>
-              <span class="text-xs text-gray-400 font-mono">{{ note['timestamp'][11:16] }}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400 font-mono">{{ note['timestamp'][11:16] }}</span>
+                <a href="/edit/{{ note['id'] }}" onclick="event.stopPropagation();" class="text-blue-500 text-xs hover:underline">Edit</a>
+                <form method="post" action="/delete/{{ note['id'] }}" class="inline" onclick="event.stopPropagation();" onsubmit="event.stopPropagation(); return confirm('Delete note?');">
+                  <button type="submit" class="text-red-500 text-xs">Delete</button>
+                </form>
+              </div>
             </div>
             <div class="font-semibold text-[#234] text-lg">
               {{ note['title']|highlight(q) }}
