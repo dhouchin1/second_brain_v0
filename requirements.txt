@@ -6,3 +6,5 @@ python-frontmatter
 requests
 pydantic
 pydantic-settings
+passlib[bcrypt]
+python-jose
