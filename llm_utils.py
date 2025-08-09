@@ -2,34 +2,56 @@ import requests
 import json
 from config import settings
 
+
 def ollama_summarize(text, prompt=None):
-    print(f"[ollama_summarize] Called with text: {repr(text[:200])}")  # Print the first 200 chars
+    """Return summary, tags and actions extracted from *text* using Ollama."""
+    print(f"[ollama_summarize] Called with text: {repr(text[:200])}")
     if not text or not text.strip():
-        return ""
-    #system_prompt = prompt or "Summarize the following text as a helpful meeting note with main points and action items:"
-    system_prompt = prompt or "Summarize and extract action items from this transcript of conversation snippet or note."
+        return {"summary": "", "tags": [], "actions": []}
+
+    system_prompt = (
+        prompt
+        or "Summarize and extract tags and action items from this transcript of conversation snippet or note."
+    )
     data = {
         "model": settings.ollama_model,
-        "prompt": f"{system_prompt}\n\n{text}\n\nSummary:"
+        "prompt": (
+            f"{system_prompt}\n\n{text}\n\n"
+            "Respond in JSON with keys 'summary', 'tags', and 'actions'."
+        ),
     }
     try:
         resp = requests.post(settings.ollama_api_url, json=data, stream=True, timeout=120)
-        summary = ""
-        # Ollama streams JSON lines, so iterate each line and build up the response
+        output = ""
         for line in resp.iter_lines():
             if line:
                 try:
                     obj = json.loads(line.decode("utf-8"))
-                    # Ollama returns incremental responses with 'response' key
                     if "response" in obj:
-                        summary += obj["response"]
+                        output += obj["response"]
                 except Exception as e:
                     print("Ollama stream parse error:", e, line)
-                    print(f"[ollama_summarize] Returning summary: {repr(summary[:200])}")
-        return summary.strip()
+        output = output.strip()
+        try:
+            parsed = json.loads(output)
+        except json.JSONDecodeError:
+            print("Ollama JSON decode failed, returning raw text")
+            return {"summary": output, "tags": [], "actions": []}
+
+        summary = parsed.get("summary", "").strip()
+        tags = parsed.get("tags", []) or []
+        actions = parsed.get("actions", []) or []
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",") if t.strip()]
+        if isinstance(actions, str):
+            actions = [a.strip() for a in actions.splitlines() if a.strip()]
+        result = {"summary": summary, "tags": tags, "actions": actions}
+        print(f"[ollama_summarize] Returning: {result}")
+        return result
     except Exception as e:
         print("Ollama exception:", e)
-    return ""
+    return {"summary": "", "tags": [], "actions": []}
+
 
 def ollama_generate_title(text):
     if not text or not text.strip():
@@ -42,7 +64,9 @@ def ollama_generate_title(text):
     )
     try:
         resp = requests.post(
-            settings.ollama_api_url, json={"model": settings.ollama_model, "prompt": prompt, "stream": True}, timeout=60
+            settings.ollama_api_url,
+            json={"model": settings.ollama_model, "prompt": prompt, "stream": True},
+            timeout=60,
         )
         title = ""
         for line in resp.iter_lines():
@@ -54,3 +78,4 @@ def ollama_generate_title(text):
     except Exception as e:
         print("Ollama title exception:", e)
         return "Untitled Note"
+

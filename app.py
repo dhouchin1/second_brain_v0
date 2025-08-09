@@ -183,6 +183,7 @@ def init_db():
             title TEXT,
             summary TEXT,
             tags TEXT,
+            actions TEXT,
             type TEXT,
             timestamp TEXT,
             audio_filename TEXT,
@@ -194,7 +195,7 @@ def init_db():
     ''')
     c.execute('''
         CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
-            title, summary, tags, content, content='notes', content_rowid='id'
+            title, summary, tags, actions, content, content='notes', content_rowid='id'
         )
     ''')
     c.execute('''
@@ -210,6 +211,22 @@ def init_db():
         c.execute("UPDATE notes SET status='complete' WHERE status IS NULL")
     if 'user_id' not in cols:
         c.execute("ALTER TABLE notes ADD COLUMN user_id INTEGER")
+    if 'actions' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN actions TEXT")
+
+    fts_cols = [row[1] for row in c.execute("PRAGMA table_info(notes_fts)")]
+    if 'actions' not in fts_cols:
+        c.execute("DROP TABLE IF EXISTS notes_fts")
+        c.execute('''
+            CREATE VIRTUAL TABLE notes_fts USING fts5(
+                title, summary, tags, actions, content, content='notes', content_rowid='id'
+            )
+        ''')
+        rows = c.execute("SELECT id, title, summary, tags, actions, content FROM notes").fetchall()
+        c.executemany(
+            "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+            rows,
+        )
     conn.commit()
     conn.close()
 init_db()  # Ensure tables are ready
@@ -367,15 +384,15 @@ def edit_post(
         (content, tags, note_id, current_user.id),
     )
     row = c.execute(
-        "SELECT title, summary FROM notes WHERE id = ? AND user_id = ?",
+        "SELECT title, summary, actions FROM notes WHERE id = ? AND user_id = ?",
         (note_id, current_user.id),
     ).fetchone()
     if row:
-        title, summary = row
+        title, summary, actions = row
         c.execute("DELETE FROM notes_fts WHERE rowid = ?", (note_id,))
         c.execute(
-            "INSERT INTO notes_fts(rowid, title, summary, tags, content) VALUES (?, ?, ?, ?, ?)",
-            (note_id, title, summary, tags, content),
+            "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+            (note_id, title, summary, tags, actions, content),
         )
     conn.commit()
     conn.close()
@@ -456,12 +473,13 @@ async def capture(
     conn = get_conn()
     c = conn.cursor()
     c.execute(
-        "INSERT INTO notes (title, content, summary, tags, type, timestamp, audio_filename, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, audio_filename, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             "[Processing]",
             content if note_type == "note" else "",
             "",
             tags,
+            "",
             note_type,
             now,
             audio_filename,
@@ -488,17 +506,25 @@ async def webhook_apple(
     note = data.get("note", "")
     tags = data.get("tags", "")
     note_type = data.get("type", "apple")
-    summary = ollama_summarize(note)
+    result = ollama_summarize(note)
+    summary = result.get("summary", "")
+    ai_tags = result.get("tags", [])
+    ai_actions = result.get("actions", [])
+    tag_list = [t.strip() for t in (tags or "").split(",") if t.strip()]
+    tag_list.extend([t for t in ai_tags if t and t not in tag_list])
+    tags = ",".join(tag_list)
+    actions = "\n".join(ai_actions)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn = get_conn()
     c = conn.cursor()
     c.execute(
-        "INSERT INTO notes (title, content, summary, tags, type, timestamp, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (
             note[:60] + "..." if len(note) > 60 else note,
             note,
             summary,
             tags,
+            actions,
             note_type,
             now,
             current_user.id,
@@ -507,8 +533,8 @@ async def webhook_apple(
     conn.commit()
     note_id = c.lastrowid
     c.execute(
-        "INSERT INTO notes_fts(rowid, title, summary, tags, content) VALUES (?, ?, ?, ?, ?)",
-        (note_id, note[:60] + "..." if len(note) > 60 else note, summary, tags, note),
+        "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+        (note_id, note[:60] + "..." if len(note) > 60 else note, summary, tags, actions, note),
     )
     conn.commit()
     conn.close()

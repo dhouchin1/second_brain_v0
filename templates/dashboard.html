@@ -175,6 +175,13 @@
               <div class="text-gray-700 text-sm leading-relaxed mt-1 whitespace-pre-line">
                 {{ note['summary']|highlight(q) }}
               </div>
+              {% if note['actions'] %}
+                <ul class="list-disc list-inside text-gray-700 text-sm mt-1">
+                  {% for act in note['actions'].split('\n') if act.strip() %}
+                    <li>{{ act|highlight(q) }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
             {% endif %}
             {% if note['tags'] %}
               <div class="flex flex-wrap gap-2 mt-2">

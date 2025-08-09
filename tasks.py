@@ -23,6 +23,7 @@ def process_note(note_id: int):
     note = dict(zip(cols, row))
     content = note.get("content") or ""
     tags = note.get("tags", "")
+    actions = note.get("actions", "")
     note_type = note.get("type", "note")
     audio_filename: Optional[str] = note.get("audio_filename")
 
@@ -38,16 +39,23 @@ def process_note(note_id: int):
     title = ollama_generate_title(content) if content else "[No Title]"
     if not title or title.lower().startswith("untitled"):
         title = content.splitlines()[0][:60] if content else "[No Title]"
-    summary = ollama_summarize(content) if content else ""
+    result = ollama_summarize(content) if content else {"summary": "", "tags": [], "actions": []}
+    summary = result.get("summary", "")
+    ai_tags = result.get("tags", [])
+    ai_actions = result.get("actions", [])
+    tag_list = [t.strip() for t in (tags or "").split(",") if t.strip()]
+    tag_list.extend([t for t in ai_tags if t and t not in tag_list])
+    tags = ",".join(tag_list)
+    actions = "\n".join(ai_actions)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     c.execute(
-        "UPDATE notes SET title=?, content=?, summary=?, status='complete', timestamp=?, audio_filename=? WHERE id=?",
-        (title, content, summary, now, audio_filename, note_id),
+        "UPDATE notes SET title=?, content=?, summary=?, tags=?, actions=?, status='complete', timestamp=?, audio_filename=? WHERE id=?",
+        (title, content, summary, tags, actions, now, audio_filename, note_id),
     )
     c.execute(
-        "INSERT INTO notes_fts(rowid, title, summary, tags, content) VALUES (?, ?, ?, ?, ?)",
-        (note_id, title, summary, tags, content),
+        "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+        (note_id, title, summary, tags, actions, content),
     )
     conn.commit()
     conn.close()
