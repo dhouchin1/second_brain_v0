@@ -29,6 +29,7 @@ from config import settings
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from pydantic import BaseModel
+from markdown_writer import save_markdown, safe_filename
 
 # ---- FastAPI Setup ----
 app = FastAPI()
@@ -44,6 +45,47 @@ templates.env.filters['highlight'] = highlight
 
 def get_conn():
     return sqlite3.connect(str(settings.db_path))
+
+
+def get_last_sync():
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS sync_status (id INTEGER PRIMARY KEY, last_sync TEXT)"
+    )
+    row = c.execute("SELECT last_sync FROM sync_status WHERE id = 1").fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def set_last_sync(ts: str):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS sync_status (id INTEGER PRIMARY KEY, last_sync TEXT)"
+    )
+    c.execute(
+        "INSERT INTO sync_status (id, last_sync) VALUES (1, ?) "
+        "ON CONFLICT(id) DO UPDATE SET last_sync=excluded.last_sync",
+        (ts,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def export_notes_to_obsidian(user_id: int):
+    conn = get_conn()
+    c = conn.cursor()
+    rows = c.execute(
+        "SELECT title, content, timestamp FROM notes WHERE user_id = ?",
+        (user_id,),
+    ).fetchall()
+    for title, content, ts in rows:
+        file_ts = ts.replace(":", "-").replace(" ", "_") if ts else datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        fname = f"{file_ts}-{safe_filename(title or 'note')}.md"
+        save_markdown(title or "", content or "", fname)
+    set_last_sync(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    conn.close()
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -154,6 +196,12 @@ def init_db():
     c.execute('''
         CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
             title, summary, tags, content, content='notes', content_rowid='id'
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS sync_status (
+            id INTEGER PRIMARY KEY,
+            last_sync TEXT
         )
     ''')
     # Ensure status column exists in existing databases
@@ -294,6 +342,7 @@ def dashboard(
             "notes_by_day": dict(notes_by_day),
             "q": q,
             "tag": tag,
+            "last_sync": get_last_sync(),
         },
     )
 
@@ -500,6 +549,14 @@ async def webhook_apple(
     conn.commit()
     conn.close()
     return {"status": "ok"}
+
+
+@app.post("/sync/obsidian")
+def sync_obsidian(
+    background_tasks: BackgroundTasks, current_user: User = Depends(get_current_user)
+):
+    background_tasks.add_task(export_notes_to_obsidian, current_user.id)
+    return {"status": "queued"}
 
 # ---- Activity Timeline ----
 @app.get("/activity")

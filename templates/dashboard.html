@@ -56,10 +56,17 @@
   </section>
 
   <!-- Sync button center -->
-  <section class="flex justify-center mt-2 mb-5">
-    <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold px-5 py-2 rounded-xl shadow transition">
+  <section class="flex justify-center items-center gap-4 mt-2 mb-5">
+    <button id="syncBtn" class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold px-5 py-2 rounded-xl shadow transition">
       Sync to Obsidian
     </button>
+    <span id="syncStatus" class="text-blue-300 text-sm">
+      {% if last_sync %}
+        Last synced: {{ last_sync }}
+      {% else %}
+        Not synced yet
+      {% endif %}
+    </span>
   </section>
 
   <!-- Capture Box (Quick Note, Tags, Audio Upload) -->
@@ -244,6 +251,16 @@
         recordStatus.textContent = "Processing...";
       }
     };
+  </script>
+  <script>
+    document.getElementById('syncBtn').addEventListener('click', async () => {
+      const res = await fetch('/sync/obsidian', { method: 'POST' });
+      if (res.ok) {
+        document.getElementById('syncStatus').textContent = 'Sync in progress...';
+      } else {
+        document.getElementById('syncStatus').textContent = 'Sync failed';
+      }
+    });
   </script>
 
   <script>
