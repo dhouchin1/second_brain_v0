@@ -88,6 +88,17 @@
           {{ note.summary }}
         </div>
       {% endif %}
+      <!-- Actions -->
+      {% if note.actions %}
+        <div class="mt-2">
+          <h3 class="text-blue-500 font-semibold text-sm mb-1">Action Items</h3>
+          <ul class="list-disc list-inside text-[#37405c] text-sm whitespace-pre-line">
+            {% for act in note.actions.split('\n') if act.strip() %}
+              <li>{{ act }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
       <!-- Content (full transcript or note) -->
       {% if note.content and note.content.strip() != note.summary.strip() %}
         <details class="mt-2 mb-2">
