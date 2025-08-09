@@ -18,8 +18,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from collections import defaultdict
-import subprocess
-import os
 import pathlib
 from llm_utils import ollama_summarize, ollama_generate_title
 from tasks import process_note
@@ -30,6 +28,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from markdown_writer import save_markdown, safe_filename
+from audio_utils import transcribe_audio
 
 # ---- FastAPI Setup ----
 app = FastAPI()
@@ -214,41 +213,6 @@ def init_db():
     conn.commit()
     conn.close()
 init_db()  # Ensure tables are ready
-
-def transcribe_audio(audio_path):
-    import time
-    wav_path = audio_path.with_suffix('.converted.wav')
-    ffmpeg_cmd = [
-        "ffmpeg", "-y", "-i", str(audio_path),
-        "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(wav_path)
-    ]
-    result = subprocess.run(ffmpeg_cmd, capture_output=True)
-    if result.returncode != 0:
-        print("ffmpeg failed to convert audio:", result.stderr)
-        return "", None
-    print(f"Converted audio: {wav_path} (size: {os.path.getsize(wav_path)} bytes)")
-    out_txt_path = wav_path.with_suffix(wav_path.suffix + '.txt')
-    whisper_cmd = [
-        str(settings.whisper_cpp_path),
-        "-m", str(settings.whisper_model_path),
-        "-f", str(wav_path),
-        "-otxt"
-    ]
-    result = subprocess.run(whisper_cmd, capture_output=True, text=True)
-    print(f"Looking for transcript at: {out_txt_path}")
-
-    # Wait for up to 2 seconds for the file to be written
-    for _ in range(20):
-        if out_txt_path.exists() and out_txt_path.stat().st_size > 0:
-            break
-        time.sleep(0.1)
-    if out_txt_path.exists() and out_txt_path.stat().st_size > 0:
-        content = out_txt_path.read_text().strip()
-        print(f"Transcript content: '{content}'")
-        return content, wav_path.name
-    else:
-        print("Whisper.cpp failed or output file missing/empty")
-        return "", wav_path.name
 
     
 def find_related_notes(note_id, tags, user_id, conn):

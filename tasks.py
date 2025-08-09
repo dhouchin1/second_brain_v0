@@ -1,44 +1,15 @@
-import pathlib
 import sqlite3
-import subprocess
 import time
 from datetime import datetime
 from typing import Optional
 
 from llm_utils import ollama_summarize, ollama_generate_title
 from config import settings
+from audio_utils import transcribe_audio
 
 
 def get_conn():
     return sqlite3.connect(str(settings.db_path))
-
-
-def transcribe_audio(audio_path: pathlib.Path):
-    wav_path = audio_path.with_suffix('.converted.wav')
-    ffmpeg_cmd = [
-        "ffmpeg", "-y", "-i", str(audio_path),
-        "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", str(wav_path)
-    ]
-    result = subprocess.run(ffmpeg_cmd, capture_output=True)
-    if result.returncode != 0:
-        print("ffmpeg failed to convert audio:", result.stderr)
-        return "", None
-    out_txt_path = wav_path.with_suffix(wav_path.suffix + '.txt')
-    whisper_cmd = [
-        str(settings.whisper_cpp_path),
-        "-m", str(settings.whisper_model_path),
-        "-f", str(wav_path),
-        "-otxt",
-    ]
-    subprocess.run(whisper_cmd, capture_output=True, text=True)
-    for _ in range(20):
-        if out_txt_path.exists() and out_txt_path.stat().st_size > 0:
-            break
-        time.sleep(0.1)
-    if out_txt_path.exists() and out_txt_path.stat().st_size > 0:
-        content = out_txt_path.read_text().strip()
-        return content, wav_path.name
-    return "", wav_path.name
 
 
 def process_note(note_id: int):
