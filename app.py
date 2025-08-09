@@ -1,7 +1,7 @@
 import pathlib
 import sqlite3
 from datetime import datetime
-from fastapi import FastAPI, Request, Form, UploadFile, File, Body, Query
+from fastapi import FastAPI, Request, Form, UploadFile, File, Body, Query, BackgroundTasks
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -9,6 +9,7 @@ from collections import defaultdict
 import subprocess
 import os
 from llm_utils import ollama_summarize, ollama_generate_title
+from tasks import process_note
 from markupsafe import Markup, escape
 import re
 
@@ -46,7 +47,8 @@ def init_db():
             type TEXT,
             timestamp TEXT,
             audio_filename TEXT,
-            content TEXT
+            content TEXT,
+            status TEXT DEFAULT 'complete'
         )
     ''')
     c.execute('''
@@ -54,6 +56,11 @@ def init_db():
             title, summary, tags, content, content='notes', content_rowid='id'
         )
     ''')
+    # Ensure status column exists in existing databases
+    cols = [row[1] for row in c.execute("PRAGMA table_info(notes)")] 
+    if 'status' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN status TEXT DEFAULT 'complete'")
+        c.execute("UPDATE notes SET status='complete' WHERE status IS NULL")
     conn.commit()
     conn.close()
 init_db()  # Ensure tables are ready
@@ -160,14 +167,13 @@ def get_audio(filename: str):
 @app.post("/capture")
 async def capture(
     request: Request,
+    background_tasks: BackgroundTasks,
     note: str = Form(""),
     tags: str = Form(""),
     file: UploadFile = File(None)
 ):
     content = note.strip()
     note_type = "note"
-    summary = ""
-    title = ""
     audio_filename = None
 
     if file:
@@ -177,47 +183,24 @@ async def capture(
         audio_path = AUDIO_DIR / safe_name
         with open(audio_path, "wb") as out_f:
             out_f.write(await file.read())
-        transcript, converted_name = transcribe_audio(audio_path)
-        audio_filename = converted_name
-        if transcript:
-            content = transcript
-            print(f"[capture] Transcript to summarize: {repr(content[:200])}")
-            # AI TITLE!
-            title = ollama_generate_title(transcript)
-            if not title or title.lower().startswith("untitled"):
-                # fallback: first line, 60 chars max
-                title = transcript.splitlines()[0][:60] if transcript.strip() else "[Audio Note]"
-            summary = ollama_summarize(transcript)
-        else:
-            title = f"[Transcription failed for {safe_name}]"
-            content = ""
-            summary = title
+        audio_filename = safe_name
         note_type = "audio"
-    else:
-        print(f"[capture] Note content to summarize: {repr(content[:200])}")
-        # AI TITLE!
-        title = ollama_generate_title(content) if content else "[No Title]"
-        if not title or title.lower().startswith("untitled"):
-            title = content[:60] if content else "[No Title]"
-        summary = ollama_summarize(content)
-        audio_filename = None
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"About to insert note. Title: '{title}', summary: '{summary}', audio_filename: '{audio_filename}'")
     conn = get_conn()
     c = conn.cursor()
     c.execute(
-        "INSERT INTO notes (title, content, summary, tags, type, timestamp, audio_filename) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (title, content, summary, tags, note_type, now, audio_filename)
+        "INSERT INTO notes (title, content, summary, tags, type, timestamp, audio_filename, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        ("[Processing]", content if note_type == "note" else "", "", tags, note_type, now, audio_filename, "pending"),
     )
     conn.commit()
     note_id = c.lastrowid
-    c.execute(
-        "INSERT INTO notes_fts(rowid, title, summary, tags, content) VALUES (?, ?, ?, ?, ?)",
-        (note_id, title, summary, tags, content)
-    )
-    conn.commit()
     conn.close()
+
+    background_tasks.add_task(process_note, note_id)
+
+    if "application/json" in request.headers.get("accept", ""):
+        return {"id": note_id, "status": "pending"}
     return RedirectResponse("/", status_code=302)
 
 @app.post("/webhook/apple")
@@ -286,6 +269,17 @@ def activity_timeline(
             "end": end,
         },
     )
+
+
+@app.get("/status/{note_id}")
+def note_status(note_id: int):
+    conn = get_conn()
+    c = conn.cursor()
+    row = c.execute("SELECT status FROM notes WHERE id = ?", (note_id,)).fetchone()
+    conn.close()
+    if not row:
+        return {"status": "missing"}
+    return {"status": row[0]}
 
 # ---- Health Check ----
 @app.get("/health")

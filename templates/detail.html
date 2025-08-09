@@ -66,6 +66,9 @@
       </div>
       <!-- Title -->
       <div class="font-extrabold text-2xl md:text-3xl text-[#232a3c] break-words leading-tight tracking-tight mb-1">{{ note.title }}</div>
+      {% if note.status != 'complete' %}
+        <div class="text-gray-500 text-sm">Processing...</div>
+      {% endif %}
       <!-- Audio Playback -->
       {% if note.audio_filename %}
         <audio controls class="mt-1 mb-2 w-full max-w-lg rounded-lg shadow-lg bg-[#232a3c]">
@@ -152,5 +155,17 @@
       <a href="https://github.com/dhouchin1/second_brain" class="text-blue-400 hover:text-pink-400 underline">GitHub</a>
     </div>
   </footer>
+
+  {% if note.status != 'complete' %}
+  <script>
+    setInterval(async () => {
+      const resp = await fetch('/status/{{ note.id }}');
+      const data = await resp.json();
+      if (data.status === 'complete') {
+        location.reload();
+      }
+    }, 5000);
+  </script>
+  {% endif %}
 </body>
 </html>

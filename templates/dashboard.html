@@ -130,7 +130,7 @@
         {% for note in notes_on_day %}
           <!-- Note Card -->
           <div class="bg-white/90 rounded-2xl shadow-xl border border-[#ebe5f8] mb-6 p-6 flex flex-col gap-2 hover:shadow-2xl transition cursor-pointer"
-              onclick="window.location='/detail/{{ note['id'] }}'">
+              onclick="window.location='/detail/{{ note['id'] }}'" data-status="{{ note['status'] }}">
             <div class="flex items-center justify-between mb-1">
               <span class="flex items-center gap-2 font-bold text-[#456cbe] text-base uppercase">
                 {% if note['type'] == 'audio' %}
@@ -156,9 +156,13 @@
             <div class="font-semibold text-[#234] text-lg">
               {{ note['title']|highlight(q) }}
             </div>
-            <div class="text-gray-700 text-sm leading-relaxed mt-1 whitespace-pre-line">
-              {{ note['summary']|highlight(q) }}
-            </div>
+            {% if note['status'] != 'complete' %}
+              <div class="text-gray-500 text-sm">Processing...</div>
+            {% else %}
+              <div class="text-gray-700 text-sm leading-relaxed mt-1 whitespace-pre-line">
+                {{ note['summary']|highlight(q) }}
+              </div>
+            {% endif %}
             {% if note['tags'] %}
               <div class="flex flex-wrap gap-2 mt-2">
                 {% for tag_ in note['tags'].split(',') if tag_.strip() %}
@@ -234,6 +238,12 @@
         recordStatus.textContent = "Processing...";
       }
     };
+  </script>
+
+  <script>
+    if (document.querySelector('[data-status="pending"]')) {
+      setTimeout(() => location.reload(), 5000);
+    }
   </script>
 
 </body>
