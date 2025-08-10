@@ -4,3 +4,6 @@ __pycache__/
 audio/
 *.pyc
 .DS_Store
+# Local artifacts
+backups/
+*.bundle
