@@ -8,4 +8,6 @@ pydantic
 pydantic-settings
 passlib[bcrypt]
 python-jose
-python-multipart
+python-multipartsentence-transformers>=2.2.2
+discord.py>=2.3.2
+aiohttp>=3.9.0

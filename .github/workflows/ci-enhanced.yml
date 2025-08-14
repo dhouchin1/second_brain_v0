@@ -1,0 +1,51 @@
+name: Enhanced CI
+
+on:
+  push:
+    branches: [ main, develop, feature/** ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Set up test environment
+      run: |
+        mkdir -p test_data/{audio,vault}
+        
+    - name: Run linting
+      run: |
+        ruff check .
+        
+    - name: Run unit tests
+      run: |
+        pytest tests/unit -v
+    
+    - name: Run integration tests
+      run: |
+        pytest tests/integration -v
