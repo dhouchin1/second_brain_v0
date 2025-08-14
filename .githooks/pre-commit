@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+changed=$(git diff --cached --name-only --diff-filter=ACM | grep '^scripts/scaffolds/.*\.sh$' || true)
+for f in $changed; do
+  git update-index --chmod=+x "$f"
+  echo "• set exec bit: $f"
+done

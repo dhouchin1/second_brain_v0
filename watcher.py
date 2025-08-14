@@ -10,7 +10,11 @@ AUDIO_PATH = VAULT_PATH / "audio"
 class VaultHandler(FileSystemEventHandler):
     def on_created(self, event):
         path = Path(event.src_path)
-        if path.suffix in {".m4a", ".wav"}:
+        # Skip hidden/temp files (e.g., ._ or ~)
+        name = path.name
+        if name.startswith('.') or name.startswith('._') or name.endswith('~'):
+            return
+        if path.suffix.lower() in {".m4a", ".wav", ".mp3"}:
             print(f"New audio: {path.name} -- Triggering transcription...")
             process_audio_file(path)
         elif path.suffix == ".md":

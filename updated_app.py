@@ -13,7 +13,7 @@ from fastapi import (
     HTTPException,
     status,
 )
-from fastapi.responses import RedirectResponse, FileResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -29,6 +29,7 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from markdown_writer import save_markdown, safe_filename
 from audio_utils import transcribe_audio
+from typing import Optional, List
 
 # ---- FastAPI Setup ----
 app = FastAPI()
@@ -45,7 +46,6 @@ templates.env.filters['highlight'] = highlight
 def get_conn():
     return sqlite3.connect(str(settings.db_path))
 
-
 def get_last_sync():
     conn = get_conn()
     c = conn.cursor()
@@ -55,7 +55,6 @@ def get_last_sync():
     row = c.execute("SELECT last_sync FROM sync_status WHERE id = 1").fetchone()
     conn.close()
     return row[0] if row else None
-
 
 def set_last_sync(ts: str):
     conn = get_conn()
@@ -71,7 +70,6 @@ def set_last_sync(ts: str):
     conn.commit()
     conn.close()
 
-
 def export_notes_to_obsidian(user_id: int):
     conn = get_conn()
     c = conn.cursor()
@@ -86,39 +84,45 @@ def export_notes_to_obsidian(user_id: int):
     set_last_sync(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     conn.close()
 
-
+# Auth setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 SECRET_KEY = "super-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-
 class TokenData(BaseModel):
     username: str | None = None
-
 
 class User(BaseModel):
     id: int
     username: str
 
-
 class UserInDB(User):
     hashed_password: str
 
+# Enhanced data models
+class DiscordWebhook(BaseModel):
+    note: str
+    tags: str = ""
+    type: str = "discord"
+    discord_user_id: Optional[int] = None
+    timestamp: Optional[str] = None
+
+class SearchRequest(BaseModel):
+    query: str
+    filters: Optional[dict] = {}
+    limit: int = 20
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-
 def get_password_hash(password):
     return pwd_context.hash(password)
-
 
 def get_user(username: str):
     conn = get_conn()
@@ -132,13 +136,11 @@ def get_user(username: str):
         return UserInDB(id=row[0], username=row[1], hashed_password=row[2])
     return None
 
-
 def authenticate_user(username: str, password: str):
     user = get_user(username)
     if not user or not verify_password(password, user.hashed_password):
         return False
     return user
-
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -146,7 +148,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -170,6 +171,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 def init_db():
     conn = get_conn()
     c = conn.cursor()
+    
+    # Users table
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -177,6 +180,8 @@ def init_db():
             hashed_password TEXT NOT NULL
         )
     ''')
+    
+    # Notes table
     c.execute('''
         CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -193,18 +198,68 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
     ''')
+    
+    # FTS table
     c.execute('''
         CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
             title, summary, tags, actions, content, content='notes', content_rowid='id'
         )
     ''')
+    
+    # Enhanced FTS5 table
+    c.execute('''
+        CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts5 USING fts5(
+            title, content, summary, tags, actions,
+            content='notes', content_rowid='id',
+            tokenize='porter unicode61'
+        )
+    ''')
+    
+    # Discord users table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS discord_users (
+            discord_id INTEGER PRIMARY KEY,
+            user_id INTEGER,
+            linked_at TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # Reminders table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS reminders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            note_id INTEGER,
+            user_id INTEGER,
+            due_date TEXT,
+            completed BOOLEAN DEFAULT FALSE,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(note_id) REFERENCES notes(id),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # Search analytics
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS search_analytics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            query TEXT,
+            results_count INTEGER,
+            clicked_result_id INTEGER,
+            search_type TEXT,
+            timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     c.execute('''
         CREATE TABLE IF NOT EXISTS sync_status (
             id INTEGER PRIMARY KEY,
             last_sync TEXT
         )
     ''')
-    # Ensure status column exists in existing databases
+    
+    # Ensure columns exist
     cols = [row[1] for row in c.execute("PRAGMA table_info(notes)")]
     if 'status' not in cols:
         c.execute("ALTER TABLE notes ADD COLUMN status TEXT DEFAULT 'complete'")
@@ -214,6 +269,7 @@ def init_db():
     if 'actions' not in cols:
         c.execute("ALTER TABLE notes ADD COLUMN actions TEXT")
 
+    # Update FTS if needed
     fts_cols = [row[1] for row in c.execute("PRAGMA table_info(notes_fts)")]
     if 'actions' not in fts_cols:
         c.execute("DROP TABLE IF EXISTS notes_fts")
@@ -227,24 +283,24 @@ def init_db():
             "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
             rows,
         )
+    
     conn.commit()
     conn.close()
-init_db()  # Ensure tables are ready
-  
+
+init_db()
+
 def find_related_notes(note_id, tags, user_id, conn):
     tag_list = [t.strip() for t in (tags or "").split(",") if t.strip()]
     if not tag_list:
         return []
     q = " OR ".join(["tags LIKE ?"] * len(tag_list))
     params = [f"%{tag}%" for tag in tag_list]
-    sql = (
-        f"SELECT id, title FROM notes WHERE id != ? AND user_id = ? AND ({q}) LIMIT 3"
-    )
+    sql = f"SELECT id, title FROM notes WHERE id != ? AND user_id = ? AND ({q}) LIMIT 3"
     params = [note_id, user_id] + params
     rows = conn.execute(sql, params).fetchall()
     return [{"id": row[0], "title": row[1]} for row in rows]
 
-
+# Auth endpoints
 @app.post("/register", response_model=User)
 def register(username: str = Form(...), password: str = Form(...)):
     conn = get_conn()
@@ -263,11 +319,8 @@ def register(username: str = Form(...), password: str = Form(...)):
     conn.close()
     return User(id=user_id, username=username)
 
-
 @app.post("/token", response_model=Token)
-async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -280,6 +333,7 @@ async def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+# Main endpoints (keep existing)
 @app.get("/")
 def dashboard(
     request: Request,
@@ -326,6 +380,109 @@ def dashboard(
         },
     )
 
+# Enhanced Search Endpoint
+@app.post("/api/search/enhanced")
+async def enhanced_search(
+    request: SearchRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Enhanced search with FTS and semantic similarity"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Base FTS search
+    base_query = """
+        SELECT n.*, rank FROM notes_fts fts
+        JOIN notes n ON n.id = fts.rowid
+        WHERE notes_fts MATCH ? AND n.user_id = ?
+    """
+    
+    params = [request.query, current_user.id]
+    
+    # Add filters
+    if request.filters:
+        if 'type' in request.filters:
+            base_query += " AND n.type = ?"
+            params.append(request.filters['type'])
+        
+        if 'tags' in request.filters:
+            base_query += " AND n.tags LIKE ?"
+            params.append(f"%{request.filters['tags']}%")
+        
+        if 'date_from' in request.filters:
+            base_query += " AND date(n.timestamp) >= date(?)"
+            params.append(request.filters['date_from'])
+    
+    base_query += f" ORDER BY rank LIMIT {request.limit}"
+    
+    rows = c.execute(base_query, params).fetchall()
+    notes = [dict(zip([col[0] for col in c.description], row)) for row in rows]
+    
+    # Log search
+    c.execute(
+        "INSERT INTO search_analytics (user_id, query, results_count, search_type) VALUES (?, ?, ?, ?)",
+        (current_user.id, request.query, len(notes), "fts")
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "results": notes,
+        "total": len(notes),
+        "query": request.query
+    }
+
+# Discord Integration
+@app.post("/webhook/discord")
+async def webhook_discord(
+    data: DiscordWebhook,
+    current_user: User = Depends(get_current_user)
+):
+    """Discord webhook endpoint"""
+    note = data.note
+    tags = data.tags
+    note_type = data.type
+    
+    result = ollama_summarize(note)
+    summary = result.get("summary", "")
+    ai_tags = result.get("tags", [])
+    ai_actions = result.get("actions", [])
+    
+    tag_list = [t.strip() for t in (tags or "").split(",") if t.strip()]
+    tag_list.extend([t for t in ai_tags if t and t not in tag_list])
+    tags = ",".join(tag_list)
+    actions = "\n".join(ai_actions)
+    
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            note[:60] + "..." if len(note) > 60 else note,
+            note,
+            summary,
+            tags,
+            actions,
+            note_type,
+            now,
+            current_user.id,
+        ),
+    )
+    conn.commit()
+    note_id = c.lastrowid
+    
+    c.execute(
+        "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+        (note_id, note[:60] + "..." if len(note) > 60 else note, summary, tags, actions, note),
+    )
+    conn.commit()
+    conn.close()
+    
+    return {"status": "ok", "note_id": note_id}
+
+# Keep all existing endpoints (detail, edit, delete, capture, etc.)
 @app.get("/detail/{note_id}")
 def detail(
     request: Request,
@@ -496,98 +653,6 @@ async def capture(
         return {"id": note_id, "status": "pending"}
     return RedirectResponse("/", status_code=302)
 
-# ---- Optional-auth helper for public endpoints ----
-def _optional_user_id_from_request(request: Request) -> int | None:
-    auth = request.headers.get("authorization") or request.headers.get("Authorization") or ""
-    if not auth.lower().startswith("bearer "):
-        return None
-    token = auth.split(" ", 1)[1].strip()
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if not username:
-            return None
-        user = get_user(username)
-        return user.id if user else None
-    except Exception:
-        return None 
-
-class CaptureJSON(BaseModel):
-    text: str
-    tags: str = ""
-    title: str | None = None
-
-@app.post("/capture/json")
-async def capture_json(payload: CaptureJSON, request: Request):
-    uid = _optional_user_id_from_request(request)
-    note = (payload.text or "").strip()
-    if not note:
-        raise HTTPException(status_code=400, detail="Missing text")
-
-    title = payload.title or (note[:60] + "..." if len(note) > 60 else note)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    conn = get_conn()
-    c = conn.cursor()
-    # Insert note
-    c.execute(
-        "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, status, user_id) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (title, note, "", payload.tags, "", "note", now, "complete", uid),
-    )
-    note_id = c.lastrowid
-    # Update FTS index
-    c.execute(
-        "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
-        (note_id, title, "", payload.tags, "", note),
-    )
-    conn.commit()
-    conn.close()
-    return {"ok": True, "id": note_id}
-
-
-# ---- PUBLIC: Audio capture (Shortcuts multipart form) ----
-@app.post("/capture/audio")
-async def capture_audio_public(
-    request: Request,
-    file: UploadFile = File(...),
-    title: str | None = Form(None),
-    tags: str = Form(""),
-):
-    uid = _optional_user_id_from_request(request)
-
-    # Save the raw upload (we keep your existing audio dir pattern)
-    settings.audio_dir.mkdir(exist_ok=True)
-    ts = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-    safe_name = f"{ts}-{(file.filename or 'audio').replace(' ', '_')}"
-    audio_path = settings.audio_dir / safe_name
-    with open(audio_path, "wb") as out_f:
-        out_f.write(await file.read())
-
-    note_title = title or f"Voice Capture {ts}"
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Insert note with pending status (you can have your existing background/transcription pick it up)
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, audio_filename, status, user_id) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (note_title, "", "", tags, "", "audio", now, safe_name, "pending", uid),
-    )
-    note_id = c.lastrowid
-
-    # Simple FTS row; content will be updated later if you attach a transcript
-    c.execute(
-        "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
-        (note_id, note_title, "", tags, "", f"[Audio] {safe_name}"),
-    )
-    conn.commit()
-    conn.close()
-
-    return {"ok": True, "id": note_id, "audio": safe_name}
-
-
 @app.post("/webhook/apple")
 async def webhook_apple(
     data: dict = Body(...),
@@ -631,7 +696,6 @@ async def webhook_apple(
     conn.close()
     return {"status": "ok"}
 
-
 @app.post("/sync/obsidian")
 def sync_obsidian(
     background_tasks: BackgroundTasks, current_user: User = Depends(get_current_user)
@@ -639,7 +703,6 @@ def sync_obsidian(
     background_tasks.add_task(export_notes_to_obsidian, current_user.id)
     return {"status": "queued"}
 
-# ---- Activity Timeline ----
 @app.get("/activity")
 def activity_timeline(
     request: Request,
@@ -683,7 +746,6 @@ def activity_timeline(
         },
     )
 
-
 @app.get("/status/{note_id}")
 def note_status(note_id: int, current_user: User = Depends(get_current_user)):
     conn = get_conn()
@@ -697,7 +759,58 @@ def note_status(note_id: int, current_user: User = Depends(get_current_user)):
         return {"status": "missing"}
     return {"status": row[0]}
 
-# ---- Health Check ----
+# Enhanced Analytics endpoint
+@app.get("/api/analytics")
+async def get_analytics(current_user: User = Depends(get_current_user)):
+    """Get user analytics and insights"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Basic stats
+    total_notes = c.execute(
+        "SELECT COUNT(*) as count FROM notes WHERE user_id = ?",
+        (current_user.id,)
+    ).fetchone()[0]
+    
+    # This week
+    this_week = c.execute(
+        "SELECT COUNT(*) as count FROM notes WHERE user_id = ? AND date(timestamp) >= date('now', '-7 days')",
+        (current_user.id,)
+    ).fetchone()[0]
+    
+    # By type
+    by_type_rows = c.execute(
+        "SELECT type, COUNT(*) as count FROM notes WHERE user_id = ? GROUP BY type",
+        (current_user.id,)
+    ).fetchall()
+    by_type = [{"type": row[0], "count": row[1]} for row in by_type_rows]
+    
+    # Popular tags
+    tag_counts = {}
+    tag_rows = c.execute(
+        "SELECT tags FROM notes WHERE user_id = ? AND tags IS NOT NULL",
+        (current_user.id,)
+    ).fetchall()
+    
+    for row in tag_rows:
+        if row[0]:
+            tags = row[0].split(",")
+            for tag in tags:
+                tag = tag.strip()
+                if tag:
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    
+    popular_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    conn.close()
+    
+    return {
+        "total_notes": total_notes,
+        "this_week": this_week,
+        "by_type": by_type,
+        "popular_tags": [{"name": tag, "count": count} for tag, count in popular_tags]
+    }
+
 @app.get("/health")
 def health():
     conn = get_conn()

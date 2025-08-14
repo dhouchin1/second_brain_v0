@@ -7,3 +7,7 @@ audio/
 # Local artifacts
 backups/
 *.bundle
+/.logs/
+/.scaffolds/
+/.bak/
+*.bak
