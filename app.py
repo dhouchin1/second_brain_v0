@@ -13,6 +13,7 @@ from fastapi import (
     Query,
     BackgroundTasks,
     Depends,
+    Header,
     HTTPException,
     status,
 )
@@ -22,8 +23,20 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from collections import defaultdict
 import pathlib
+import json
+import hashlib
+from urllib.parse import urlparse
+import secrets
+import os
 from llm_utils import ollama_summarize, ollama_generate_title
 from tasks import process_note
+
+try:
+    from tasks_enhanced import process_note_with_status
+    from realtime_status import create_status_endpoint
+    REALTIME_AVAILABLE = True
+except ImportError:
+    REALTIME_AVAILABLE = False
 from markupsafe import Markup, escape
 import re
 from config import settings
@@ -32,12 +45,14 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from markdown_writer import save_markdown, safe_filename
 from audio_utils import transcribe_audio
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 # ---- FastAPI Setup ----
 app = FastAPI()
 templates = Jinja2Templates(directory=str(settings.base_dir / "templates"))
 app.mount("/static", StaticFiles(directory=str(settings.base_dir / "static")), name="static")
+
+# Search API router will be included after auth functions are defined
 
 def highlight(text, term):
     if not text or not term:
@@ -48,6 +63,40 @@ templates.env.filters['highlight'] = highlight
 
 def get_conn():
     return sqlite3.connect(str(settings.db_path))
+
+# --- Flash + CSRF helpers ---
+def render_page(request: Request, template_name: str, context: dict):
+    ctx = dict(context)
+    ctx["request"] = request
+    # flash
+    flash = None
+    raw = request.cookies.get("flash")
+    if raw:
+        try:
+            flash = json.loads(raw)
+        except Exception:
+            flash = None
+    if flash:
+        ctx["flash"] = flash
+    # csrf
+    token = request.cookies.get("csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+    ctx["csrf_token"] = token
+    resp = templates.TemplateResponse(template_name, ctx)
+    # ensure cookie set and clear flash
+    if request.cookies.get("csrf_token") != token:
+        resp.set_cookie("csrf_token", token, httponly=True, samesite="lax", max_age=60*60*8)
+    if flash:
+        resp.delete_cookie("flash")
+    return resp
+
+def set_flash(resp, message: str, category: str = "info"):
+    data = {"message": message, "category": category}
+    resp.set_cookie("flash", json.dumps(data), samesite="lax", max_age=60)
+
+def validate_csrf(request: Request, csrf_token: Optional[str]) -> bool:
+    return csrf_token and csrf_token == request.cookies.get("csrf_token")
 
 def get_last_sync():
     conn = get_conn()
@@ -152,12 +201,36 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user_from_discord(authorization: str = Header(None)) -> User:
+    """Authenticate Discord webhook requests using a shared bearer token.
+
+    The Discord bot sends `Authorization: Bearer <WEBHOOK_TOKEN>`. We validate
+    the token and return a placeholder user, since the endpoint determines the
+    actual `user_id` by mapping the provided `discord_user_id` in the payload.
+    """
+    expected = os.getenv("WEBHOOK_TOKEN", "your-secret-token")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    token = authorization.split(" ", 1)[1].strip()
+    if token != expected:
+        raise HTTPException(status_code=401, detail="Invalid webhook token")
+    return User(id=0, username="discord-webhook")
+
+async def get_current_user(request: Request, token: Optional[str] = Depends(lambda: None)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    # Support Authorization header or cookie-based token for browser navigation
+    if not token:
+        auth = request.headers.get("Authorization")
+        if auth and auth.lower().startswith("bearer "):
+            token = auth.split(" ", 1)[1].strip()
+        else:
+            token = request.cookies.get("access_token")
+    if not token:
+        raise credentials_exception
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -170,6 +243,26 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     if user is None:
         raise credentials_exception
     return user
+
+def get_current_user_silent(request: Request) -> Optional[User]:
+    """Best-effort user extraction for browser pages. Returns None if invalid."""
+    token = None
+    auth = request.headers.get("Authorization")
+    if auth and auth.lower().startswith("bearer "):
+        token = auth.split(" ", 1)[1].strip()
+    else:
+        token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if not username:
+            return None
+        user = get_user(username)
+        return user
+    except Exception:
+        return None
 
 def init_db():
     conn = get_conn()
@@ -292,6 +385,10 @@ def init_db():
 
 init_db()
 
+# Add real-time status endpoints if available
+if REALTIME_AVAILABLE:
+    create_status_endpoint(app)
+
 def find_related_notes(note_id, tags, user_id, conn):
     tag_list = [t.strip() for t in (tags or "").split(",") if t.strip()]
     if not tag_list:
@@ -302,6 +399,22 @@ def find_related_notes(note_id, tags, user_id, conn):
     params = [note_id, user_id] + params
     rows = conn.execute(sql, params).fetchall()
     return [{"id": row[0], "title": row[1]} for row in rows]
+
+# Include search API router
+try:
+    from search_api import create_search_router
+    search_router = create_search_router(get_current_user, str(settings.db_path))
+    app.include_router(search_router)
+except ImportError:
+    pass  # Graceful degradation if search API not available
+
+# Search page route (redirects to login if unauthenticated)
+@app.get("/search")
+async def search_page(request: Request):
+    user = get_current_user_silent(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    return render_page(request, "search.html", {"user": user})
 
 # Auth endpoints
 @app.post("/register", response_model=User)
@@ -336,14 +449,82 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+# Simple browser login/logout using cookie for token storage
+@app.get("/login")
+def login_page(request: Request):
+    return render_page(request, "login.html", {})
+
+@app.post("/login")
+def login_submit(request: Request, username: str = Form(...), password: str = Form(...), csrf_token: str = Form(...)):
+    if not validate_csrf(request, csrf_token):
+        return render_page(request, "login.html", {"error": "Invalid form. Please refresh."})
+    user = authenticate_user(username, password)
+    if not user:
+        resp = render_page(request, "login.html", {"error": "Invalid username or password"})
+        resp.status_code = 400
+        return resp
+    token = create_access_token({"sub": user.username}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    resp = RedirectResponse(url="/", status_code=302)
+    resp.set_cookie("access_token", token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES*60)
+    set_flash(resp, "Welcome back!", "success")
+    return resp
+
+@app.post("/logout")
+def logout(request: Request, csrf_token: str = Form(...)):
+    if not validate_csrf(request, csrf_token):
+        return RedirectResponse(url="/login", status_code=302)
+    resp = RedirectResponse(url="/login", status_code=302)
+    resp.delete_cookie("access_token")
+    set_flash(resp, "Logged out.")
+    return resp
+
+# Web Registration (UI)
+@app.get("/signup")
+def signup_page(request: Request):
+    return render_page(request, "register.html", {})
+
+@app.post("/signup")
+def signup_submit(request: Request, username: str = Form(...), password: str = Form(...), csrf_token: str = Form(...)):
+    if not validate_csrf(request, csrf_token):
+        return render_page(request, "register.html", {"error": "Invalid form. Please refresh."})
+    # Reuse registration logic, then log in
+    conn = get_conn()
+    c = conn.cursor()
+    hashed = get_password_hash(password)
+    try:
+        c.execute(
+            "INSERT INTO users (username, hashed_password) VALUES (?, ?)",
+            (username, hashed),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        resp = render_page(request, "register.html", {"error": "Username already registered"})
+        resp.status_code = 400
+        return resp
+    conn.close()
+    token = create_access_token({"sub": username}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    resp = RedirectResponse(url="/", status_code=302)
+    resp.set_cookie("access_token", token, httponly=True, samesite="lax", max_age=ACCESS_TOKEN_EXPIRE_MINUTES*60)
+    set_flash(resp, "Account created!", "success")
+    return resp
+
+# Simple health check
+@app.get("/health")
+def health():
+    return {"ok": True, "time": datetime.utcnow().isoformat()}
+
 # Main endpoints (keep existing)
 @app.get("/")
 def dashboard(
     request: Request,
     q: str = "",
     tag: str = "",
-    current_user: User = Depends(get_current_user),
 ):
+    current_user = get_current_user_silent(request)
+    if not current_user:
+        # Public landing page for visitors
+        return render_page(request, "landing.html", {})
     conn = get_conn()
     c = conn.cursor()
     if q:
@@ -372,16 +553,101 @@ def dashboard(
     for note in notes:
         day = note["timestamp"][:10] if note.get("timestamp") else "Unknown"
         notes_by_day[day].append(note)
-    return templates.TemplateResponse(
+    # Recent notes panel data (always last 10)
+    recent_rows = c.execute(
+        """
+        SELECT id, title, type, timestamp, audio_filename, status, tags
+        FROM notes
+        WHERE user_id = ?
+        ORDER BY (tags LIKE '%pinned%') DESC, timestamp DESC
+        LIMIT 10
+        """,
+        (current_user.id,),
+    ).fetchall()
+    recent_notes = [
+        {
+            "id": r[0],
+            "title": r[1],
+            "type": r[2],
+            "timestamp": r[3],
+            "audio_filename": r[4],
+            "status": r[5],
+            "tags": r[6],
+        }
+        for r in recent_rows
+    ]
+    return render_page(
+        request,
         "dashboard.html",
         {
-            "request": request,
             "notes_by_day": dict(notes_by_day),
             "q": q,
             "tag": tag,
             "last_sync": get_last_sync(),
+            "user": current_user,
+            "recent_notes": recent_notes,
         },
     )
+
+@app.post("/api/notes/{note_id}/update")
+async def api_update_note(
+    note_id: int,
+    data: dict = Body(...),
+    request: Request = None,
+    current_user: User = Depends(get_current_user),
+):
+    """Lightweight update for title/tags/content with CSRF header.
+
+    Expects header 'X-CSRF-Token' to match cookie 'csrf_token'.
+    """
+    csrf_header = request.headers.get("X-CSRF-Token") if request else None
+    if not validate_csrf(request, csrf_header):
+        raise HTTPException(status_code=400, detail="Invalid CSRF token")
+
+    fields = {k: v for k, v in data.items() if k in {"title", "tags", "content"}}
+    if not fields:
+        return {"success": False, "message": "No valid fields"}
+
+    conn = get_conn()
+    c = conn.cursor()
+    # Ensure ownership
+    row = c.execute(
+        "SELECT id FROM notes WHERE id = ? AND user_id = ?",
+        (note_id, current_user.id),
+    ).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    # Update main table
+    set_parts = []
+    params = []
+    for k, v in fields.items():
+        set_parts.append(f"{k} = ?")
+        params.append(v)
+    params.extend([note_id, current_user.id])
+    c.execute(
+        f"UPDATE notes SET {', '.join(set_parts)} WHERE id = ? AND user_id = ?",
+        params,
+    )
+
+    # Refresh FTS row
+    row2 = c.execute(
+        "SELECT title, summary, tags, actions, content FROM notes WHERE id = ?",
+        (note_id,),
+    ).fetchone()
+    if row2:
+        title, summary, tags, actions, content = row2
+        c.execute("DELETE FROM notes_fts WHERE rowid = ?", (note_id,))
+        c.execute(
+            "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+            (note_id, title, summary, tags, actions, content),
+        )
+
+    conn.commit()
+    conn.close()
+
+    return {"success": True, "note": {"id": note_id, **fields}}
 
 # Enhanced Search Endpoint
 @app.post("/api/search/enhanced")
@@ -849,8 +1115,10 @@ async def webhook_discord(
 def detail(
     request: Request,
     note_id: int,
-    current_user: User = Depends(get_current_user),
 ):
+    current_user = get_current_user_silent(request)
+    if not current_user:
+        return RedirectResponse("/login", status_code=302)
     conn = get_conn()
     c = conn.cursor()
     row = c.execute(
@@ -861,17 +1129,16 @@ def detail(
         return RedirectResponse("/", status_code=302)
     note = dict(zip([col[0] for col in c.description], row))
     related = find_related_notes(note_id, note.get("tags", ""), current_user.id, conn)
-    return templates.TemplateResponse(
-        "detail.html",
-        {"request": request, "note": note, "related": related}
-    )
+    return render_page(request, "detail.html", {"note": note, "related": related, "user": current_user})
 
 @app.get("/edit/{note_id}")
 def edit_get(
     request: Request,
     note_id: int,
-    current_user: User = Depends(get_current_user),
 ):
+    current_user = get_current_user_silent(request)
+    if not current_user:
+        return RedirectResponse("/login", status_code=302)
     conn = get_conn()
     c = conn.cursor()
     row = c.execute(
@@ -884,7 +1151,7 @@ def edit_get(
     note = dict(zip([col[0] for col in c.description], row))
     conn.close()
     return templates.TemplateResponse(
-        "edit.html", {"request": request, "note": note}
+        "edit.html", {"request": request, "note": note, "user": current_user}
     )
 
 @app.post("/edit/{note_id}")
@@ -893,8 +1160,13 @@ def edit_post(
     note_id: int,
     content: str = Form(""),
     tags: str = Form(""),
-    current_user: User = Depends(get_current_user),
+    csrf_token: str = Form(...),
 ):
+    current_user = get_current_user_silent(request)
+    if not current_user:
+        return RedirectResponse("/login", status_code=302)
+    if not validate_csrf(request, csrf_token):
+        return RedirectResponse(f"/edit/{note_id}", status_code=302)
     conn = get_conn()
     c = conn.cursor()
     c.execute(
@@ -916,14 +1188,21 @@ def edit_post(
     conn.close()
     if "application/json" in request.headers.get("accept", ""):
         return {"status": "ok"}
-    return RedirectResponse(f"/detail/{note_id}", status_code=302)
+    resp = RedirectResponse(f"/detail/{note_id}", status_code=302)
+    set_flash(resp, "Note updated", "success")
+    return resp
 
 @app.post("/delete/{note_id}")
 def delete_note(
     request: Request,
     note_id: int,
-    current_user: User = Depends(get_current_user),
+    csrf_token: str = Form(...),
 ):
+    current_user = get_current_user_silent(request)
+    if not current_user:
+        return RedirectResponse("/login", status_code=302)
+    if not validate_csrf(request, csrf_token):
+        return RedirectResponse("/", status_code=302)
     conn = get_conn()
     c = conn.cursor()
     row = c.execute(
@@ -946,7 +1225,9 @@ def delete_note(
     conn.close()
     if "application/json" in request.headers.get("accept", ""):
         return {"status": "deleted"}
-    return RedirectResponse("/", status_code=302)
+    resp = RedirectResponse("/", status_code=302)
+    set_flash(resp, "Note deleted", "success")
+    return resp
 
 @app.get("/audio/{filename}")
 def get_audio(filename: str, current_user: User = Depends(get_current_user)):
@@ -971,8 +1252,80 @@ async def capture(
     note: str = Form(""),
     tags: str = Form(""),
     file: UploadFile = File(None),
-    current_user: User = Depends(get_current_user),
+    csrf_token: str | None = Form(None),
 ):
+    # COMPREHENSIVE DEBUG LOGGING
+    print("=" * 60)
+    print("CAPTURE ENDPOINT DEBUG START")
+    print(f"Request Method: {request.method}")
+    print(f"Request URL: {request.url}")
+    print(f"Content-Type: {request.headers.get('content-type', 'Not set')}")
+    print(f"Accept: {request.headers.get('accept', 'Not set')}")
+    print(f"User-Agent: {request.headers.get('user-agent', 'Not set')}")
+    
+    # Auth debugging
+    current_user = get_current_user_silent(request)
+    print(f"Current User: {current_user.username if current_user else 'None'}")
+    if not current_user:
+        print("No authenticated user, redirecting to login")
+        return RedirectResponse("/login", status_code=302)
+    
+    # Form data debugging
+    print(f"Form Data - note: '{note}' (length: {len(note)})")
+    print(f"Form Data - tags: '{tags}' (length: {len(tags)})")
+    print(f"Form Data - csrf_token: '{csrf_token}' (present: {bool(csrf_token)})")
+    print(f"File Upload: {file.filename if file else 'None'}")
+    
+    # Headers debugging
+    print("Request Headers:")
+    for name, value in request.headers.items():
+        if name.lower() in ['authorization', 'cookie', 'x-csrf-token']:
+            print(f"  {name}: {'***' if 'token' in name.lower() else value[:20]}...")
+        else:
+            print(f"  {name}: {value}")
+    
+    # Cookies debugging
+    print("Request Cookies:")
+    for name, value in request.cookies.items():
+        if 'token' in name.lower():
+            print(f"  {name}: {value[:10]}...")
+        else:
+            print(f"  {name}: {value}")
+    
+    print("=" * 60)
+    
+    # CSRF token validation - primarily from form data for fetch requests
+    header_token = request.headers.get("X-CSRF-Token") 
+    cookie_token = request.cookies.get("csrf_token")
+    
+    # For debugging - remove in production
+    print(f"DEBUG CSRF - Form token exists: {bool(csrf_token)}")
+    print(f"DEBUG CSRF - Form token value: {csrf_token[:10] if csrf_token else 'None'}...")
+    print(f"DEBUG CSRF - Cookie token exists: {bool(cookie_token)}")  
+    print(f"DEBUG CSRF - Cookie token value: {cookie_token[:10] if cookie_token else 'None'}...")
+    print(f"DEBUG CSRF - Header token: {bool(header_token)}")
+    
+    # Validate CSRF token (form data takes precedence for multipart requests)
+    csrf_valid = validate_csrf(request, csrf_token)
+    
+    # If form token fails, try header token as fallback
+    if not csrf_valid and header_token:
+        csrf_valid = validate_csrf(request, header_token)
+    
+    if not csrf_valid:
+        error_msg = "CSRF token validation failed"
+        print(f"DEBUG CSRF ERROR: {error_msg}")
+        print(f"  Form token valid: {validate_csrf(request, csrf_token)}")
+        print(f"  Header token valid: {validate_csrf(request, header_token) if header_token else 'N/A - no header token'}")
+        print(f"  Expected (cookie): {cookie_token}")
+        print(f"  Received (form): {csrf_token}")
+        print(f"  Received (header): {header_token}")
+        print("CAPTURE ENDPOINT DEBUG END - CSRF ERROR")
+        print("=" * 60)
+        
+        if "application/json" in request.headers.get("accept", ""):
+            raise HTTPException(status_code=400, detail=error_msg)
+        return RedirectResponse("/", status_code=302)
     content = note.strip()
     note_type = "note"
     audio_filename = None
@@ -990,30 +1343,86 @@ async def capture(
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn = get_conn()
     c = conn.cursor()
-    c.execute(
-        "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, audio_filename, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (
-            "[Processing]",
-            content if note_type == "note" else "",
-            "",
-            tags,
-            "",
-            note_type,
-            now,
-            audio_filename,
-            "pending",
-            current_user.id,
-        ),
-    )
-    conn.commit()
-    note_id = c.lastrowid
+
+    # Different handling for text vs audio notes
+    if file:  # Audio file - requires processing
+        status = "pending"
+        title = "[Processing]"
+        summary = ""
+        actions = ""
+        # Audio content starts empty - will be filled by transcription
+        note_content = ""
+        
+        c.execute(
+            "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, audio_filename, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (title, note_content, summary, tags, actions, note_type, now, audio_filename, status, current_user.id),
+        )
+        conn.commit()
+        note_id = c.lastrowid
+        
+        # Insert minimal FTS row for audio
+        try:
+            c.execute(
+                "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+                (note_id, title, summary, tags, actions, note_content),
+            )
+            conn.commit()
+        except Exception:
+            pass
+        
+        # Add background processing for audio
+        if REALTIME_AVAILABLE:
+            import asyncio
+            background_tasks.add_task(lambda: asyncio.create_task(process_note_with_status(note_id)))
+        else:
+            background_tasks.add_task(process_note, note_id)
+            
+    else:  # Text note - save directly as complete
+        status = "complete"
+        # Generate title from content if not provided
+        title = (content[:60] + "..." if len(content) > 60 else content) if content else "Untitled Note"
+        summary = ""  # Text notes don't need AI summary
+        actions = ""  # Text notes don't need AI actions
+        
+        c.execute(
+            "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, audio_filename, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (title, content, summary, tags, actions, note_type, now, audio_filename, status, current_user.id),
+        )
+        conn.commit()
+        note_id = c.lastrowid
+        
+        # Insert full FTS row for text notes
+        try:
+            c.execute(
+                "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+                (note_id, title, summary, tags, actions, content),
+            )
+            conn.commit()
+        except Exception:
+            pass
+        
+        # No background processing needed for text notes
+
     conn.close()
 
-    background_tasks.add_task(process_note, note_id)
-
+    print(f"Successfully saved note with ID: {note_id}")
+    print(f"Note type: {note_type}")
+    print(f"Content length: {len(content)}")
+    print(f"Tags: {tags}")
+    print(f"Audio file: {audio_filename}")
+    print(f"Status: {status}")
+    print("CAPTURE ENDPOINT DEBUG END - SUCCESS")
+    print("=" * 60)
+    
     if "application/json" in request.headers.get("accept", ""):
-        return {"id": note_id, "status": "pending"}
-    return RedirectResponse("/", status_code=302)
+        return {"id": note_id, "status": status}
+    
+    resp = RedirectResponse("/", status_code=302)
+    if file:  # Audio file
+        set_flash(resp, "Audio note queued for processing", "success")
+    else:  # Text note
+        set_flash(resp, "Text note saved successfully", "success")
+    return resp
 
 @app.post("/webhook/apple")
 async def webhook_apple(
@@ -1064,6 +1473,60 @@ def sync_obsidian(
 ):
     background_tasks.add_task(export_notes_to_obsidian, current_user.id)
     return {"status": "queued"}
+
+# Obsidian Sync API
+@app.post("/api/obsidian/sync")
+async def obsidian_sync_api(
+    background_tasks: BackgroundTasks,
+    direction: str = Query("to_obsidian"),
+    current_user: User = Depends(get_current_user),
+):
+    """Sync with Obsidian vault via ObsidianSync class.
+
+    direction: one of 'to_obsidian', 'from_obsidian', 'bidirectional'
+    """
+    from obsidian_sync import ObsidianSync
+
+    def perform_sync(user_id: int, sync_direction: str):
+        if sync_direction not in {"to_obsidian", "from_obsidian", "bidirectional"}:
+            raise HTTPException(status_code=400, detail="Invalid direction")
+        sync = ObsidianSync()
+        if sync_direction == "to_obsidian":
+            result = {"exported": sync.sync_all_to_obsidian(user_id)}
+        elif sync_direction == "from_obsidian":
+            result = {"imported": sync.sync_from_obsidian()}
+        else:
+            result = sync.bidirectional_sync(user_id)
+        # record last sync timestamp
+        set_last_sync(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        return result
+
+    background_tasks.add_task(perform_sync, current_user.id, direction)
+    return {"status": "sync_started", "direction": direction}
+
+@app.get("/api/obsidian/status")
+async def obsidian_status_api(current_user: User = Depends(get_current_user)):
+    from obsidian_sync import ObsidianSync
+    sync = ObsidianSync()
+    # Count vault files
+    try:
+        vault_files = len(list(sync.vault_path.rglob("*.md")))
+    except Exception:
+        vault_files = 0
+    # Count notes
+    conn = get_conn()
+    c = conn.cursor()
+    db_notes = c.execute(
+        "SELECT COUNT(*) FROM notes WHERE user_id = ?",
+        (current_user.id,),
+    ).fetchone()[0]
+    conn.close()
+    return {
+        "vault_path": str(sync.vault_path),
+        "vault_files": vault_files,
+        "database_notes": db_notes,
+        "last_sync": get_last_sync(),
+    }
 
 @app.get("/activity")
 def activity_timeline(
@@ -1566,3 +2029,329 @@ def add_browser_capture_columns():
 
 # Call this in your init_db() function
 # add_browser_capture_columns()
+
+# ---- Enhanced Note API Endpoints ----
+
+@app.get("/api/tags")
+async def get_all_tags(current_user: User = Depends(get_current_user)):
+    """Get all unique tags for autocomplete"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Get all tags from user's notes
+    rows = c.execute("""
+        SELECT DISTINCT tags 
+        FROM notes 
+        WHERE user_id = ? AND tags IS NOT NULL AND tags != ''
+    """, (current_user.id,)).fetchall()
+    
+    # Extract individual tags
+    all_tags = set()
+    for row in rows:
+        if row[0]:
+            tags = [tag.strip() for tag in row[0].split(',') if tag.strip()]
+            all_tags.update(tags)
+    
+    conn.close()
+    return sorted(list(all_tags))
+
+@app.patch("/api/notes/{note_id}")
+async def update_note_partial(
+    note_id: int,
+    update_data: dict = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Partially update a note (for auto-save)"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Check if note belongs to user
+    note = c.execute("SELECT * FROM notes WHERE id = ? AND user_id = ?", 
+                    (note_id, current_user.id)).fetchone()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    # Build update query for non-null fields
+    updates = []
+    params = []
+    
+    if 'title' in update_data and update_data['title'] is not None:
+        updates.append("title = ?")
+        params.append(update_data['title'])
+    
+    if 'content' in update_data and update_data['content'] is not None:
+        updates.append("content = ?")
+        params.append(update_data['content'])
+    
+    if 'tags' in update_data and update_data['tags'] is not None:
+        updates.append("tags = ?")
+        params.append(update_data['tags'])
+    
+    if updates:
+        # Add timestamp update
+        updates.append("timestamp = ?")
+        params.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        
+        query = f"UPDATE notes SET {', '.join(updates)} WHERE id = ? AND user_id = ?"
+        params.extend([note_id, current_user.id])
+        
+        c.execute(query, params)
+        conn.commit()
+    
+    conn.close()
+    return {"status": "success", "message": "Note updated"}
+
+@app.put("/api/notes/{note_id}")
+async def update_note_full(
+    note_id: int,
+    update_data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Fully update a note"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Check if note belongs to user
+    note = c.execute("SELECT * FROM notes WHERE id = ? AND user_id = ?", 
+                    (note_id, current_user.id)).fetchone()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    # Update note
+    c.execute("""
+        UPDATE notes 
+        SET title = ?, content = ?, tags = ?, timestamp = ?
+        WHERE id = ? AND user_id = ?
+    """, (
+        update_data.get('title', ''),
+        update_data.get('content', ''),
+        update_data.get('tags', ''),
+        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        note_id,
+        current_user.id
+    ))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"status": "success", "message": "Note saved"}
+
+@app.delete("/api/notes/{note_id}")
+async def delete_note_api(note_id: int, current_user: User = Depends(get_current_user)):
+    """Delete a note via API"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Check if note belongs to user
+    note = c.execute("SELECT * FROM notes WHERE id = ? AND user_id = ?", 
+                    (note_id, current_user.id)).fetchone()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    # Delete the note
+    c.execute("DELETE FROM notes WHERE id = ? AND user_id = ?", (note_id, current_user.id))
+    conn.commit()
+    conn.close()
+    
+    return {"status": "success", "message": "Note deleted"}
+
+@app.get("/api/notes/{note_id}/export")
+async def export_note(
+    note_id: int,
+    format: str = Query("markdown", regex="^(markdown|json|txt)$"),
+    current_user: User = Depends(get_current_user)
+):
+    """Export note in various formats"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Get note
+    note = c.execute("SELECT * FROM notes WHERE id = ? AND user_id = ?", 
+                    (note_id, current_user.id)).fetchone()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    # Convert to dict
+    note_dict = dict(zip([col[0] for col in c.description], note))
+    conn.close()
+    
+    # Generate export content based on format
+    if format == "markdown":
+        content = generate_markdown_export(note_dict)
+        filename = f"{safe_filename(note_dict['title'] or 'note')}.md"
+        media_type = "text/markdown"
+    elif format == "json":
+        content = json.dumps(note_dict, indent=2, default=str)
+        filename = f"{safe_filename(note_dict['title'] or 'note')}.json"
+        media_type = "application/json"
+    elif format == "txt":
+        content = generate_text_export(note_dict)
+        filename = f"{safe_filename(note_dict['title'] or 'note')}.txt"
+        media_type = "text/plain"
+    
+    # Return file response
+    from fastapi.responses import Response
+    return Response(
+        content=content.encode('utf-8'),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@app.post("/api/notes/{note_id}/duplicate")
+async def duplicate_note(note_id: int, current_user: User = Depends(get_current_user)):
+    """Duplicate a note"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Get original note
+    note = c.execute("SELECT * FROM notes WHERE id = ? AND user_id = ?", 
+                    (note_id, current_user.id)).fetchone()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    # Convert to dict
+    note_dict = dict(zip([col[0] for col in c.description], note))
+    
+    # Create duplicate
+    new_title = f"{note_dict['title']} (Copy)" if note_dict['title'] else "Untitled Note (Copy)"
+    
+    c.execute("""
+        INSERT INTO notes 
+        (user_id, title, content, summary, actions, tags, type, audio_filename, status, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        current_user.id,
+        new_title,
+        note_dict.get('content', ''),
+        note_dict.get('summary', ''),
+        note_dict.get('actions', ''),
+        note_dict.get('tags', ''),
+        note_dict.get('type', 'text'),
+        None,  # Don't duplicate audio files
+        'complete',
+        datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ))
+    
+    new_note_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    
+    return {"id": new_note_id, "status": "success", "message": "Note duplicated"}
+
+@app.post("/api/notes/{note_id}/sync-obsidian")
+async def sync_note_to_obsidian(note_id: int, current_user: User = Depends(get_current_user)):
+    """Sync a single note to Obsidian"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    # Get note
+    note = c.execute("SELECT * FROM notes WHERE id = ? AND user_id = ?", 
+                    (note_id, current_user.id)).fetchone()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    # Convert to dict
+    note_dict = dict(zip([col[0] for col in c.description], note))
+    conn.close()
+    
+    try:
+        # Use existing Obsidian sync functionality
+        sync = ObsidianSync()
+        filename = safe_filename(note_dict['title'] or f'note_{note_id}')
+        
+        # Generate markdown content
+        markdown_content = generate_markdown_export(note_dict)
+        
+        # Save to Obsidian vault
+        success = await sync.save_note_to_obsidian(filename, markdown_content)
+        
+        if success:
+            return {"status": "success", "message": "Note synced to Obsidian"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to sync to Obsidian")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Obsidian sync error: {str(e)}")
+
+def generate_markdown_export(note_dict):
+    """Generate markdown export of a note"""
+    lines = []
+    
+    # Title
+    if note_dict.get('title'):
+        lines.append(f"# {note_dict['title']}")
+        lines.append("")
+    
+    # Metadata
+    lines.append("---")
+    lines.append(f"created: {note_dict.get('timestamp', '')}")
+    lines.append(f"type: {note_dict.get('type', 'text')}")
+    if note_dict.get('tags'):
+        lines.append(f"tags: {note_dict['tags']}")
+    lines.append("---")
+    lines.append("")
+    
+    # Summary
+    if note_dict.get('summary'):
+        lines.append("## Summary")
+        lines.append("")
+        lines.append(note_dict['summary'])
+        lines.append("")
+    
+    # Actions
+    if note_dict.get('actions'):
+        lines.append("## Action Items")
+        lines.append("")
+        for action in note_dict['actions'].split('\n'):
+            if action.strip():
+                lines.append(f"- {action.strip()}")
+        lines.append("")
+    
+    # Content
+    if note_dict.get('content'):
+        lines.append("## Content")
+        lines.append("")
+        lines.append(note_dict['content'])
+    
+    return "\n".join(lines)
+
+def generate_text_export(note_dict):
+    """Generate plain text export of a note"""
+    lines = []
+    
+    # Title
+    if note_dict.get('title'):
+        lines.append(note_dict['title'])
+        lines.append("=" * len(note_dict['title']))
+        lines.append("")
+    
+    # Metadata
+    lines.append(f"Created: {note_dict.get('timestamp', '')}")
+    lines.append(f"Type: {note_dict.get('type', 'text')}")
+    if note_dict.get('tags'):
+        lines.append(f"Tags: {note_dict['tags']}")
+    lines.append("")
+    
+    # Summary
+    if note_dict.get('summary'):
+        lines.append("SUMMARY")
+        lines.append("-------")
+        lines.append(note_dict['summary'])
+        lines.append("")
+    
+    # Actions
+    if note_dict.get('actions'):
+        lines.append("ACTION ITEMS")
+        lines.append("-----------")
+        for action in note_dict['actions'].split('\n'):
+            if action.strip():
+                lines.append(f"• {action.strip()}")
+        lines.append("")
+    
+    # Content
+    if note_dict.get('content'):
+        lines.append("CONTENT")
+        lines.append("-------")
+        lines.append(note_dict['content'])
+    
+    return "\n".join(lines)
