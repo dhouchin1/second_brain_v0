@@ -16,3 +16,4 @@ backups/
 scripts/scaffolds/inactive/
 scripts/scaffolds/run_scaffolds_v4.sh
 scripts/scaffolds/scaffold_*.sh
+scripts/scaffolds/
