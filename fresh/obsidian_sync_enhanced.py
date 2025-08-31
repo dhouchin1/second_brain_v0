@@ -1,3 +1,8 @@
+"""EXPERIMENTAL/LEGACY PROTOTYPE — Not used by current app.
+
+Kept for reference; prefer `obsidian_sync.py` (root) or `services/obsidian_sync.py`.
+Frontmatter handling in the live app goes through `obsidian_common` helpers.
+"""
 # obsidian_sync.py - Enhanced bidirectional sync with transcription
 
 import os

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Notes Form Test</title>
+    <style>
+        body {
+            background: #0f172a;
+            font-family: 'Inter', Arial, sans-serif;
+            color: #e2e8f0;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card-surface {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 16px;
+            padding: 24px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            background: #1e293b;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        .btn-primary:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        .auto-save-indicator {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            padding: 4px 8px;
+            background: rgba(34, 197, 94, 0.1);
+            color: #10b981;
+            font-size: 12px;
+            border-radius: 16px;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .auto-save-indicator.show {
+            opacity: 1;
+        }
+        .auto-save-indicator.saving {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+        .auto-save-indicator.loaded {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+        .status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .status.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #10b981;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quick Notes Form Test</h1>
+        <p>This test validates the form fixes:</p>
+        <ul>
+            <li>Auto-save draft functionality (saves every 2 seconds)</li>
+            <li>Draft loading on page refresh (only if less than 24 hours old)</li>
+            <li>Form submission without conflicts</li>
+            <li>Draft clearing after successful submission</li>
+        </ul>
+
+        <div class="card-surface" style="position: relative;">
+            <div id="autoSaveIndicator" class="auto-save-indicator">Draft saved</div>
+            
+            <form id="quickCaptureForm">
+                <div class="form-group">
+                    <label for="note">Quick Note</label>
+                    <textarea id="note" rows="4" placeholder="Write a quick thought…"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tags">Tags</label>
+                    <input type="text" id="tags" placeholder="comma,separated">
+                </div>
+                
+                <button type="submit" id="saveBtn" class="btn btn-primary">
+                    <span id="saveBtnText">Save Note</span>
+                </button>
+            </form>
+        </div>
+
+        <div id="status" class="status hidden"></div>
+
+        <div style="margin-top: 32px;">
+            <h3>Test Actions:</h3>
+            <button onclick="loadTestDraft()" class="btn btn-primary">Load Test Draft</button>
+            <button onclick="clearDraft()" class="btn btn-primary" style="background: #ef4444;">Clear Draft</button>
+            <button onclick="simulatePageRefresh()" class="btn btn-primary" style="background: #10b981;">Simulate Page Refresh</button>
+        </div>
+    </div>
+
+    <script>
+        // Simplified version of the fixes
+        class FormTest {
+            constructor() {
+                this.autoSaveTimeout = null;
+                this.autoSaveInterval = 2000;
+                
+                this.noteInput = document.getElementById('note');
+                this.tagsInput = document.getElementById('tags');
+                this.form = document.getElementById('quickCaptureForm');
+                this.saveBtn = document.getElementById('saveBtn');
+                this.saveBtnText = document.getElementById('saveBtnText');
+                this.statusDiv = document.getElementById('status');
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupAutoSave();
+                this.setupFormSubmission();
+                this.loadDraft();
+            }
+            
+            setupAutoSave() {
+                [this.noteInput, this.tagsInput].forEach(input => {
+                    if (input) {
+                        input.addEventListener('input', () => {
+                            this.scheduleAutoSave();
+                        });
+                    }
+                });
+            }
+            
+            setupFormSubmission() {
+                this.form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.submitForm();
+                });
+            }
+            
+            scheduleAutoSave() {
+                if (this.autoSaveTimeout) {
+                    clearTimeout(this.autoSaveTimeout);
+                }
+                
+                this.showAutoSaveStatus('saving');
+                
+                this.autoSaveTimeout = setTimeout(() => {
+                    this.saveDraft();
+                }, this.autoSaveInterval);
+            }
+            
+            saveDraft() {
+                const draft = {
+                    note: this.noteInput.value,
+                    tags: this.tagsInput.value,
+                    timestamp: new Date().toISOString()
+                };
+                
+                try {
+                    localStorage.setItem('second_brain_draft', JSON.stringify(draft));
+                    this.showAutoSaveStatus('saved');
+                } catch (error) {
+                    console.error('Failed to save draft:', error);
+                }
+            }
+            
+            loadDraft() {
+                try {
+                    const savedDraft = localStorage.getItem('second_brain_draft');
+                    if (!savedDraft) return;
+                    
+                    const draft = JSON.parse(savedDraft);
+                    
+                    // Only load draft if it's recent (within 24 hours)
+                    const draftAge = new Date() - new Date(draft.timestamp);
+                    const oneDay = 24 * 60 * 60 * 1000;
+                    
+                    if (draftAge > oneDay) {
+                        localStorage.removeItem('second_brain_draft');
+                        return;
+                    }
+                    
+                    // Only load if inputs are empty
+                    if (this.noteInput && !this.noteInput.value.trim() && draft.note && draft.note.trim()) {
+                        this.noteInput.value = draft.note;
+                        this.showAutoSaveStatus('loaded');
+                    }
+                    
+                    if (this.tagsInput && !this.tagsInput.value.trim() && draft.tags && draft.tags.trim()) {
+                        this.tagsInput.value = draft.tags;
+                    }
+                    
+                } catch (error) {
+                    console.error('Failed to load draft:', error);
+                    localStorage.removeItem('second_brain_draft');
+                }
+            }
+            
+            submitForm() {
+                // Clear draft before submission
+                localStorage.removeItem('second_brain_draft');
+                
+                // Simulate form submission
+                this.saveBtnText.textContent = 'Saving...';
+                this.saveBtn.disabled = true;
+                
+                setTimeout(() => {
+                    // Simulate successful submission
+                    this.noteInput.value = '';
+                    this.tagsInput.value = '';
+                    
+                    this.saveBtnText.textContent = 'Save Note';
+                    this.saveBtn.disabled = false;
+                    
+                    this.showStatus('Form submitted successfully! Draft cleared.', 'success');
+                    
+                }, 1000);
+            }
+            
+            showAutoSaveStatus(status) {
+                const indicator = document.getElementById('autoSaveIndicator');
+                const text = indicator.textContent;
+                
+                indicator.className = 'auto-save-indicator show';
+                
+                switch (status) {
+                    case 'saving':
+                        indicator.classList.add('saving');
+                        indicator.textContent = 'Saving draft...';
+                        break;
+                    case 'saved':
+                        indicator.classList.remove('saving', 'loaded');
+                        indicator.textContent = 'Draft saved';
+                        setTimeout(() => this.hideAutoSaveStatus(), 2000);
+                        break;
+                    case 'loaded':
+                        indicator.classList.remove('saving');
+                        indicator.classList.add('loaded');
+                        indicator.textContent = 'Draft restored';
+                        setTimeout(() => this.hideAutoSaveStatus(), 3000);
+                        break;
+                }
+            }
+            
+            hideAutoSaveStatus() {
+                const indicator = document.getElementById('autoSaveIndicator');
+                indicator.classList.remove('show');
+            }
+            
+            showStatus(message, type = 'success') {
+                this.statusDiv.textContent = message;
+                this.statusDiv.className = `status ${type}`;
+                this.statusDiv.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    this.statusDiv.classList.add('hidden');
+                }, 5000);
+            }
+        }
+        
+        // Test functions
+        function loadTestDraft() {
+            const testDraft = {
+                note: 'This is a test draft note loaded from localStorage!',
+                tags: 'test,draft,localStorage',
+                timestamp: new Date().toISOString()
+            };
+            
+            localStorage.setItem('second_brain_draft', JSON.stringify(testDraft));
+            location.reload();
+        }
+        
+        function clearDraft() {
+            localStorage.removeItem('second_brain_draft');
+            document.getElementById('note').value = '';
+            document.getElementById('tags').value = '';
+            formTest.showStatus('Draft cleared!', 'success');
+        }
+        
+        function simulatePageRefresh() {
+            location.reload();
+        }
+        
+        // Initialize
+        let formTest;
+        document.addEventListener('DOMContentLoaded', () => {
+            formTest = new FormTest();
+        });
+    </script>
+</body>
+</html>

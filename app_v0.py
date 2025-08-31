@@ -1,3 +1,8 @@
+"""LEGACY MODULE — Not used by the current application.
+
+Kept for historical context only. Do not import or modify for new features.
+Prefer `app.py` with the unified `services.SearchService` and modular routers.
+"""
 from fastapi import FastAPI, UploadFile, File, Query
 from pydantic import BaseModel
 from markdown_writer import save_markdown, log_project_note

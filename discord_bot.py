@@ -9,7 +9,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-SECOND_BRAIN_API = os.getenv('SECOND_BRAIN_API_URL', 'http://localhost:8084')
+SECOND_BRAIN_API = os.getenv('SECOND_BRAIN_API_URL', 'http://localhost:8082')
 WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN', 'your-secret-token')
 
 class SecondBrainCog(commands.Cog):

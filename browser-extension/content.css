@@ -1,0 +1,274 @@
+/* content.css - Styles for Second Brain content script */
+
+/* Quick Capture Tooltip */
+#second-brain-quick-capture {
+    position: absolute;
+    z-index: 2147483647; /* Maximum z-index */
+    pointer-events: none;
+}
+
+.sb-tooltip {
+    position: absolute;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    max-width: 320px;
+    pointer-events: auto;
+    animation: sb-fadeIn 0.2s ease-out;
+}
+
+.sb-tooltip-content {
+    padding: 16px;
+}
+
+.sb-tooltip-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.sb-tooltip-text {
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    font-style: italic;
+}
+
+.sb-tooltip-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.sb-tooltip-arrow {
+    position: absolute;
+    top: -6px;
+    left: 20px;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-bottom: none;
+    border-right: none;
+    transform: rotate(45deg);
+}
+
+/* Buttons */
+.sb-btn {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.sb-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.sb-btn-primary {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+}
+
+.sb-btn-primary:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.sb-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.sb-btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.sb-btn-close {
+    padding: 4px 8px;
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.sb-btn-close:hover {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Notifications */
+.sb-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2147483647;
+    max-width: 350px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    animation: sb-slideIn 0.3s ease-out;
+}
+
+.sb-notification-success {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
+.sb-notification-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.sb-notification-warning {
+    background: #fffbeb;
+    border: 1px solid #fed7aa;
+    color: #92400e;
+}
+
+.sb-notification-content {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sb-notification-message {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.sb-notification-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: 0.7;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.sb-notification-close:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Selection Highlight Enhancement */
+.sb-selection-highlight {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border-radius: 2px;
+    transition: background-color 0.2s ease;
+}
+
+/* Animations */
+@keyframes sb-fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes sb-slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .sb-tooltip {
+        max-width: calc(100vw - 40px);
+    }
+    
+    .sb-notification {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .sb-tooltip-actions {
+        flex-wrap: wrap;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .sb-tooltip {
+        background: #1f2937;
+        border-color: #374151;
+        color: #f9fafb;
+    }
+    
+    .sb-tooltip-title {
+        color: #f9fafb;
+    }
+    
+    .sb-tooltip-text {
+        color: #d1d5db;
+    }
+    
+    .sb-tooltip-arrow {
+        background: #1f2937;
+        border-color: #374151;
+    }
+    
+    .sb-btn {
+        background: #374151;
+        color: #f9fafb;
+        border-color: #4b5563;
+    }
+    
+    .sb-btn:hover {
+        background: #4b5563;
+        border-color: #6b7280;
+    }
+    
+    .sb-btn-secondary {
+        background: #4b5563;
+        color: #f9fafb;
+    }
+    
+    .sb-btn-secondary:hover {
+        background: #6b7280;
+    }
+    
+    .sb-btn-close:hover {
+        background: #374151;
+        color: #d1d5db;
+    }
+}

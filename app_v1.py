@@ -1,3 +1,8 @@
+"""LEGACY MODULE — Not used by the current application.
+
+Kept for historical context only. Do not import or modify for new features.
+Prefer `app.py` with the unified `services.SearchService` and modular routers.
+"""
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates

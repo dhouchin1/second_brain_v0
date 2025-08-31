@@ -42,13 +42,12 @@ def _transcribe_with_whisper(wav_path: Path) -> str:
     
     # Multi-layer CPU throttling to prevent machine slowdown
     whisper_cmd = [
-        "nice", "-n", "19",  # Maximum niceness (lowest CPU priority)
-        "timeout", "120s",   # Hard timeout at 2 minutes
+        "nice", "-n", "19",  # Lower CPU priority
         str(settings.whisper_cpp_path),
         "-m", str(model_to_use),
         "-f", str(wav_path),
         "-otxt",
-        "-t", "1",      # Force single thread 
+        "-t", "1",      # Force single thread
         "-ng",          # Disable GPU
         "--no-prints",  # Reduce output overhead
     ]

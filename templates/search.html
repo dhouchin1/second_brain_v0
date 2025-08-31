@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% block title %}Advanced Search – Second Brain{% endblock %}
+{% block head_extra %}
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <style>
+    body { background: #0f172a; font-family: 'Inter', Arial, sans-serif; }
+    ::-webkit-scrollbar { width: 8px; background: #0b1220; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 6px; }
+    .card-surface { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
+    .muted { color: #a5b4fc; opacity: .8; }
+    
+    /* Consistent font sizing to match dashboard */
+    .search-title { font-size: 1.5rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.5rem; }
+    .search-subtitle { font-size: 0.875rem; color: #94a3b8; margin-bottom: 2rem; }
+    .section-title { font-size: 0.875rem; font-weight: 600; color: #cbd5e1; margin-bottom: 1rem; }
+    .filter-label { font-size: 0.75rem; font-weight: 500; color: #94a3b8; margin-bottom: 0.5rem; display: block; }
+    
+    /* Result cards matching dashboard style */
+    .result-card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .result-card:hover {
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.15);
+      transform: translateY(-1px);
+    }
+    .result-title { font-size: 0.875rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.5rem; }
+    .result-meta { font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem; }
+    .result-snippet { font-size: 0.8125rem; color: #cbd5e1; line-height: 1.4; }
+    .result-tags { margin-top: 0.5rem; }
+    .result-tag {
+      font-size: 0.6875rem;
+      background: rgba(99, 102, 241, 0.1);
+      color: #a5b4fc;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      margin-right: 0.25rem;
+    }
+    .score-badge {
+      font-size: 0.6875rem;
+      background: rgba(34, 197, 94, 0.1);
+      color: #86efac;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-weight: 500;
+    }
+  </style>
+{% endblock %}
+{% block body_class %}min-h-screen text-slate-100 bg-slate-900{% endblock %}
+{% block content %}
+  
+  <!-- Compact header consistent with dashboard -->
+  <header class="w-full py-4 max-w-6xl mx-auto px-6">
+    <h1 class="search-title">Advanced Search</h1>
+    <p class="search-subtitle">Find notes using hybrid text + semantic search with advanced filters</p>
+  </header>
+
+  <!-- Main Content - 2-Column Layout like Dashboard -->
+  <section class="w-full max-w-6xl mx-auto px-6 mb-4">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Left Column: Search Interface (4 columns) -->
+      <div class="lg:col-span-4">
+        <div class="card-surface rounded-xl p-4 space-y-4">
+          
+          <!-- Search Input -->
+          <div class="space-y-2">
+            <label class="filter-label">Search Query</label>
+            <div class="relative">
+              <input type="text" id="search-input" 
+                     placeholder="Search your notes..." 
+                     class="w-full rounded-lg border border-slate-700 bg-slate-800 text-slate-100 px-4 py-2.5 pr-12 
+                            placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-400 focus:outline-none text-sm">
+              <button id="search-button" 
+                      class="absolute right-2 top-1/2 transform -translate-y-1/2 
+                             bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-md transition">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+              </button>
+            </div>
+            <div id="search-suggestions" class="search-suggestions"></div>
+          </div>
+
+          <!-- Search Mode -->
+          <div class="space-y-2">
+            <label class="filter-label">Search Mode</label>
+            <div class="flex gap-2">
+              <button class="flex-1 px-3 py-2 rounded-lg bg-indigo-500 text-white text-xs font-medium search-filter active" 
+                      data-search-mode="hybrid">Hybrid</button>
+              <button class="flex-1 px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium search-filter" 
+                      data-search-mode="fts">Text</button>
+              <button class="flex-1 px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium search-filter" 
+                      data-search-mode="semantic">Semantic</button>
+            </div>
+          </div>
+
+          <!-- Type Filters -->
+          <div class="space-y-2">
+            <label class="filter-label">Note Types</label>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" data-type-filter="text" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span class="text-slate-300">Text</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" data-type-filter="audio" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span class="text-slate-300">Audio</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" data-type-filter="apple" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span class="text-slate-300">Shortcuts</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" data-type-filter="meeting" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span class="text-slate-300">Meeting</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Status Filters -->
+          <div class="space-y-2">
+            <label class="filter-label">Processing Status</label>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" data-status-filter="complete" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span class="text-slate-300">Complete</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" data-status-filter="pending" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span class="text-slate-300">Pending</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" data-status-filter="error" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span class="text-slate-300">Error</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Date Range -->
+          <div class="space-y-2">
+            <label class="filter-label">Date Range</label>
+            <div class="grid grid-cols-1 gap-2">
+              <input type="date" id="date-start" 
+                     class="w-full rounded-lg border border-slate-700 bg-slate-800 text-slate-100 px-3 py-2 text-xs
+                            focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+              <input type="date" id="date-end"
+                     class="w-full rounded-lg border border-slate-700 bg-slate-800 text-slate-100 px-3 py-2 text-xs
+                            focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div class="space-y-2">
+            <label class="filter-label">Tags</label>
+            <input type="text" id="tag-filter" placeholder="Add tag (press Enter)" 
+                   class="w-full rounded-lg border border-slate-700 bg-slate-800 text-slate-100 px-3 py-2 text-xs
+                          placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+            <div id="active-tag-filters" class="flex flex-wrap gap-1"></div>
+          </div>
+
+          <!-- Minimum Score -->
+          <div class="space-y-2">
+            <label class="filter-label">Min Score <span id="min-score-value" class="text-indigo-400 font-medium">0.10</span></label>
+            <input type="range" id="min-score" min="0" max="1" step="0.05" value="0.10" 
+                   class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+          </div>
+
+          <!-- Semantic Search Status -->
+          <div id="semantic-status" class="hidden bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+            <div class="flex items-center gap-2 text-xs">
+              <svg width="14" height="14" fill="currentColor" class="text-amber-400" viewBox="0 0 16 16">
+                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+              </svg>
+              <span class="text-amber-300">Semantic search unavailable</span>
+            </div>
+            <button id="generate-embeddings-btn" 
+                    class="mt-2 w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition">
+              Generate Embeddings
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Search Results (8 columns) -->
+      <div class="lg:col-span-8">
+        <div class="space-y-4">
+          <!-- Results Header -->
+          <div class="flex items-center justify-between">
+            <h2 class="section-title" id="results-title">Search Results</h2>
+            <div id="results-meta" class="text-xs text-slate-400"></div>
+          </div>
+          
+          <!-- Loading State -->
+          <div id="search-loading" class="hidden text-center py-12">
+            <div class="inline-flex items-center gap-2 text-slate-400">
+              <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" class="opacity-75"></path>
+              </svg>
+              <span class="text-sm">Searching...</span>
+            </div>
+          </div>
+          
+          <!-- Results Grid -->
+          <div id="search-results" class="grid grid-cols-1 gap-3"></div>
+          
+          <!-- Empty State -->
+          <div id="empty-state" class="hidden text-center py-12">
+            <div class="text-slate-400 space-y-2">
+              <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24" class="mx-auto opacity-50">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <p class="text-sm">No results found</p>
+              <p class="text-xs opacity-75">Try adjusting your search query or filters</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script src="/static/js/advanced-search.js"></script>
+  <script>
+    // Initialize Advanced Search logic
+    document.addEventListener('DOMContentLoaded', function(){
+      try { window.advancedSearch = new AdvancedSearchInterface(); } catch(e) { console.error('AdvancedSearch init failed', e); }
+    });
+  </script>
+{% endblock %}

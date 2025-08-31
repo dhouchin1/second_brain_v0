@@ -1,3 +1,7 @@
+"""EXPERIMENTAL/LEGACY PROTOTYPE — Not used by current app.
+
+Kept for reference only; browser webhook logic lives in app.py.
+"""
 # Add this to your app.py - Browser Extension Integration
 
 from typing import Dict, Any

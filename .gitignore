@@ -11,6 +11,12 @@ backups/
 /.scaffolds/
 /.bak/
 *.bak
+*.log
+server.log
+.env
+uploads/
+vault/
+screenshots/
 
 # Scaffold files
 scripts/scaffolds/inactive/

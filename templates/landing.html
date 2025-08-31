@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Second Brain – Remember Everything{% endblock %}
+{% block head_extra %}
+  <style>
+    .hero-gradient { background: radial-gradient(1200px 800px at 10% -10%, rgba(99,102,241,.25), transparent), radial-gradient(800px 600px at 90% 10%, rgba(236,72,153,.22), transparent), #0f172a; }
+    .feature-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
+    .gradient-text { background: linear-gradient(90deg, #f472b6 0%, #93c5fd 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  </style>
+{% endblock %}
+{% block body_class %}bg-slate-900 text-slate-100{% endblock %}
+{% block content %}
+  <!-- Hero -->
+  <section class="hero-gradient">
+    <div class="max-w-6xl mx-auto px-6 pt-20 pb-16">
+      <div class="grid md:grid-cols-2 gap-10 items-center">
+        <div>
+          <h1 class="text-4xl md:text-5xl font-extrabold leading-tight">
+            Capture. Search. Recall. <span class="text-pink-300">Effortlessly.</span>
+          </h1>
+          <p class="mt-4 text-slate-300 text-lg">
+            Second Brain turns your notes, voice memos, and web highlights into a searchable knowledge base with AI summaries and powerful hybrid search.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-3">
+            <a href="/signup" class="px-5 py-2.5 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-semibold">Get Started</a>
+            <a href="/login" class="px-5 py-2.5 rounded-lg bg-white/10 hover:bg-white/15 text-white">Sign In</a>
+          </div>
+          <div class="mt-6 text-sm text-slate-400">
+            Works with Obsidian, Apple Shortcuts, and Discord.
+          </div>
+        </div>
+        <div class="hidden md:flex items-center justify-center">
+          <div class="text-center select-none">
+            <img src="/static/brain-logo.svg" alt="Second Brain" class="w-64 h-64 opacity-95 drop-shadow-lg mx-auto" loading="lazy">
+            <div class="mt-4 text-4xl font-extrabold tracking-tight gradient-text">Second Brain</div>
+            <div class="text-slate-400 mt-1">Remember everything.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="py-14">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="feature-card rounded-xl p-6">
+          <h3 class="text-xl font-bold mb-2">AI Summaries</h3>
+          <p class="text-slate-300">Auto-summarize notes and audio so you can scan quickly and remember more.</p>
+        </div>
+        <div class="feature-card rounded-xl p-6">
+          <h3 class="text-xl font-bold mb-2">Hybrid Search</h3>
+          <p class="text-slate-300">Combine FTS5 with semantic embeddings to find both exact and related concepts.</p>
+        </div>
+        <div class="feature-card rounded-xl p-6">
+          <h3 class="text-xl font-bold mb-2">Obsidian Sync</h3>
+          <p class="text-slate-300">Sync notes to your vault with frontmatter and attachments preserved.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="py-6">
+    <div class="max-w-4xl mx-auto px-6">
+      <h2 class="text-2xl font-bold mb-4">How it works</h2>
+      <ol class="list-decimal list-inside space-y-2 text-slate-300">
+        <li>Capture notes, audio, or web highlights from the app, browser extension, or Discord.</li>
+        <li>Second Brain processes content with AI to generate summaries, tags, and action items.</li>
+        <li>Search across everything with fast text and semantic search.</li>
+        <li>Optionally sync to your Obsidian vault for long-term knowledge management.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-12">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <h3 class="text-2xl font-bold">Start building your Second Brain</h3>
+      <p class="mt-2 text-slate-300">Create an account to capture your first note.</p>
+      <a href="/signup" class="inline-block mt-5 px-6 py-3 rounded-lg bg-pink-500 hover:bg-pink-600 text-white font-semibold">Create Account</a>
+    </div>
+  </section>
+{% endblock %}

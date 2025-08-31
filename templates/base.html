@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Second Brain{% endblock %}</title>
+  <link rel="icon" href="/static/brain-logo.svg" />
+  <link rel="stylesheet" href="/static/css/design-system.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  {% block head_extra %}{% endblock %}
+  <style>
+    /* Lightweight toast system */
+    #toast-container { position: fixed; top: 16px; right: 16px; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 10px 12px; border-radius: 10px; font-size: 14px; color: #fff; box-shadow: var(--shadow-lg); opacity: .98; transition: transform .2s ease, opacity .2s ease; }
+    .toast.success { background: rgba(34,197,94,.95); }
+    .toast.error { background: rgba(239,68,68,.95); }
+    .toast.info { background: rgba(59,130,246,.95); }
+    .toast.hide { opacity: 0; transform: translateY(-8px); }
+  </style>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <script>
+    // Provide SSE token globally if available
+    window.SSE_TOKEN = '{{ sse_token if sse_token is defined else "" }}';
+  </script>
+  {% include 'partials/header.html' %}
+  {% include 'partials/userbar.html' %}
+  {% include 'partials/flash.html' %}
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  {% block content %}{% endblock %}
+  <script>
+    // Global toast helper
+    window.showToast = function(message, type){
+      try {
+        const cont = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = 'toast ' + (type || 'info');
+        el.textContent = message;
+        cont.appendChild(el);
+        setTimeout(()=>{ el.classList.add('hide'); }, 2000);
+        setTimeout(()=>{ el.remove(); }, 2400);
+      } catch {}
+    }
+  </script>
+</body>
+</html>

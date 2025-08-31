@@ -1,7 +1,12 @@
+"""LEGACY MODULE — Prefer services.SearchService for new code.
+
+This engine remains for backward compatibility in a few utilities/tests.
+The active application paths use the unified adapter in `services/search_adapter.py`.
+"""
 # Enhanced Search Engine with FTS5
 import sqlite3
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict
 from dataclasses import dataclass
 from config import settings
 
@@ -26,14 +31,8 @@ class EnhancedSearchEngine:
         """Initialize database with FTS5"""
         conn = sqlite3.connect(self.db_path)
         
-        # Create enhanced FTS5 table
-        conn.execute("""
-            CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts5 USING fts5(
-                title, content, summary, tags, actions,
-                content='notes', content_rowid='id',
-                tokenize='porter unicode61'
-            )
-        """)
+        # Use existing notes_fts table maintained by app.py
+        # Standardize on notes_fts which is already synchronized everywhere
         
         # Create search analytics
         conn.execute("""
@@ -59,12 +58,12 @@ class EnhancedSearchEngine:
         
         rows = conn.execute("""
             SELECT n.*, 
-                   bm25(notes_fts5) as fts_score,
-                   snippet(notes_fts5, 1, '<mark>', '</mark>', '...', 32) as snippet
-            FROM notes_fts5 
-            JOIN notes n ON n.id = notes_fts5.rowid
-            WHERE notes_fts5 MATCH ? AND n.user_id = ?
-            ORDER BY bm25(notes_fts5)
+                   bm25(notes_fts) as fts_score,
+                   snippet(notes_fts, 1, '<mark>', '</mark>', '...', 32) as snippet
+            FROM notes_fts 
+            JOIN notes n ON n.id = notes_fts.rowid
+            WHERE notes_fts MATCH ? AND n.user_id = ?
+            ORDER BY bm25(notes_fts)
             LIMIT ?
         """, (fts_query, user_id, limit)).fetchall()
         

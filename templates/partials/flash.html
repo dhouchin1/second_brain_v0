@@ -1,0 +1,19 @@
+{% if flash and flash.message %}
+<div class="max-w-2xl mx-auto mt-4" id="flash-container">
+  <div class="rounded-lg border px-4 py-3 text-sm {% if flash.category == 'success' %}bg-green-500/15 border-green-400 text-green-200{% elif flash.category == 'error' %}bg-red-500/15 border-red-400 text-red-200{% else %}bg-blue-500/15 border-blue-400 text-blue-200{% endif %}">
+    {{ flash.message }}
+  </div>
+</div>
+<script>
+  // Auto-dismiss flash after 3 seconds
+  setTimeout(() => {
+    const el = document.getElementById('flash-container');
+    if (el) el.remove();
+  }, 3000);
+  // Also dismiss on click
+  document.getElementById('flash-container').addEventListener('click', () => {
+    const el = document.getElementById('flash-container');
+    if (el) el.remove();
+  });
+  </script>
+{% endif %}

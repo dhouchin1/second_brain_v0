@@ -1,3 +1,8 @@
+"""EXPERIMENTAL/LEGACY PROTOTYPE — Not used by current app.
+
+Kept for reference and experiments. The live application uses
+`services/search_adapter.py` via app.py endpoints.
+"""
 # search_engine.py - Enhanced search with FTS5 + sqlite-vec
 
 import sqlite3

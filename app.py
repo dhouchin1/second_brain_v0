@@ -1,6 +1,7 @@
-from search_engine import EnhancedSearchEngine, SearchResult
+# Legacy search_engine removed from app imports; unified service is used instead
 from discord_bot import SecondBrainCog
 from obsidian_sync import ObsidianSync
+from file_processor import FileProcessor
 import sqlite3
 from datetime import datetime, timedelta
 from fastapi import (
@@ -17,7 +18,7 @@ from fastapi import (
     HTTPException,
     status,
 )
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -27,6 +28,7 @@ import json
 import hashlib
 from urllib.parse import urlparse
 import secrets
+import uuid
 import os
 from llm_utils import ollama_summarize, ollama_generate_title
 from tasks import process_note
@@ -54,6 +56,28 @@ app.mount("/static", StaticFiles(directory=str(settings.base_dir / "static")), n
 
 # Search API router will be included after auth functions are defined
 
+@app.on_event("startup")
+def _ensure_base_directories():
+    """Ensure base filesystem locations exist for vault/uploads/audio.
+
+    Handles relative paths in .env by anchoring to the project base directory.
+    """
+    try:
+        # Uploads and audio (app-local)
+        pathlib.Path(settings.uploads_dir).mkdir(parents=True, exist_ok=True)
+        pathlib.Path(settings.audio_dir).mkdir(parents=True, exist_ok=True)
+        # Obsidian vault and subdirs
+        v = pathlib.Path(settings.vault_path)
+        if not v.is_absolute():
+            v = pathlib.Path(settings.base_dir) / v
+        v.mkdir(parents=True, exist_ok=True)
+        (v / ".secondbrain").mkdir(parents=True, exist_ok=True)
+        (v / "audio").mkdir(parents=True, exist_ok=True)
+        (v / "attachments").mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # Directory creation is best-effort; failures will be surfaced later in usage paths
+        pass
+
 def highlight(text, term):
     if not text or not term:
         return text
@@ -63,6 +87,24 @@ templates.env.filters['highlight'] = highlight
 
 def get_conn():
     return sqlite3.connect(str(settings.db_path))
+
+# --- Search helpers (unified service) ---
+def _get_search_service():
+    from services.search_adapter import SearchService
+    db_path = os.getenv('SQLITE_DB', str(settings.db_path))
+    return SearchService(db_path=db_path, vec_ext_path=os.getenv('SQLITE_VEC_PATH'))
+
+def _resolve_search_mode(filters: Optional[dict]) -> str:
+    mode = 'hybrid'
+    if filters and isinstance(filters, dict):
+        t = filters.get('type') or filters.get('mode')
+        if t in {'fts','keyword'}:
+            mode = 'keyword'
+        elif t in {'semantic','vector'}:
+            mode = 'semantic'
+        elif t in {'hybrid','both'}:
+            mode = 'hybrid'
+    return mode
 
 # --- Flash + CSRF helpers ---
 def render_page(request: Request, template_name: str, context: dict):
@@ -83,6 +125,15 @@ def render_page(request: Request, template_name: str, context: dict):
     if not token:
         token = secrets.token_urlsafe(32)
     ctx["csrf_token"] = token
+    # Inject SSE token for realtime auth on any page where a user is present
+    try:
+        u = ctx.get("user") or get_current_user_silent(request)
+        if u:
+            # Longer-lived token to avoid frequent SSE reconnect 401s
+            ctx["sse_token"] = create_file_token(u.id, "sse", ttl_seconds=60*60*8)
+    except Exception:
+        pass
+
     resp = templates.TemplateResponse(template_name, ctx)
     # ensure cookie set and clear flash
     if request.cookies.get("csrf_token") != token:
@@ -143,6 +194,17 @@ SECRET_KEY = "super-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# --- Signed URL support for file serving ---
+def create_file_token(user_id: int, filename: str, ttl_seconds: int = 600) -> str:
+    """Create a short-lived JWT token for accessing a specific file.
+
+    Encodes: user id, filename, and expiry. Used for img/pdf links where
+    cookies may not be reliably attached (e.g., cross-origin contexts).
+    """
+    expire = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+    payload = {"uid": user_id, "fn": filename, "exp": expire}
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -165,10 +227,9 @@ class DiscordWebhook(BaseModel):
     discord_user_id: Optional[int] = None
     timestamp: Optional[str] = None
 
-class SearchRequest(BaseModel):
-    query: str
-    filters: Optional[dict] = {}
-    limit: int = 20
+# Duplicate removed; SearchRequest is defined earlier
+
+# (moved below auth functions) Service-based search endpoint using unified adapter
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -364,26 +425,159 @@ def init_db():
         c.execute("ALTER TABLE notes ADD COLUMN user_id INTEGER")
     if 'actions' not in cols:
         c.execute("ALTER TABLE notes ADD COLUMN actions TEXT")
+    # New file-related columns used by capture pipeline
+    if 'file_filename' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN file_filename TEXT")
+    if 'file_type' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN file_type TEXT")
+    if 'file_mime_type' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN file_mime_type TEXT")
+    if 'file_size' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN file_size INTEGER")
+    if 'extracted_text' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN extracted_text TEXT")
+    if 'file_metadata' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN file_metadata TEXT")
+    # Web ingestion metadata
+    if 'source_url' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN source_url TEXT")
+    if 'web_metadata' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN web_metadata TEXT")
+    if 'screenshot_path' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN screenshot_path TEXT")
+    if 'content_hash' not in cols:
+        c.execute("ALTER TABLE notes ADD COLUMN content_hash TEXT")
 
-    # Update FTS if needed
-    fts_cols = [row[1] for row in c.execute("PRAGMA table_info(notes_fts)")]
-    if 'actions' not in fts_cols:
+    # Update FTS if needed (ensure both actions and extracted_text columns exist)
+    try:
+        fts_cols = [row[1] for row in c.execute("PRAGMA table_info(notes_fts)")]
+    except sqlite3.OperationalError:
+        fts_cols = []
+    if ('actions' not in fts_cols) or ('extracted_text' not in fts_cols):
         c.execute("DROP TABLE IF EXISTS notes_fts")
         c.execute('''
             CREATE VIRTUAL TABLE notes_fts USING fts5(
-                title, summary, tags, actions, content, content='notes', content_rowid='id'
+                title, summary, tags, actions, content, extracted_text,
+                content='notes', content_rowid='id'
             )
         ''')
-        rows = c.execute("SELECT id, title, summary, tags, actions, content FROM notes").fetchall()
+        rows = c.execute("SELECT id, title, summary, tags, actions, content, extracted_text FROM notes").fetchall()
         c.executemany(
-            "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content, extracted_text) VALUES (?, ?, ?, ?, ?, ?, ?)",
             rows,
         )
+
+    # Ensure notes_fts5 is populated as well (used by advanced search)
+    try:
+        count_fts5 = c.execute("SELECT count(*) FROM notes_fts5").fetchone()[0]
+    except sqlite3.OperationalError:
+        count_fts5 = 0
+    if count_fts5 == 0:
+        rows5 = c.execute("SELECT id, title, content, summary, tags, actions FROM notes").fetchall()
+        if rows5:
+            c.executemany(
+                "INSERT INTO notes_fts5(rowid, title, content, summary, tags, actions) VALUES (?, ?, ?, ?, ?, ?)",
+                rows5,
+            )
     
     conn.commit()
     conn.close()
 
 init_db()
+
+# --- Simple FIFO job worker for note processing ---
+import asyncio
+
+def _claim_next_pending_note():
+    conn = get_conn()
+    conn.isolation_level = None  # autocommit mode for immediate lock/retry simplicity
+    c = conn.cursor()
+    row = c.execute(
+        "SELECT id FROM notes WHERE status = 'pending' ORDER BY timestamp ASC LIMIT 1"
+    ).fetchone()
+    if not row:
+        conn.close()
+        return None
+    note_id = row[0]
+    # Attempt to claim atomically by status check
+    c.execute("UPDATE notes SET status='processing' WHERE id=? AND status='pending'", (note_id,))
+    if c.rowcount == 0:
+        conn.close()
+        return None
+    conn.close()
+    return note_id
+
+async def _process_note_id(note_id: int):
+    conn = get_conn()
+    conn.close()  # no-op here; processing uses helpers
+    try:
+        timeout = getattr(settings, 'processing_timeout_seconds', 600) or 600
+        async def _run():
+            if REALTIME_AVAILABLE:
+                await process_note_with_status(note_id)
+            else:
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, process_note, note_id)
+        await asyncio.wait_for(_run(), timeout=timeout)
+    except asyncio.TimeoutError:
+        conn = get_conn()
+        conn.execute("UPDATE notes SET status='failed:timeout' WHERE id=?", (note_id,))
+        conn.commit()
+        conn.close()
+    except Exception:
+        # Mark as failed
+        conn = get_conn()
+        conn.execute("UPDATE notes SET status='failed' WHERE id=?", (note_id,))
+        conn.commit()
+        conn.close()
+    return True
+
+async def job_worker():
+    # Simple in-process worker pool honoring configured concurrency
+    limit = getattr(settings, 'processing_concurrency', 2) or 1
+    active: set[asyncio.Task] = set()
+    async def _spawn_one():
+        note_id = _claim_next_pending_note()
+        if note_id is None:
+            return False
+        t = asyncio.create_task(_process_note_id(note_id))
+        active.add(t)
+        t.add_done_callback(lambda fut: active.discard(fut))
+        return True
+    while True:
+        # Refill up to limit
+        spawned = False
+        while len(active) < limit:
+            claimed = await _spawn_one()
+            spawned = spawned or claimed
+            if not claimed:
+                break
+        await asyncio.sleep(0.2 if spawned or active else 1.0)
+
+@app.on_event("startup")
+async def _start_worker():
+    if getattr(app.state, "job_worker_started", False):
+        return
+    app.state.job_worker_started = True
+    asyncio.create_task(job_worker())
+
+@app.on_event("startup")
+async def _start_automation():
+    """Start automated relationship discovery system"""
+    if getattr(app.state, "automation_started", False):
+        return
+    app.state.automation_started = True
+    
+    # TEMPORARILY DISABLED to resolve database locking issues
+    # try:
+    #     from automated_relationships import get_automation_engine
+    #     automation_engine = get_automation_engine(str(settings.db_path))
+    #     app.state.automation_engine = automation_engine
+    #     asyncio.create_task(automation_engine.start_automation())
+    #     print("🤖 Automated relationship discovery started")
+    # except ImportError:
+    #     print("⚠️  Automated relationships not available")
+    print("⚠️  Automated relationship discovery temporarily disabled to resolve database locking")
 
 # Add real-time status endpoints if available
 if REALTIME_AVAILABLE:
@@ -549,6 +743,101 @@ def dashboard(
             (current_user.id,),
         ).fetchall()
     notes = [dict(zip([col[0] for col in c.description], row)) for row in rows]
+    
+    # Helpers to compute metadata for display
+    def _word_count(text: str | None) -> int:
+        if not text:
+            return 0
+        return len([w for w in text.split() if w.strip()])
+
+    def _format_hms(total_seconds: float) -> str:
+        try:
+            total_seconds = int(round(total_seconds))
+            h, rem = divmod(total_seconds, 3600)
+            m, s = divmod(rem, 60)
+            return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+        except Exception:
+            return ""
+
+    def _probe_duration_hms(path: str) -> str:
+        """Use ffprobe to get media duration in seconds and format as H:MM:SS."""
+        try:
+            import subprocess
+            result = subprocess.run(
+                [
+                    'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+                    '-of', 'default=noprint_wrappers=1:nokey=1', path
+                ],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                seconds = float(result.stdout.strip())
+                return _format_hms(seconds)
+        except Exception:
+            pass
+        return ""
+
+    def _audio_duration_from_note(note: dict) -> str:
+        """Determine audio duration from converted wav if present, else via ffprobe on original."""
+        try:
+            import wave
+            # Prefer audio_filename field
+            fname = (note.get('audio_filename') or '').strip() or (note.get('file_filename') or '').strip()
+            if not fname:
+                return ""
+            p = settings.audio_dir / fname
+            # Prefer converted WAV if present
+            if not p.suffix.lower().endswith('.wav'):
+                alt = p.with_suffix('.converted.wav')
+                if alt.exists():
+                    p = alt
+            if p.exists() and p.suffix.lower().endswith('.wav'):
+                with wave.open(str(p), 'rb') as wf:
+                    frames = wf.getnframes()
+                    rate = wf.getframerate()
+                    if rate:
+                        return _format_hms(frames / float(rate))
+            # Fall back to probing the original container via ffprobe
+            if (settings.audio_dir / fname).exists():
+                return _probe_duration_hms(str(settings.audio_dir / fname))
+        except Exception:
+            pass
+        return ""
+
+    def _tz_abbrev(ts: str | None) -> str:
+        """Return local timezone abbreviation for the given timestamp string.
+        Expects format %Y-%m-%d %H:%M:%S and treats it as local time.
+        """
+        if not ts:
+            return ""
+        try:
+            import time
+            tm = time.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            epoch = time.mktime(tm)
+            return time.strftime('%Z', time.localtime(epoch)) or ""
+        except Exception:
+            return ""
+    # Enrich notes with signed file URLs for image previews and add meta (duration/word count)
+    for n in notes:
+        try:
+            ff = n.get("file_filename")
+            ft = (n.get("file_type") or "").lower()
+            mt = (n.get("file_mime_type") or "").lower()
+            typ = (n.get("type") or "").lower()
+            if ff and (ft == "image" or typ == "image" or mt.startswith("image/") or ft == "document" or mt == "application/pdf"):
+                tok = create_file_token(current_user.id, ff, ttl_seconds=600)
+                n["file_url"] = f"/files/{ff}?token={tok}"
+        except Exception:
+            # Non-fatal; previews just won't render
+            pass
+        # Add word count and audio duration for display
+        try:
+            n["word_count"] = _word_count(n.get("content") or n.get("summary") or "")
+            if (n.get("type") or "").lower() == "audio":
+                n["audio_duration_hms"] = _audio_duration_from_note(n)
+            n["tz_abbr"] = _tz_abbrev(n.get("timestamp"))
+        except Exception:
+            pass
     notes_by_day = defaultdict(list)
     for note in notes:
         day = note["timestamp"][:10] if note.get("timestamp") else "Unknown"
@@ -556,7 +845,8 @@ def dashboard(
     # Recent notes panel data (always last 10)
     recent_rows = c.execute(
         """
-        SELECT id, title, type, timestamp, audio_filename, status, tags
+        SELECT id, title, type, timestamp, audio_filename, status, tags,
+               file_filename, file_type, file_mime_type
         FROM notes
         WHERE user_id = ?
         ORDER BY (tags LIKE '%pinned%') DESC, timestamp DESC
@@ -564,8 +854,9 @@ def dashboard(
         """,
         (current_user.id,),
     ).fetchall()
-    recent_notes = [
-        {
+    recent_notes = []
+    for r in recent_rows:
+        item = {
             "id": r[0],
             "title": r[1],
             "type": r[2],
@@ -573,9 +864,28 @@ def dashboard(
             "audio_filename": r[4],
             "status": r[5],
             "tags": r[6],
+            "file_filename": r[7],
+            "file_type": r[8],
+            "file_mime_type": r[9],
         }
-        for r in recent_rows
-    ]
+        ff = item.get("file_filename")
+        ft = (item.get("file_type") or "").lower()
+        mt = (item.get("file_mime_type") or "").lower()
+        typ = (item.get("type") or "").lower()
+        try:
+            if ff and (ft == "image" or typ == "image" or mt.startswith("image/") or ft == "document" or mt == "application/pdf"):
+                tok = create_file_token(current_user.id, ff, ttl_seconds=600)
+                item["file_url"] = f"/files/{ff}?token={tok}"
+        except Exception:
+            pass
+        # Add lightweight metadata for recent list (duration if audio)
+        try:
+            if (item.get("type") or "").lower() == "audio":
+                item["audio_duration_hms"] = _audio_duration_from_note(item)
+            item["tz_abbr"] = _tz_abbrev(item.get("timestamp"))
+        except Exception:
+            pass
+        recent_notes.append(item)
     return render_page(
         request,
         "dashboard.html",
@@ -586,8 +896,258 @@ def dashboard(
             "last_sync": get_last_sync(),
             "user": current_user,
             "recent_notes": recent_notes,
+            # Provide a signed SSE token for auth without headers
+            "sse_token": create_file_token(current_user.id, "sse")
         },
     )
+
+# =========================
+# Resumable Upload Endpoints
+# =========================
+from pathlib import Path
+
+def _get_incoming_dir() -> Path:
+    d = settings.uploads_dir / "incoming"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+def _get_manifest_path(upload_id: str) -> Path:
+    return _get_incoming_dir() / f"{upload_id}.json"
+
+def _get_part_path(upload_id: str) -> Path:
+    return _get_incoming_dir() / f"{upload_id}.part"
+
+def _load_manifest(upload_id: str) -> dict | None:
+    p = _get_manifest_path(upload_id)
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return None
+
+def _save_manifest(upload_id: str, data: dict) -> None:
+    p = _get_manifest_path(upload_id)
+    p.write_text(json.dumps(data))
+
+@app.post("/upload/init")
+async def upload_init(
+    request: Request,
+    data: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Initialize a resumable upload.
+
+    Expects JSON: { filename: str, total_size?: int, mime_type?: str }
+    Returns: { upload_id, offset }
+    Requires CSRF via X-CSRF-Token header matching cookie.
+    """
+    csrf_header = request.headers.get("X-CSRF-Token")
+    if not validate_csrf(request, csrf_header):
+        raise HTTPException(status_code=400, detail="Invalid CSRF token")
+
+    filename = (data or {}).get("filename")
+    total_size = (data or {}).get("total_size")
+    mime_type = (data or {}).get("mime_type")
+    if not filename:
+        raise HTTPException(status_code=400, detail="filename required")
+
+    upload_id = uuid.uuid4().hex
+    manifest = {
+        "upload_id": upload_id,
+        "filename": filename,
+        "total_size": int(total_size) if total_size is not None else None,
+        "mime_type": mime_type,
+        "created_by": current_user.id,
+        "created_at": datetime.utcnow().isoformat(),
+        "status": "active",
+    }
+    _save_manifest(upload_id, manifest)
+    # Ensure empty part file
+    _get_part_path(upload_id).write_bytes(b"")
+    return {"upload_id": upload_id, "offset": 0}
+
+@app.get("/upload/status")
+async def upload_status(
+    request: Request,
+    upload_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    manifest = _load_manifest(upload_id)
+    if not manifest or manifest.get("created_by") != current_user.id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    part_path = _get_part_path(upload_id)
+    size = part_path.stat().st_size if part_path.exists() else 0
+    return {
+        "upload_id": upload_id,
+        "offset": size,
+        "status": manifest.get("status", "active"),
+        "filename": manifest.get("filename"),
+        "total_size": manifest.get("total_size"),
+    }
+
+@app.put("/upload/chunk")
+async def upload_chunk(
+    request: Request,
+    upload_id: str = Query(...),
+    offset: int = Query(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Append a chunk to an active upload.
+
+    Query params: upload_id, offset (expected start position)
+    Body: raw bytes (Content-Length required)
+    CSRF: X-CSRF-Token header required
+    """
+    csrf_header = request.headers.get("X-CSRF-Token")
+    if not validate_csrf(request, csrf_header):
+        raise HTTPException(status_code=400, detail="Invalid CSRF token")
+
+    manifest = _load_manifest(upload_id)
+    if not manifest or manifest.get("created_by") != current_user.id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    if manifest.get("status") != "active":
+        raise HTTPException(status_code=400, detail="Upload not active")
+
+    part_path = _get_part_path(upload_id)
+    part_path.parent.mkdir(parents=True, exist_ok=True)
+    current_size = part_path.stat().st_size if part_path.exists() else 0
+    if current_size != int(offset):
+        # Client should resume from server-reported offset
+        return JSONResponse({"expected_offset": current_size}, status_code=409)
+
+    # Read raw body in chunks and append
+    max_size = settings.max_file_size
+    total_after = current_size
+    try:
+        with open(part_path, "ab") as out:
+            async for chunk in request.stream():
+                if not chunk:
+                    continue
+                total_after += len(chunk)
+                if total_after > max_size:
+                    raise HTTPException(status_code=400, detail=f"File too large (>{max_size} bytes)")
+                out.write(chunk)
+        return {"upload_id": upload_id, "offset": total_after}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chunk append failed: {e}")
+
+@app.post("/upload/finalize")
+async def upload_finalize(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    upload_id: str = Body(..., embed=True),
+    note: str = Body(""),
+    tags: str = Body(""),
+    current_user: User = Depends(get_current_user),
+):
+    """Finalize an upload and create a note, mirroring /capture for files."""
+    csrf_header = request.headers.get("X-CSRF-Token")
+    if not validate_csrf(request, csrf_header):
+        raise HTTPException(status_code=400, detail="Invalid CSRF token")
+
+    manifest = _load_manifest(upload_id)
+    if not manifest or manifest.get("created_by") != current_user.id:
+        raise HTTPException(status_code=404, detail="Upload not found")
+    if manifest.get("status") != "active":
+        raise HTTPException(status_code=400, detail="Upload not active")
+
+    part_path = _get_part_path(upload_id)
+    if not part_path.exists():
+        raise HTTPException(status_code=400, detail="No data uploaded")
+
+    # Process the saved file
+    processor = FileProcessor()
+    result = processor.process_saved_file(part_path, manifest.get("filename") or "uploaded.bin")
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=f"File processing failed: {result.get('error')}")
+
+    manifest["status"] = "finalized"
+    _save_manifest(upload_id, manifest)
+
+    file_info = result['file_info']
+    note_type = file_info['category']
+    stored_filename = result['stored_filename']
+    extracted_text = result.get('extracted_text', "")
+    file_metadata = {
+        'original_filename': file_info['original_filename'],
+        'mime_type': file_info['mime_type'],
+        'size_bytes': file_info['size_bytes'],
+        'processing_type': result['processing_type'],
+        'metadata': result.get('metadata'),
+    }
+    processing_status = "pending" if note_type == 'audio' else "complete"
+    content = (note or "").strip()
+    if processing_status == "complete" and not content and extracted_text:
+        content = extracted_text[:1000]
+
+    title = content[:60] if content else (f"File: {file_info['original_filename']}" if file_info['original_filename'] else "New Note")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Save to database
+    conn = get_conn()
+    c = conn.cursor()
+    try:
+        c.execute(
+            """
+            INSERT INTO notes (
+                title, content, summary, tags, actions, type, timestamp,
+                audio_filename, file_filename, file_type, file_mime_type,
+                file_size, extracted_text, file_metadata, status, user_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                title,
+                content,
+                "",
+                tags,
+                "",
+                note_type,
+                now,
+                stored_filename if note_type == 'audio' else None,
+                stored_filename,
+                note_type,
+                file_metadata.get('mime_type'),
+                file_metadata.get('size_bytes'),
+                extracted_text,
+                json.dumps(file_metadata, default=str) if file_metadata else None,
+                processing_status,
+                current_user.id,
+            ),
+        )
+        note_id = c.lastrowid
+        c.execute(
+            """
+            INSERT INTO notes_fts(rowid, title, summary, tags, actions, content, extracted_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (note_id, title, "", tags, "", content, extracted_text),
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    finally:
+        conn.close()
+
+    # Queue background processing for audio
+    try:
+        if processing_status == "pending":
+            from tasks_enhanced import process_note_with_status
+            background_tasks.add_task(process_note_with_status, note_id)
+            return {
+                "success": True,
+                "id": note_id,
+                "status": processing_status,
+                "file_type": note_type,
+                "message": "Upload finalized and queued for processing",
+            }
+    except Exception:
+        pass
+
+    return {"success": True, "id": note_id, "status": processing_status, "file_type": note_type, "message": "Upload finalized"}
 
 @app.post("/api/notes/{note_id}/update")
 async def api_update_note(
@@ -603,6 +1163,29 @@ async def api_update_note(
     csrf_header = request.headers.get("X-CSRF-Token") if request else None
     if not validate_csrf(request, csrf_header):
         raise HTTPException(status_code=400, detail="Invalid CSRF token")
+
+@app.get("/api/sse-token")
+async def api_sse_token(request: Request):
+    """Return a fresh signed SSE token for the current user.
+
+    Used by the frontend to refresh EventSource tokens when a page stays open
+    for long periods and the previous token expires.
+    """
+    user = get_current_user_silent(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    # Issue a fresh token (8h)
+    token = create_file_token(user.id, "sse", ttl_seconds=60*60*8)
+    # Support cross-origin consumption similar to SSE endpoints
+    origin = request.headers.get('origin')
+    headers = {}
+    if origin:
+        headers.update({
+            "Access-Control-Allow-Origin": origin,
+            "Vary": "Origin",
+            "Access-Control-Allow-Credentials": "true",
+        })
+    return JSONResponse({"token": token}, headers=headers)
 
     fields = {k: v for k, v in data.items() if k in {"title", "tags", "content"}}
     if not fields:
@@ -649,57 +1232,32 @@ async def api_update_note(
 
     return {"success": True, "note": {"id": note_id, **fields}}
 
-# Enhanced Search Endpoint
+# Enhanced Search Endpoint (now via SearchService)
 @app.post("/api/search/enhanced")
 async def enhanced_search(
-    request: SearchRequest,
+    request: "SearchRequest",
     current_user: User = Depends(get_current_user)
 ):
-    """Enhanced search with FTS and semantic similarity"""
-    conn = get_conn()
-    c = conn.cursor()
-    
-    # Base FTS search
-    base_query = """
-        SELECT n.*, rank FROM notes_fts fts
-        JOIN notes n ON n.id = fts.rowid
-        WHERE notes_fts MATCH ? AND n.user_id = ?
+    """Enhanced search delegating to the unified SearchService.
+
+    Applies optional filters client-side for tags/type to preserve previous behavior.
     """
-    
-    params = [request.query, current_user.id]
-    
-    # Add filters
-    if request.filters:
-        if 'type' in request.filters:
-            base_query += " AND n.type = ?"
-            params.append(request.filters['type'])
-        
-        if 'tags' in request.filters:
-            base_query += " AND n.tags LIKE ?"
-            params.append(f"%{request.filters['tags']}%")
-        
-        if 'date_from' in request.filters:
-            base_query += " AND date(n.timestamp) >= date(?)"
-            params.append(request.filters['date_from'])
-    
-    base_query += f" ORDER BY rank LIMIT {request.limit}"
-    
-    rows = c.execute(base_query, params).fetchall()
-    notes = [dict(zip([col[0] for col in c.description], row)) for row in rows]
-    
-    # Log search
-    c.execute(
-        "INSERT INTO search_analytics (user_id, query, results_count, search_type) VALUES (?, ?, ?, ?)",
-        (current_user.id, request.query, len(notes), "fts")
-    )
-    
-    conn.commit()
-    conn.close()
-    
+    svc = _get_search_service()
+    f = request.filters or {}
+    mode = _resolve_search_mode(f)
+    rows = svc.search(request.query, mode=mode, k=request.limit or 20)
+    notes = [{k: row[k] for k in row.keys()} for row in rows]
+    # Apply simple filters client-side to match legacy endpoint
+    if 'tags' in f and f['tags']:
+        tag_q = str(f['tags']).strip()
+        notes = [n for n in notes if tag_q in (n.get('tags') or '')]
+    if 'type' in f and f['type'] not in {'fts','keyword','semantic','vector','hybrid','both'}:
+        notes = [n for n in notes if n.get('type') == f['type']]
     return {
         "results": notes,
         "total": len(notes),
-        "query": request.query
+        "query": request.query,
+        "mode": mode
     }
 
 
@@ -729,9 +1287,24 @@ class SearchRequest(BaseModel):
     filters: Optional[dict] = {}
     limit: int = 20
 
+# Service-based search endpoint using unified adapter
+@app.post("/api/search/service")
+async def search_service_endpoint(
+    request: "SearchRequest",
+    current_user: User = Depends(get_current_user)
+):
+    svc = _get_search_service()
+    rows = svc.search(request.query, mode='hybrid', k=request.limit or 20)
+    data = [{k: row[k] for k in row.keys()} for row in rows]
+    return {
+        "success": True,
+        "data": data,
+        "metadata": {"count": len(data), "mode": "hybrid"}
+    }
+
 # Discord Integration
-@app.post("/webhook/discord")
-async def webhook_discord(
+@app.post("/webhook/discord/legacy", include_in_schema=False)
+async def webhook_discord_legacy1(
     data: DiscordWebhook,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user_from_discord)
@@ -875,50 +1448,23 @@ Attendees: {', '.join(data.attendees)}
     
     return {"status": "ok", "event_created": True}
 
-# Enhanced Search
+# Enhanced Search (now backed by unified SearchService)
 @app.post("/api/search")
 async def enhanced_search(
     request: SearchRequest,
     current_user: User = Depends(get_current_user)
 ):
-    """Advanced search with filters and semantic similarity"""
-    conn = get_conn()
-    c = conn.cursor()
-    
-    # Base FTS search
-    base_query = """
-        SELECT n.*, rank FROM notes_fts fts
-        JOIN notes n ON n.id = fts.rowid
-        WHERE notes_fts MATCH ? AND n.user_id = ?
-    """
-    
-    params = [request.query, current_user.id]
-    
-    # Add filters
-    if request.filters:
-        if 'type' in request.filters:
-            base_query += " AND n.type = ?"
-            params.append(request.filters['type'])
-        
-        if 'tags' in request.filters:
-            base_query += " AND n.tags LIKE ?"
-            params.append(f"%{request.filters['tags']}%")
-        
-        if 'date_from' in request.filters:
-            base_query += " AND date(n.timestamp) >= date(?)"
-            params.append(request.filters['date_from'])
-    
-    base_query += f" ORDER BY rank LIMIT {request.limit}"
-    
-    rows = c.execute(base_query, params).fetchall()
-    notes = [dict(zip([col[0] for col in c.description], row)) for row in rows]
-    
-    conn.close()
-    
+    """Advanced search with filters and semantic similarity via SearchService."""
+    svc = _get_search_service()
+    mode = _resolve_search_mode(request.filters)
+    rows = svc.search(request.query, mode=mode, k=request.limit or 20)
+    # Convert sqlite3.Row to dict
+    notes = [{k: row[k] for k in row.keys()} for row in rows]
     return {
         "results": notes,
         "total": len(notes),
-        "query": request.query
+        "query": request.query,
+        "mode": mode
     }
 
 # Analytics
@@ -1039,6 +1585,29 @@ async def batch_operations(
     
     return {"results": results}
 
+# Debug: list recent uploads with file info
+@app.get("/api/debug/uploads")
+async def debug_recent_uploads(current_user: User = Depends(get_current_user)):
+    conn = get_conn()
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    rows = c.execute(
+        """
+        SELECT id, title, type, status, file_filename, file_type, file_mime_type, file_size, timestamp
+        FROM notes
+        WHERE user_id = ? AND file_filename IS NOT NULL AND file_filename != ''
+        ORDER BY id DESC
+        LIMIT 20
+        """,
+        (current_user.id,),
+    ).fetchall()
+    conn.close()
+    return {
+        "success": True,
+        "count": len(rows),
+        "items": [dict(r) for r in rows],
+    }
+
 # Helper function for Discord user authentication
 async def get_current_user_from_discord(discord_id: int = None):
     """Map Discord user to Second Brain user"""
@@ -1062,8 +1631,8 @@ async def get_current_user_from_discord(discord_id: int = None):
 
 
 # Discord Integration
-@app.post("/webhook/discord")
-async def webhook_discord(
+@app.post("/webhook/discord/legacy2", include_in_schema=False)
+async def webhook_discord_legacy2(
     data: DiscordWebhook,
     current_user: User = Depends(get_current_user)
 ):
@@ -1129,7 +1698,47 @@ def detail(
         return RedirectResponse("/", status_code=302)
     note = dict(zip([col[0] for col in c.description], row))
     related = find_related_notes(note_id, note.get("tags", ""), current_user.id, conn)
-    return render_page(request, "detail.html", {"note": note, "related": related, "user": current_user})
+    
+    # Enhance with automated similar notes
+    try:
+        from ui_enhancements import get_ui_enhancer
+        enhancer = get_ui_enhancer(str(settings.db_path))
+        similar_widget = enhancer.get_similar_notes_widget(note_id, current_user.id, limit=6)
+        
+        # Convert to format compatible with existing template
+        if similar_widget.get("enabled") and similar_widget.get("notes"):
+            automated_related = []
+            for sim_note in similar_widget["notes"]:
+                automated_related.append({
+                    "id": sim_note["id"],
+                    "title": sim_note["title"],
+                    "summary": sim_note["snippet"],
+                    "similarity": sim_note["similarity"],
+                    "relationship_type": sim_note["relationship_type"]
+                })
+            
+            # Merge with existing related notes, avoiding duplicates
+            existing_ids = {r["id"] for r in related}
+            for auto_rel in automated_related:
+                if auto_rel["id"] not in existing_ids:
+                    related.append(auto_rel)
+        
+    except Exception as e:
+        print(f"Failed to enhance detail with similar notes: {e}")
+    
+    # Build signed file URL if file exists
+    file_url = None
+    if note.get("file_filename"):
+        try:
+            tok = create_file_token(current_user.id, note["file_filename"], ttl_seconds=600)
+            file_url = f"/files/{note['file_filename']}?token={tok}"
+        except Exception:
+            file_url = f"/files/{note['file_filename']}"
+    return render_page(
+        request,
+        "detail.html",
+        {"note": note, "related": related, "user": current_user, "file_url": file_url},
+    )
 
 @app.get("/edit/{note_id}")
 def edit_get(
@@ -1245,6 +1854,81 @@ def get_audio(filename: str, current_user: User = Depends(get_current_user)):
         return FileResponse(str(audio_path))
     raise HTTPException(status_code=404, detail="Audio not found")
 
+@app.get("/files/{filename}")
+def get_file(filename: str, request: Request, token: str | None = None):
+    """Serve uploaded files (images, PDFs, etc.) with auth.
+
+    AuthN strategies:
+    - Cookie-based session (preferred, same-origin)
+    - Signed URL token (?token=...) for when cookies are not sent
+    """
+    import mimetypes
+
+    # 1) Cookie/session-based auth (same origin)
+    current_user = get_current_user_silent(request)
+
+    # 2) Fallback to signed file token if no user from cookie
+    if not current_user and token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            uid = payload.get("uid")
+            fn = payload.get("fn")
+            if not uid or not fn or fn != filename:
+                raise HTTPException(status_code=401, detail="Invalid token")
+            # Lookup user from id
+            conn = get_conn()
+            c = conn.cursor()
+            urow = c.execute("SELECT id, username, hashed_password FROM users WHERE id=?", (uid,)).fetchone()
+            conn.close()
+            if not urow:
+                raise HTTPException(status_code=401, detail="User not found")
+            current_user = UserInDB(id=urow[0], username=urow[1], hashed_password=urow[2])
+        except JWTError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Verify file belongs to this user
+    conn = get_conn()
+    c = conn.cursor()
+    row = c.execute(
+        "SELECT file_type, file_mime_type FROM notes WHERE file_filename = ? AND user_id = ?",
+        (filename, current_user.id),
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file_type, mime_type = row
+
+    # Determine file path based on type
+    if file_type == 'audio':
+        file_path = settings.audio_dir / filename
+    else:
+        file_path = settings.uploads_dir / filename
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Determine content type
+    content_type = mime_type or mimetypes.guess_type(str(file_path))[0] or 'application/octet-stream'
+
+    # If caller explicitly requests download, set Content-Disposition via filename.
+    # Otherwise, omit filename so the browser renders inline (images/PDFs in <img>/<embed>). 
+    if request.query_params.get('download'):
+        return FileResponse(
+            str(file_path),
+            media_type=content_type,
+            filename=filename,
+        )
+    else:
+        return FileResponse(
+            str(file_path),
+            media_type=content_type,
+        )
+
 @app.post("/capture")
 async def capture(
     request: Request,
@@ -1254,175 +1938,265 @@ async def capture(
     file: UploadFile = File(None),
     csrf_token: str | None = Form(None),
 ):
-    # COMPREHENSIVE DEBUG LOGGING
-    print("=" * 60)
-    print("CAPTURE ENDPOINT DEBUG START")
-    print(f"Request Method: {request.method}")
-    print(f"Request URL: {request.url}")
-    print(f"Content-Type: {request.headers.get('content-type', 'Not set')}")
-    print(f"Accept: {request.headers.get('accept', 'Not set')}")
-    print(f"User-Agent: {request.headers.get('user-agent', 'Not set')}")
+    """Enhanced capture endpoint with multi-file type support"""
+    import logging
+    logger = logging.getLogger(__name__)
     
-    # Auth debugging
+    # Auth validation
     current_user = get_current_user_silent(request)
-    print(f"Current User: {current_user.username if current_user else 'None'}")
     if not current_user:
-        print("No authenticated user, redirecting to login")
         return RedirectResponse("/login", status_code=302)
     
-    # Form data debugging
-    print(f"Form Data - note: '{note}' (length: {len(note)})")
-    print(f"Form Data - tags: '{tags}' (length: {len(tags)})")
-    print(f"Form Data - csrf_token: '{csrf_token}' (present: {bool(csrf_token)})")
-    print(f"File Upload: {file.filename if file else 'None'}")
-    
-    # Headers debugging
-    print("Request Headers:")
-    for name, value in request.headers.items():
-        if name.lower() in ['authorization', 'cookie', 'x-csrf-token']:
-            print(f"  {name}: {'***' if 'token' in name.lower() else value[:20]}...")
-        else:
-            print(f"  {name}: {value}")
-    
-    # Cookies debugging
-    print("Request Cookies:")
-    for name, value in request.cookies.items():
-        if 'token' in name.lower():
-            print(f"  {name}: {value[:10]}...")
-        else:
-            print(f"  {name}: {value}")
-    
-    print("=" * 60)
-    
-    # CSRF token validation - primarily from form data for fetch requests
-    header_token = request.headers.get("X-CSRF-Token") 
-    cookie_token = request.cookies.get("csrf_token")
-    
-    # For debugging - remove in production
-    print(f"DEBUG CSRF - Form token exists: {bool(csrf_token)}")
-    print(f"DEBUG CSRF - Form token value: {csrf_token[:10] if csrf_token else 'None'}...")
-    print(f"DEBUG CSRF - Cookie token exists: {bool(cookie_token)}")  
-    print(f"DEBUG CSRF - Cookie token value: {cookie_token[:10] if cookie_token else 'None'}...")
-    print(f"DEBUG CSRF - Header token: {bool(header_token)}")
-    
-    # Validate CSRF token (form data takes precedence for multipart requests)
+    # CSRF validation
     csrf_valid = validate_csrf(request, csrf_token)
-    
-    # If form token fails, try header token as fallback
-    if not csrf_valid and header_token:
-        csrf_valid = validate_csrf(request, header_token)
+    if not csrf_valid:
+        header_token = request.headers.get("X-CSRF-Token")
+        if header_token:
+            csrf_valid = validate_csrf(request, header_token)
     
     if not csrf_valid:
         error_msg = "CSRF token validation failed"
-        print(f"DEBUG CSRF ERROR: {error_msg}")
-        print(f"  Form token valid: {validate_csrf(request, csrf_token)}")
-        print(f"  Header token valid: {validate_csrf(request, header_token) if header_token else 'N/A - no header token'}")
-        print(f"  Expected (cookie): {cookie_token}")
-        print(f"  Received (form): {csrf_token}")
-        print(f"  Received (header): {header_token}")
-        print("CAPTURE ENDPOINT DEBUG END - CSRF ERROR")
-        print("=" * 60)
-        
         if "application/json" in request.headers.get("accept", ""):
             raise HTTPException(status_code=400, detail=error_msg)
         return RedirectResponse("/", status_code=302)
+    
+    # Process the submission
     content = note.strip()
-    note_type = "note"
-    audio_filename = None
+    note_type = "text"  # Default type
+    stored_filename = None
+    extracted_text = ""
+    file_metadata = {}
+    processing_status = "complete"  # Text notes are complete immediately
+    source_url = None
+    web_metadata = None
+    screenshot_path = None
+    content_hash = None
+    
+    # Check for web links in content (NEW WEB INGESTION FEATURE)
+    if content and not file:  # Only check text content, not files
+        try:
+            from url_utils import extract_main_urls
+            from web_extractor import extract_web_content_sync
+            import hashlib
+            
+            urls = extract_main_urls(content)
+            if urls:
+                # For now, extract content from the first URL found
+                url = urls[0]
+                logger.info(f"Detected URL in content: {url}")
+                
+                # Extract web content
+                web_result = extract_web_content_sync(url)
+                
+                if web_result.success:
+                    logger.info(f"Successfully extracted web content from {url}")
+                    # Update note with web content
+                    note_type = "web_content"
+                    source_url = url
+                    content_hash = hashlib.sha256(web_result.content.encode() if web_result.content else b"").hexdigest()[:16]
+                    screenshot_path = web_result.screenshot_path
+                    
+                    # Store web metadata
+                    web_metadata = {
+                        'url': url,
+                        'title': web_result.title,
+                        'extraction_time': web_result.extraction_time,
+                        'content_length': len(web_result.content) if web_result.content else 0,
+                        'metadata': web_result.metadata
+                    }
+                    
+                    # Use extracted content if available
+                    if web_result.content:
+                        extracted_text = web_result.content
+                        # Keep original pasted content but add extracted content
+                        content = f"Original: {content}\n\n--- Extracted Content ---\n{web_result.text_content[:2000]}"
+                        if len(web_result.text_content) > 2000:
+                            content += "...\n[Content truncated - see full content in extracted_text field]"
+                    
+                    # Set processing status
+                    processing_status = "complete"
+                    
+                    logger.info(f"Web content extraction successful for {url}")
+                else:
+                    logger.warning(f"Failed to extract web content from {url}: {web_result.error_message}")
+                    # Still save the URL for reference
+                    source_url = url
+                    web_metadata = {'url': url, 'error': web_result.error_message}
+                    
+        except Exception as e:
+            import traceback
+            logger.error(f"Web content extraction failed: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            # Continue with normal processing if web extraction fails
+    
+    # Handle file upload if present
+    if file and file.filename:
+        try:
+            # Stream file to a temporary path to keep memory flat
+            import uuid
+            tmp_dir = settings.uploads_dir
+            tmp_dir.mkdir(exist_ok=True)
+            tmp_path = tmp_dir / f"upload-{uuid.uuid4().hex}.part"
+            size = 0
+            CHUNK = 1024 * 1024  # 1MB
+            with open(tmp_path, 'wb') as out:
+                while True:
+                    chunk = await file.read(CHUNK)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    if size > settings.max_file_size:
+                        out.flush()
+                        out.close()
+                        try:
+                            tmp_path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        error_msg = f"File too large ({size} bytes, max {settings.max_file_size})"
+                        if "application/json" in request.headers.get("accept", ""):
+                            raise HTTPException(status_code=400, detail=error_msg)
+                        return RedirectResponse("/?error=" + error_msg, status_code=302)
+                    out.write(chunk)
 
-    if file:
-        settings.audio_dir.mkdir(exist_ok=True)
-        timestamp = datetime.now().strftime("%Y-%m-%d-%H%M")
-        safe_name = f"{timestamp}-{file.filename.replace(' ', '_')}"
-        audio_path = settings.audio_dir / safe_name
-        with open(audio_path, "wb") as out_f:
-            out_f.write(await file.read())
-        audio_filename = safe_name
-        note_type = "audio"
-
+            # Process saved file
+            processor = FileProcessor()
+            result = processor.process_saved_file(tmp_path, file.filename)
+            
+            if not result['success']:
+                error_msg = f"File processing failed: {result['error']}"
+                if "application/json" in request.headers.get("accept", ""):
+                    raise HTTPException(status_code=400, detail=error_msg)
+                return RedirectResponse("/?error=" + error_msg, status_code=302)
+            
+            # Update note details based on file processing
+            file_info = result['file_info']
+            note_type = file_info['category']
+            stored_filename = result['stored_filename']
+            extracted_text = result['extracted_text']
+            file_metadata = {
+                'original_filename': file_info['original_filename'],
+                'mime_type': file_info['mime_type'],
+                'size_bytes': file_info['size_bytes'],
+                'processing_type': result['processing_type'],
+                'metadata': result['metadata']
+            }
+            
+            # Set processing status based on file type
+            if note_type == 'audio':
+                processing_status = "pending"  # Audio needs transcription
+            else:
+                processing_status = "complete"  # Images/PDFs are processed immediately
+                # Use extracted text as content if no manual note provided
+                if not content and extracted_text:
+                    content = extracted_text[:1000]  # Limit initial content
+                    
+        except Exception as e:
+            import traceback
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"File upload failed: {str(e)}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            error_msg = f"File upload failed: {str(e)}"
+            if "application/json" in request.headers.get("accept", ""):
+                raise HTTPException(status_code=400, detail=error_msg)
+            return RedirectResponse("/?error=" + error_msg, status_code=302)
+    
+    # Generate title and prepare for database
+    title = content[:60] if content else (
+        f"File: {file.filename}" if file and file.filename else "New Note"
+    )
+    
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Save to database
     conn = get_conn()
     c = conn.cursor()
-
-    # Different handling for text vs audio notes
-    if file:  # Audio file - requires processing
-        status = "pending"
-        title = "[Processing]"
-        summary = ""
-        actions = ""
-        # Audio content starts empty - will be filled by transcription
-        note_content = ""
+    
+    try:
+        # Insert main note record
+        c.execute("""
+            INSERT INTO notes (
+                title, content, summary, tags, actions, type, timestamp, 
+                audio_filename, file_filename, file_type, file_mime_type, 
+                file_size, extracted_text, file_metadata, status, user_id,
+                source_url, web_metadata, screenshot_path, content_hash
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            title,
+            content,
+            "",  # summary will be generated later
+            tags,
+            "",  # actions will be generated later
+            note_type,
+            now,
+            stored_filename if note_type == 'audio' else None,  # legacy audio field
+            stored_filename,  # new generic file field
+            note_type,
+            file_metadata.get('mime_type') if file_metadata else None,
+            file_metadata.get('size_bytes') if file_metadata else None,
+            extracted_text,
+            json.dumps(file_metadata, default=str) if file_metadata else None,
+            processing_status,
+            current_user.id,
+            source_url,
+            json.dumps(web_metadata, default=str) if web_metadata else None,
+            screenshot_path,
+            content_hash
+        ))
         
-        c.execute(
-            "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, audio_filename, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (title, note_content, summary, tags, actions, note_type, now, audio_filename, status, current_user.id),
-        )
-        conn.commit()
         note_id = c.lastrowid
         
-        # Insert minimal FTS row for audio
-        try:
-            c.execute(
-                "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
-                (note_id, title, summary, tags, actions, note_content),
-            )
-            conn.commit()
-        except Exception:
-            pass
+        # Insert into FTS
+        c.execute("""
+            INSERT INTO notes_fts(rowid, title, summary, tags, actions, content, extracted_text) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (note_id, title, "", tags, "", content, extracted_text))
         
-        # Add background processing for audio
-        if REALTIME_AVAILABLE:
-            import asyncio
-            background_tasks.add_task(lambda: asyncio.create_task(process_note_with_status(note_id)))
+        conn.commit()
+        
+        # Trigger automated relationship discovery (TEMPORARILY DISABLED)
+        # try:
+        #     automation_engine = getattr(app.state, 'automation_engine', None)
+        #     if automation_engine:
+        #         await automation_engine.on_note_created(note_id, current_user.id)
+        # except Exception as e:
+        #     print(f"Automation trigger failed: {e}")
+        
+        # Queue background processing if needed
+        if processing_status == "pending":
+            from tasks_enhanced import process_note_with_status
+            background_tasks.add_task(
+                process_note_with_status,
+                note_id
+            )
+        
+        # Return success response
+        if "application/json" in request.headers.get("accept", ""):
+            return {
+                "success": True, 
+                "id": note_id,
+                "status": processing_status,
+                "file_type": note_type,
+                "extracted_text_length": len(extracted_text),
+                "message": f"{'File uploaded and queued for processing' if processing_status == 'pending' else 'Note saved successfully'}"
+            }
         else:
-            background_tasks.add_task(process_note, note_id)
+            success_msg = f"Note saved successfully"
+            if processing_status == "pending":
+                success_msg += " and queued for processing"
+            return RedirectResponse(f"/?success={success_msg}", status_code=302)
             
-    else:  # Text note - save directly as complete
-        status = "complete"
-        # Generate title from content if not provided
-        title = (content[:60] + "..." if len(content) > 60 else content) if content else "Untitled Note"
-        summary = ""  # Text notes don't need AI summary
-        actions = ""  # Text notes don't need AI actions
-        
-        c.execute(
-            "INSERT INTO notes (title, content, summary, tags, actions, type, timestamp, audio_filename, status, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (title, content, summary, tags, actions, note_type, now, audio_filename, status, current_user.id),
-        )
-        conn.commit()
-        note_id = c.lastrowid
-        
-        # Insert full FTS row for text notes
-        try:
-            c.execute(
-                "INSERT INTO notes_fts(rowid, title, summary, tags, actions, content) VALUES (?, ?, ?, ?, ?, ?)",
-                (note_id, title, summary, tags, actions, content),
-            )
-            conn.commit()
-        except Exception:
-            pass
-        
-        # No background processing needed for text notes
-
-    conn.close()
-
-    print(f"Successfully saved note with ID: {note_id}")
-    print(f"Note type: {note_type}")
-    print(f"Content length: {len(content)}")
-    print(f"Tags: {tags}")
-    print(f"Audio file: {audio_filename}")
-    print(f"Status: {status}")
-    print("CAPTURE ENDPOINT DEBUG END - SUCCESS")
-    print("=" * 60)
-    
-    if "application/json" in request.headers.get("accept", ""):
-        return {"id": note_id, "status": status}
-    
-    resp = RedirectResponse("/", status_code=302)
-    if file:  # Audio file
-        set_flash(resp, "Audio note queued for processing", "success")
-    else:  # Text note
-        set_flash(resp, "Text note saved successfully", "success")
-    return resp
+    except Exception as e:
+        conn.rollback()
+        import logging, traceback
+        logging.getLogger(__name__).error("Database insert failed in /capture: %s", e)
+        logging.getLogger(__name__).error("Traceback:\n%s", traceback.format_exc())
+        error_msg = f"Database error: {str(e)}"
+        if "application/json" in request.headers.get("accept", ""):
+            raise HTTPException(status_code=500, detail=error_msg)
+        return RedirectResponse("/?error=" + error_msg, status_code=302)
+    finally:
+        conn.close()
 
 @app.post("/webhook/apple")
 async def webhook_apple(
@@ -1638,33 +2412,40 @@ async def get_analytics(current_user: User = Depends(get_current_user)):
 
 
 # Add these endpoints before the health check
-@app.post("/api/search/enhanced")
-async def enhanced_search(
+@app.post("/api/search/enhanced_legacy", include_in_schema=False)
+async def enhanced_search_legacy(
     q: str = Query(..., description="Search query"),
     type: str = Query("hybrid", description="Search type: fts, semantic, or hybrid"),
     limit: int = Query(20, description="Number of results"),
     current_user: User = Depends(get_current_user)
 ):
-    search_engine = EnhancedSearchEngine(str(settings.db_path))
-    results = search_engine.search(q, current_user.id, limit, type)
-    search_engine.log_search(current_user.id, q, len(results), type)
-    
+    """Deprecated: legacy enhanced search. Delegates to SearchService."""
+    svc = _get_search_service()
+    mode = 'hybrid'
+    if type in {'fts','keyword'}:
+        mode = 'keyword'
+    elif type in {'semantic','vector'}:
+        mode = 'semantic'
+    rows = svc.search(q, mode=mode, k=limit or 20)
+    results = [
+        {
+            "id": r["id"],
+            "title": r.get("title"),
+            "summary": r.get("summary") if "summary" in r.keys() else r.get("body"),
+            "tags": r.get("tags"),
+            "timestamp": r.get("updated_at") or r.get("created_at"),
+            "score": None,
+            "snippet": None,
+            "match_type": mode,
+        }
+        for r in rows
+    ]
     return {
         "query": q,
-        "results": [
-            {
-                "id": r.note_id,
-                "title": r.title,
-                "summary": r.summary,
-                "tags": r.tags,
-                "timestamp": r.timestamp,
-                "score": r.score,
-                "snippet": r.snippet,
-                "match_type": r.match_type
-            } for r in results
-        ],
+        "results": results,
         "total": len(results),
-        "search_type": type
+        "search_type": type,
+        "deprecated": True,
     }
 
 @app.post("/webhook/discord")
@@ -1812,6 +2593,14 @@ async def webhook_browser(
     
     conn.commit()
     conn.close()
+    
+    # Trigger automated relationship discovery
+    try:
+        automation_engine = getattr(app.state, 'automation_engine', None)
+        if automation_engine:
+            await automation_engine.on_note_created(note_id, current_user.id)
+    except Exception as e:
+        print(f"Browser capture automation trigger failed: {e}")
     
     # Optional: Process screenshots or HTML archival
     if metadata.get('html') and capture_type == 'page':
@@ -2008,6 +2797,59 @@ async def get_recent_captures(
     conn.close()
     
     return notes
+
+@app.get("/api/queue/status")
+async def queue_status(request: Request):
+    """Report simple FIFO queue status for this user.
+
+    If unauthenticated, return zeros (200 OK) to avoid noisy 401 logs from background polling.
+    """
+    origin = request.headers.get('origin')
+    user = get_current_user_silent(request)
+    if not user:
+        payload = {"pending": 0, "processing": 0, "complete": 0}
+        if origin:
+            return JSONResponse(payload, headers={
+                "Access-Control-Allow-Origin": origin,
+                "Vary": "Origin",
+                "Access-Control-Allow-Credentials": "true",
+            })
+        return payload
+    conn = get_conn()
+    c = conn.cursor()
+    pending = c.execute("SELECT COUNT(*) FROM notes WHERE user_id=? AND status='pending'", (user.id,)).fetchone()[0]
+    processing = c.execute("SELECT COUNT(*) FROM notes WHERE user_id=? AND status='processing'", (user.id,)).fetchone()[0]
+    completed = c.execute("SELECT COUNT(*) FROM notes WHERE user_id=? AND status='complete'", (user.id,)).fetchone()[0]
+    conn.close()
+    payload = {"pending": pending, "processing": processing, "complete": completed}
+    if origin:
+        return JSONResponse(payload, headers={
+            "Access-Control-Allow-Origin": origin,
+            "Vary": "Origin",
+            "Access-Control-Allow-Credentials": "true",
+        })
+    return payload
+
+@app.post("/api/notes/{note_id}/retry")
+async def retry_note(note_id: int, current_user: User = Depends(get_current_user)):
+    """Reset a failed note back to pending so the worker picks it up again."""
+    conn = get_conn()
+    c = conn.cursor()
+    row = c.execute("SELECT status, user_id FROM notes WHERE id=?", (note_id,)).fetchone()
+    if not row or row[1] != current_user.id:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Note not found")
+    status = row[0] or ''
+    if status.startswith('processing') or status == 'processing':
+        conn.close()
+        raise HTTPException(status_code=400, detail="Already processing")
+    if status == 'pending':
+        conn.close()
+        return {"ok": True, "status": status}
+    c.execute("UPDATE notes SET status='pending' WHERE id=?", (note_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "status": "pending"}
 
 # Database migration to add metadata and archive_path columns
 def add_browser_capture_columns():

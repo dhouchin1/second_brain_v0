@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Second Brain - Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #111827;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-help {
+            font-size: 14px;
+            color: #6b7280;
+            margin-top: 6px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #10b981;
+        }
+
+        .status-disconnected {
+            background: #ef4444;
+        }
+
+        .status-checking {
+            background: #f59e0b;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .connection-status {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .feature-card {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .feature-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 48px;
+            padding: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .footer p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Second Brain</h1>
+            <p>Configure your AI-powered note-taking extension</p>
+        </div>
+
+        <div id="messages"></div>
+
+        <div class="card">
+            <h2 class="section-title">Connection Settings</h2>
+            
+            <form id="settingsForm">
+                <div class="form-group">
+                    <label class="form-label" for="apiUrl">Second Brain Server URL</label>
+                    <input 
+                        type="text" 
+                        id="apiUrl" 
+                        class="form-input"
+                        placeholder="http://localhost:8084"
+                        value="http://localhost:8084">
+                    <div class="form-help">
+                        The URL where your Second Brain server is running
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="authToken">Authentication Token</label>
+                    <input 
+                        type="password" 
+                        id="authToken" 
+                        class="form-input"
+                        placeholder="Enter your auth token">
+                    <div class="form-help">
+                        Get this from your Second Brain dashboard under Settings → API
+                    </div>
+                </div>
+
+                <div class="connection-status">
+                    <div id="connectionStatus">
+                        <span class="status-indicator status-checking"></span>
+                        Checking connection...
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                    <button type="button" id="testConnection" class="btn btn-secondary">Test Connection</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Capture Settings</h2>
+            
+            <div class="form-group">
+                <label class="form-label" for="defaultTags">Default Tags</label>
+                <input 
+                    type="text" 
+                    id="defaultTags" 
+                    class="form-input"
+                    placeholder="web, research, work">
+                <div class="form-help">
+                    Tags to automatically add to all captures (comma-separated)
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="autoCapture" style="margin-right: 8px;">
+                    Enable automatic content enhancement
+                </label>
+                <div class="form-help">
+                    Use AI to automatically improve captured content with better titles and tags
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <input type="checkbox" id="showNotifications" style="margin-right: 8px;" checked>
+                    Show capture notifications
+                </label>
+                <div class="form-help">
+                    Display a notification when content is successfully captured
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Features</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🎯 Smart Capture</h4>
+                    <p>Right-click to save selections, pages, links, and images directly to your Second Brain</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🤖 AI Processing</h4>
+                    <p>Automatic summarization, tagging, and content enhancement using advanced AI</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔍 Intelligent Search</h4>
+                    <p>Full-text search with semantic understanding across all your captured content</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📱 Cross-Platform</h4>
+                    <p>Seamlessly sync with your Obsidian vault, Apple Shortcuts, and other tools</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Second Brain Extension v1.0.0 | <a href="https://github.com/dhouchin1/second_brain" target="_blank">GitHub</a></p>
+        </div>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+</html>

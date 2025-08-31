@@ -12,7 +12,7 @@ import os
 import sqlite3
 import json
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 
 from services.embeddings import Embeddings
 

@@ -1,188 +1,620 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ note.title or 'Note Detail' }} – Second Brain</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="icon" href="/static/brain-logo.png" />
+{% extends 'base.html' %}
+{% block title %}{{ note.title or 'Note Detail' }} – Second Brain{% endblock %}
+{% block head_extra %}
+  <!-- Design System -->
+  <link rel="stylesheet" href="/static/css/note-detail.css">
+  <!-- Rich Text Editor -->
+  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <!-- Audio Waveform Visualization -->
+  <script src="https://unpkg.com/wavesurfer.js"></script>
+  <!-- Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
-    body { background: #181b24; font-family: 'Inter', Arial, sans-serif; }
-    ::-webkit-scrollbar { width: 8px; background: #23243a; }
-    ::-webkit-scrollbar-thumb { background: #36374c; border-radius: 6px; }
-    .prose pre, .prose code { background: #1a2233 !important; color: #ffeabf !important; }
-    .prose blockquote { border-left: 3px solid #8c8eea; background: #202340; color: #c2cbff;}
-    .fade-in { animation: fadeIn 0.5s cubic-bezier(.47,1.64,.41,.8) both;}
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px);} to {opacity:1; transform:none;}}
+    body { 
+      background: var(--bg-primary); 
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+    }
+    
+    ::-webkit-scrollbar { 
+      width: 8px; 
+      background: var(--surface-secondary); 
+    }
+    
+    ::-webkit-scrollbar-thumb { 
+      background: var(--border-secondary); 
+      border-radius: var(--radius-md); 
+    }
+    
+    .fade-in { 
+      animation: fadeIn 0.5s var(--transition-bounce) both;
+    }
+    
+    @keyframes fadeIn { 
+      from { opacity: 0; transform: translateY(20px);} 
+      to {opacity:1; transform:none;}
+    }
+    
+    .edit-mode .note-content { display: none; }
+    .edit-mode .note-editor { display: block; }
+    .view-mode .note-content { display: block; }
+    .view-mode .note-editor { display: none; }
+    
+    .quill-editor {
+      background: var(--surface-primary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-lg);
+    }
+    
+    .auto-save-indicator {
+      position: fixed;
+      top: var(--space-4);
+      right: var(--space-4);
+      z-index: var(--z-toast);
+      padding: var(--space-2) var(--space-3);
+      background: var(--color-success-500);
+      color: white;
+      border-radius: var(--radius-full);
+      font-size: var(--text-sm);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+    
+    .auto-save-indicator.show {
+      opacity: 1;
+    }
+    
+    .tag-input {
+      position: relative;
+    }
+    
+    .tag-suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: var(--z-dropdown);
+      display: none;
+    }
+    
+    .tag-suggestion {
+      padding: var(--space-2) var(--space-3);
+      cursor: pointer;
+      transition: background-color var(--transition-fast);
+    }
+    
+    .tag-suggestion:hover,
+    .tag-suggestion.selected {
+      background: var(--surface-interactive);
+    }
+    
+    .audio-waveform {
+      margin: var(--space-4) 0;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    
+    .note-metadata {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+    
+    .metadata-item {
+      background: var(--surface-secondary);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-primary);
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+    
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-overlay);
+      z-index: var(--z-modal-backdrop);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal-overlay.show {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: var(--surface-primary);
+      padding: var(--space-6);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-primary);
+      max-width: 500px;
+      width: 90%;
+      box-shadow: var(--shadow-2xl);
+    }
+    /* Compact detail view overrides for better information density */
+    .detail-compact .card-body { padding: var(--space-4); }
+    .detail-compact .card-header { padding: var(--space-3) var(--space-4); }
+    .detail-compact .heading-2 { font-size: var(--text-xl); }
+    .detail-compact .heading-4 { font-size: var(--text-lg); margin-bottom: var(--space-2); }
+    .detail-compact .body-large { font-size: var(--text-base); }
+    .detail-compact .note-metadata { gap: var(--space-3); margin-bottom: var(--space-4); }
+    .detail-compact .metadata-item { padding: var(--space-2); }
+    .detail-compact .action-buttons .btn { transform: scale(0.92); }
+    .detail-compact .audio-waveform { margin: var(--space-3) 0; }
   </style>
-</head>
-<body class="min-h-screen text-[#232a3c] bg-[#181b24]">
+{% endblock %}
+{% block body_class %}min-h-screen view-mode detail-compact{% endblock %}
+{% block content %}
+  
+  <!-- Auto-save Indicator -->
+  <div class="auto-save-indicator" id="autoSaveIndicator">
+    <i data-lucide="check-circle"></i>
+    <span>Saved</span>
+  </div>
 
   <!-- Header / Logo / Topbar -->
-  <header class="w-full pt-6 pb-4 flex flex-col items-center border-b border-[#26283c] bg-[#191b24]">
-    <div class="flex items-center gap-3 mb-1">
-      <img src="/static/brain-logo.png" alt="Second Brain Logo" class="h-8 w-8">
-      <a href="/" class="text-2xl font-extrabold text-pink-200 hover:text-pink-300 transition tracking-tight drop-shadow">
-        Second Brain
-      </a>
+  
+
+  <main class="container fade-in" style="max-width: var(--container-md); padding: var(--space-6) var(--space-3);">
+
+    {% if note.status and note.status != 'complete' %}
+    <div class="card-surface" style="border:1px solid var(--border-primary); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
+      <div class="flex items-center justify-between">
+        <div class="text-sm" style="color: var(--text-secondary);">This note is still processing…</div>
+        <button id="detailViewLog" class="btn btn-ghost btn-sm" type="button">View log</button>
+      </div>
+      <div class="w-full" style="height:8px; background: var(--border-secondary); border-radius: 6px; margin-top: 6px;">
+        <div id="detailProgress" style="height:8px; width:0%; background: var(--color-primary-500); border-radius:6px;"></div>
+      </div>
+      <ul id="detailMessages" class="caption" style="margin-top:6px; color: var(--text-secondary);"></ul>
     </div>
-    <p class="text-blue-300 text-xs mt-0.5">Capture, transcribe & connect your notes – anywhere, any device.</p>
-  </header>
+    <script>
+      (function(){
+        const btn = document.getElementById('detailViewLog');
+        if (!btn) return;
+        const id = {{ note.id }};
+        const prog = document.getElementById('detailProgress');
+        const msgs = document.getElementById('detailMessages');
+        function msg(t){ const li=document.createElement('li'); li.textContent=t; msgs.appendChild(li); }
+        let attempts=0, es;
+        async function connect(){
+          const tok = (window.SSE_TOKEN && typeof window.SSE_TOKEN === 'string') ? ('?token=' + encodeURIComponent(window.SSE_TOKEN)) : '';
+          es = new EventSource('/api/status/stream/' + id + tok);
+          es.onmessage = (evt)=>{
+            try {
+              const data = JSON.parse(evt.data);
+              if (data.keepalive) return;
+              if (data.message) msg(data.message);
+              if (typeof data.progress==='number' && prog) prog.style.width = Math.max(0, Math.min(100, data.progress)) + '%';
+              if (data.completed || data.stage==='complete') { setTimeout(()=>location.reload(), 600); }
+            } catch(e){}
+          };
+          es.onerror = async ()=>{
+            try { es.close(); } catch{}
+            attempts += 1; const d = attempts===1?1000:attempts===2?2000:attempts===3?5000:10000;
+            try {
+              const r = await fetch('/api/sse-token', { credentials: 'same-origin' });
+              if (r.ok) {
+                const j = await r.json();
+                if (j && j.token) window.SSE_TOKEN = j.token;
+              }
+            } catch {}
+            setTimeout(()=>{ connect(); }, d);
+          };
+        }
+        btn.addEventListener('click', ()=>{ connect(); btn.disabled=true; });
+      })();
+    </script>
+    {% endif %}
 
-  <main class="max-w-2xl mx-auto fade-in p-4">
-
-    <!-- Note Card -->
-    <section class="bg-white/90 shadow-xl border border-[#ebe5f8] rounded-2xl px-8 py-7 my-8 flex flex-col gap-3">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-        <div class="flex gap-2 items-center">
+    <!-- Note Metadata -->
+    <div class="note-metadata">
+      <div class="metadata-item">
+        <h4 class="body-small font-semibold" style="color: var(--text-tertiary); margin: 0 0 var(--space-1) 0;">Type</h4>
+        <div class="flex items-center gap-2">
           {% if note.type == 'audio' %}
-            <span class="inline-flex items-center gap-1 text-yellow-400 bg-yellow-100/60 rounded-full px-3 py-0.5 text-xs font-semibold">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="3" width="12" height="18" rx="2" fill="#fffbea"/>
-                <path d="M9 7h6" stroke="#ffb300" stroke-width="1.5"/>
-              </svg>
-              Audio
-            </span>
+            <i data-lucide="mic" style="color: var(--color-warning-500);"></i>
+            <span class="badge badge-warning">Audio Note</span>
           {% elif note.type == 'apple' %}
-            <span class="inline-flex items-center gap-1 text-green-400 bg-green-100/60 rounded-full px-3 py-0.5 text-xs font-semibold">
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2a6 6 0 00-6 6v4a6 6 0 006 6 6 6 0 006-6V8a6 6 0 00-6-6z" />
-              </svg>
-              Shortcut
-            </span>
+            <i data-lucide="smartphone" style="color: var(--color-success-500);"></i>
+            <span class="badge badge-success">iOS Shortcut</span>
           {% else %}
-            <span class="inline-flex items-center gap-1 text-blue-400 bg-blue-100/70 rounded-full px-3 py-0.5 text-xs font-semibold">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M5 12h14M12 5l7 7-7 7" stroke="#488cff" stroke-width="2"/>
-              </svg>
-              Note
-            </span>
+            <i data-lucide="file-text" style="color: var(--color-primary-500);"></i>
+            <span class="badge badge-primary">Text Note</span>
           {% endif %}
         </div>
+      </div>
+      
+      <div class="metadata-item">
+        <h4 class="body-small font-semibold" style="color: var(--text-tertiary); margin: 0 0 var(--space-1) 0;">Created</h4>
+        <p class="caption font-medium" style="color: var(--text-secondary); margin: 0;">
+          {{ note.timestamp or 'Unknown' }}
+        </p>
+      </div>
+      
+      <div class="metadata-item">
+        <h4 class="body-small font-semibold" style="color: var(--text-tertiary); margin: 0 0 var(--space-1) 0;">Status</h4>
         <div class="flex items-center gap-2">
-          <a href="/edit/{{ note.id }}" class="text-blue-500 text-xs hover:underline">Edit</a>
-          <form method="post" action="/delete/{{ note.id }}" onsubmit="return confirm('Delete note?');">
-            <button type="submit" class="text-red-500 text-xs">Delete</button>
-          </form>
-          <span class="text-xs text-gray-400 font-mono">
-            {{ note.timestamp or '' }}
-          </span>
+          {% if note.status == 'complete' %}
+            <i data-lucide="check-circle" style="color: var(--color-success-500);"></i>
+            <span class="badge badge-success">Processed</span>
+          {% else %}
+            <div class="spinner"></div>
+            <span class="badge badge-warning">Processing...</span>
+          {% endif %}
         </div>
       </div>
-      <!-- Title -->
-      <div class="font-extrabold text-2xl md:text-3xl text-[#232a3c] break-words leading-tight tracking-tight mb-1">{{ note.title }}</div>
-      {% if note.status != 'complete' %}
-        <div class="text-gray-500 text-sm">Processing...</div>
-      {% endif %}
-      <!-- Audio Playback -->
-      {% if note.audio_filename %}
-        <audio controls class="mt-1 mb-2 w-full max-w-lg rounded-lg shadow-lg bg-[#232a3c]">
-          <source src="/audio/{{ note.audio_filename }}" type="audio/wav">
-          Your browser does not support audio playback.
-        </audio>
-      {% endif %}
-      <!-- Summary -->
-      {% if note.summary %}
-        <div class="prose max-w-full text-[#37405c] text-lg leading-relaxed mb-2 whitespace-pre-line">
-          {{ note.summary }}
-        </div>
-      {% endif %}
-      <!-- Actions -->
-      {% if note.actions %}
-        <div class="mt-2">
-          <h3 class="text-blue-500 font-semibold text-sm mb-1">Action Items</h3>
-          <ul class="list-disc list-inside text-[#37405c] text-sm whitespace-pre-line">
-            {% for act in note.actions.split('\n') if act.strip() %}
-              <li>{{ act }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
-      <!-- Content (full transcript or note) -->
-      {% if note.content and note.content.strip() != note.summary.strip() %}
-        <details class="mt-2 mb-2">
-          <summary class="cursor-pointer text-blue-500 hover:underline font-semibold text-sm">Show Full Note/Transcript</summary>
-          <div class="prose max-w-full bg-[#f9fafb] text-[#2a3a5a] px-5 py-3 rounded-lg mt-2 overflow-x-auto whitespace-pre-line">
-            {{ note.content }}
+      
+      <div class="metadata-item">
+        <h4 class="body-small font-semibold" style="color: var(--text-tertiary); margin: 0 0 var(--space-1) 0;">Word Count</h4>
+        <p class="caption font-medium" id="wordCount" style="color: var(--text-secondary); margin: 0;">
+          {{ (note.content or '').split()|length }} words
+        </p>
+      </div>
+    </div>
+
+    <!-- Note Card -->
+    <section class="card card-elevated card-surface" style="margin: var(--space-8) 0; border: none;">
+      <div class="card-header">
+        <div class="flex items-center justify-between gap-4">
+          <h1 class="heading-2 m-0" id="noteTitle">{{ note.title }}</h1>
+          <div class="action-buttons">
+            <button id="exportBtn" class="btn btn-ghost btn-sm" title="Export note">
+              <i data-lucide="download"></i>
+            </button>
+            <button id="shareBtn" class="btn btn-ghost btn-sm" title="Share note">
+              <i data-lucide="share-2"></i>
+            </button>
+            <button id="duplicateBtn" class="btn btn-ghost btn-sm" title="Duplicate note">
+              <i data-lucide="copy"></i>
+            </button>
+            <button id="deleteBtn" class="btn btn-ghost btn-sm" style="color: var(--color-error-600);" title="Delete note">
+              <i data-lucide="trash-2"></i>
+            </button>
           </div>
-        </details>
-      {% endif %}
-      <!-- Tags -->
-      {% if note.tags %}
-        <div class="flex flex-wrap gap-2 mt-2">
-          {% for tag_ in note.tags.split(',') if tag_.strip() %}
-            <a href="/?tag={{ tag_.strip() }}" class="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-500 text-xs font-semibold hover:bg-blue-200 transition">#{{ tag_.strip() }}</a>
-          {% endfor %}
         </div>
+      </div>
+      
+      <div class="card-body">
+        <!-- Image Display -->
+        {% set _ft = (note.file_type or '') if note.file_type is defined else '' %}
+        {% set _mt = (note.file_mime_type or '') if note.file_mime_type is defined else '' %}
+        {% if note.file_filename and (_ft == 'image' or _mt.startswith('image/')) %}
+        <div class="image-section" style="margin-bottom: var(--space-6);">
+          <h3 class="heading-4">Image</h3>
+          <div class="image-container" style="background: var(--surface-secondary); border-radius: var(--radius-lg); padding: var(--space-4); border: 1px solid var(--border-primary);">
+            <img src="{{ file_url or ('/files/' ~ note.file_filename) }}" 
+                 alt="{{ note.title or 'Uploaded image' }}"
+                 style="max-width: 100%; height: auto; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);">
+            <div class="image-metadata" style="margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-secondary);">
+              <div class="metadata-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-2); font-size: var(--text-sm);">
+                <div><span style="color: var(--text-tertiary);">Filename:</span> <span style="color: var(--text-secondary);">{{ note.file_filename }}</span></div>
+                {% if note.file_size %}<div><span style="color: var(--text-tertiary);">Size:</span> <span style="color: var(--text-secondary);">{{ "%.1f"|format(note.file_size / 1024) }} KB</span></div>{% endif %}
+                {% if note.file_mime_type %}<div><span style="color: var(--text-tertiary);">Type:</span> <span style="color: var(--text-secondary);">{{ note.file_mime_type }}</span></div>{% endif %}
+                {% if note.extracted_text %}<div><span style="color: var(--text-tertiary);">OCR:</span> <span style="color: var(--color-success-600);">{{ note.extracted_text.split()|length }} words extracted</span></div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- PDF Document Display -->
+        {% if note.file_filename and ((_ft == 'document') or (_mt == 'application/pdf')) %}
+        <div class="document-section" style="margin-bottom: var(--space-6);">
+          <h3 class="heading-4">PDF Document</h3>
+          <div class="document-container" style="background: var(--surface-secondary); border-radius: var(--radius-lg); padding: var(--space-4); border: 1px solid var(--border-primary);">
+            <div class="document-info" style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+              <div style="background: var(--color-error-100); color: var(--color-error-700); padding: var(--space-2); border-radius: var(--radius-md); display: flex; align-items: center; gap: var(--space-1);">
+                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+                <span style="font-weight: var(--font-weight-medium); font-size: var(--text-sm);">PDF</span>
+              </div>
+              <div style="flex: 1;">
+                <div style="font-weight: var(--font-weight-medium); color: var(--text-primary);">{{ note.file_filename }}</div>
+                {% if note.file_size %}<div style="font-size: var(--text-sm); color: var(--text-tertiary);">{{ "%.1f"|format(note.file_size / 1024) }} KB</div>{% endif %}
+              </div>
+              <a href="{{ (file_url ~ '&download=1') if file_url else ('/files/' ~ note.file_filename ~ '?download=1') }}" target="_blank" 
+                 style="background: var(--color-primary-600); color: white; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); text-decoration: none; font-size: var(--text-sm); font-weight: var(--font-weight-medium);">
+                Download PDF
+              </a>
+            </div>
+            <div style="border: 1px solid var(--border-secondary); border-radius: var(--radius-md); overflow: hidden; background: white;">
+              <embed src="{{ file_url or ('/files/' ~ note.file_filename) }}#toolbar=1" type="application/pdf" 
+                     style="width: 100%; height: 600px; display: block; border: none;" />
+            </div>
+            {% if note.extracted_text %}
+            <div style="border-top: 1px solid var(--border-secondary); padding-top: var(--space-3);">
+              <div style="font-size: var(--text-sm); color: var(--text-tertiary); margin-bottom: var(--space-2);">
+                <i data-lucide="type" style="width: 14px; height: 14px; display: inline;"></i>
+                Extracted Text ({{ note.extracted_text.split()|length }} words)
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Audio Playback with Waveform -->
+        {% if note.audio_filename %}
+        <div class="audio-section">
+          <h3 class="heading-4">Audio Recording</h3>
+          <div class="audio-waveform" id="waveform">
+            <div class="waveform-loading">
+              <div class="spinner"></div>
+              <span>Loading audio...</span>
+            </div>
+          </div>
+          <div class="audio-controls">
+            <div class="audio-controls-left">
+              <button id="playPauseBtn" class="btn btn-primary btn-sm">
+                <i data-lucide="play"></i>
+                <span>Play</span>
+              </button>
+              <div class="audio-time">
+                <span id="currentTime">0:00</span>
+                <span style="color: var(--text-muted);">/</span>
+                <span id="totalTime">0:00</span>
+              </div>
+            </div>
+            <div class="audio-controls-right">
+              <div class="playback-speed-control">
+                <label>Speed:</label>
+                <select id="playbackSpeed" class="form-select">
+                  <option value="0.5">0.5x</option>
+                  <option value="0.75">0.75x</option>
+                  <option value="1" selected>1x</option>
+                  <option value="1.25">1.25x</option>
+                  <option value="1.5">1.5x</option>
+                  <option value="2">2x</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        <!-- Note Content -->
+        <div class="note-content">
+          {% if note.summary %}
+          <div style="margin-bottom: var(--space-6);">
+            <h3 class="heading-4">Summary</h3>
+            <div class="body-large" style="white-space: pre-line; line-height: var(--leading-relaxed);">
+              {{ note.summary }}
+            </div>
+          </div>
+          {% endif %}
+          
+          {% if note.actions %}
+          <div style="margin-bottom: var(--space-6);">
+            <h3 class="heading-4">Action Items</h3>
+            <ul style="padding-left: var(--space-5); margin: var(--space-2) 0;">
+              {% for action in note.actions.split('\n') if action.strip() %}
+              <li class="body-base" style="margin-bottom: var(--space-1);">{{ action.strip() }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          
+          {% if note.content %}
+          <div>
+            <h3 class="heading-4">Note Content</h3>
+            <div class="body-base" style="white-space: pre-line; line-height: var(--leading-relaxed); padding: var(--space-4); background: var(--surface-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-primary);">
+              {{ note.content }}
+            </div>
+          </div>
+          {% endif %}
+          
+          {% if note.extracted_text and note.extracted_text != note.content %}
+          <div style="margin-top: var(--space-6);">
+            <h3 class="heading-4">Extracted Text (OCR/PDF)</h3>
+            <div class="body-base" style="white-space: pre-line; line-height: var(--leading-relaxed); padding: var(--space-4); background: var(--surface-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
+              {{ note.extracted_text }}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        
+        <!-- Note Editor (Hidden by default) -->
+        <div class="note-editor" style="display: none;">
+          <form id="noteEditForm">
+            <div class="form-group">
+              <label class="form-label">Title</label>
+              <input type="text" id="editTitle" class="form-input" value="{{ note.title }}">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Content</label>
+              <div id="editor" style="min-height: 300px;"></div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tags</label>
+              <div class="tag-input-container">
+                <div class="tag-input-field">
+                  <input type="text" id="editTags" class="form-input" value="{{ note.tags or '' }}" placeholder="Enter tags separated by commas">
+                  <div class="tag-suggestions" id="tagSuggestions"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex justify-between items-center">
+              <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                  <i data-lucide="save"></i>
+                  Save Changes
+                </button>
+                <button type="button" id="cancelEdit" class="btn btn-secondary">
+                  Cancel
+                </button>
+              </div>
+              
+              <div class="text-muted caption">
+                Auto-save: <span id="autoSaveStatus">On</span> | 
+                Last saved: <span id="lastSaved">Just now</span>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      {% if note.tags %}
+      <div class="card-footer">
+        <div class="flex items-center gap-2">
+          <i data-lucide="tags" style="color: var(--text-muted);"></i>
+          <div class="flex flex-wrap gap-2">
+            {% for tag in note.tags.split(',') if tag.strip() %}
+            <a href="/?tag={{ tag.strip() }}" class="badge badge-primary" style="text-decoration: none;">
+              #{{ tag.strip() }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
       {% endif %}
     </section>
 
-    <!-- AI Callout / Apple Shortcuts callout -->
-    <section class="bg-[#232c4e] rounded-xl px-5 py-3 shadow flex items-center gap-3 mb-6 border border-[#2d395c]">
-      <svg class="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M3 10h18M8 2v4m8-4v4" />
-        <rect x="3" y="4" width="18" height="18" rx="4" fill="#232c4e"/>
-      </svg>
-      <div>
-        <b class="text-pink-200">Did you know?</b>
-        <span class="text-blue-100">
-          You can add notes from <span class="text-yellow-200">anywhere</span> using the <b>Apple Shortcuts widget</b>!  
-          Notes are instantly processed, titled & summarized using AI.
-        </span>
-      </div>
-    </section>
 
     <!-- Related Notes -->
     {% if related and related|length > 0 %}
-      <section class="mt-10">
-        <div class="text-blue-400 text-lg font-semibold mb-2 flex items-center gap-2">
-          <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
-          </svg>
-          Related Notes
-        </div>
-        <div class="flex flex-col gap-2">
-          {% for rel in related %}
-            <a href="/detail/{{ rel.id }}" class="block bg-white/80 hover:bg-pink-50 transition border border-[#eae2fa] rounded-lg px-4 py-2 text-blue-700 font-medium shadow-sm">
-              {{ rel.title }}
-            </a>
-          {% endfor %}
-        </div>
-      </section>
+    <section style="margin: var(--space-10) 0;">
+      <h2 class="heading-3 flex items-center gap-2">
+        <i data-lucide="link" style="color: var(--text-accent);"></i>
+        Related Notes
+      </h2>
+      <div class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+        {% for rel in related %}
+        <a href="/detail/{{ rel.id }}" class="card card-interactive" style="text-decoration: none;">
+          <div class="card-body" style="padding: var(--space-4);">
+            <h4 class="body-base font-semibold" style="margin: 0 0 var(--space-1) 0; color: var(--text-primary);">{{ rel.title }}</h4>
+            {% if rel.summary %}
+            <p class="body-small" style="margin: 0; color: var(--text-secondary);">{{ rel.summary[:100] }}...</p>
+            {% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
     {% endif %}
 
-    <!-- Obsidian Export / Sync block -->
-    <section class="mt-10 mb-12 bg-[#212231] border border-[#353659] rounded-xl px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-2 shadow">
-      <div>
-        <span class="text-blue-100 font-semibold">Export or sync this note to <span class="text-blue-300">Obsidian</span> anytime!</span>
+    <!-- Export & Sync Actions -->
+    <section class="card" style="margin: var(--space-10) 0 var(--space-12) 0;">
+      <div class="card-body">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 class="heading-4 flex items-center gap-2">
+              <i data-lucide="upload-cloud" style="color: var(--text-accent);"></i>
+              Export & Sync
+            </h3>
+            <p class="body-small" style="color: var(--text-secondary); margin: 0;">Export to Obsidian, Markdown, or share with others</p>
+          </div>
+          <div class="flex gap-2">
+            <button id="obsidianSync" class="btn btn-primary">
+              <i data-lucide="external-link"></i>
+              Sync to Obsidian
+            </button>
+            <button id="exportMarkdown" class="btn btn-secondary">
+              <i data-lucide="file-down"></i>
+              Export Markdown
+            </button>
+          </div>
+        </div>
       </div>
-      <button class="bg-blue-500 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-bold shadow transition">Sync Now</button>
     </section>
   </main>
 
-  <footer class="w-full py-7 flex flex-col items-center text-xs text-blue-300 mt-10">
-    <div class="mb-2">
-      <span class="font-semibold text-pink-200">Second Brain</span> — Where your best ideas live.
-    </div>
-    <div>
-      Powered by AI. Built for <b>Obsidian</b>, <b>Apple Shortcuts</b>, and thinkers everywhere.
-    </div>
-    <div class="mt-2">
-      <a href="https://github.com/dhouchin1/second_brain" class="text-blue-400 hover:text-pink-400 underline">GitHub</a>
+  <footer style="padding: var(--space-10) 0; text-align: center; border-top: 1px solid var(--border-primary); background: var(--surface-secondary);">
+    <div class="container">
+      <p class="body-small" style="color: var(--text-secondary); margin: 0 0 var(--space-2) 0;">
+        <span style="color: var(--text-accent); font-weight: var(--font-weight-semibold);">Second Brain</span> — Where your best ideas live.
+      </p>
+      <p class="caption" style="color: var(--text-muted); margin: 0;">
+        Powered by AI. Built for <strong>Obsidian</strong>, <strong>Apple Shortcuts</strong>, and thinkers everywhere.
+      </p>
     </div>
   </footer>
 
-  {% if note.status != 'complete' %}
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal-content">
+      <h3 class="heading-4" style="color: var(--color-error-600);">Delete Note</h3>
+      <p class="body-base" style="margin: var(--space-4) 0;">Are you sure you want to delete this note? This action cannot be undone.</p>
+      <div class="flex justify-end gap-3">
+        <button id="cancelDelete" class="btn btn-secondary">Cancel</button>
+        <button id="confirmDelete" class="btn" style="background-color: var(--color-error-600); color: white;">
+          <i data-lucide="trash-2"></i>
+          Delete Note
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Export Options Modal -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal-content">
+      <h3 class="heading-4">Export Note</h3>
+      <p class="body-small" style="color: var(--text-secondary); margin: var(--space-2) 0 var(--space-4) 0;">Choose export format:</p>
+      <div class="flex flex-col gap-2">
+        <button class="btn btn-secondary btn-lg export-option" data-format="markdown">
+          <i data-lucide="file-text"></i>
+          Markdown (.md)
+        </button>
+        <button class="btn btn-secondary btn-lg export-option" data-format="json">
+          <i data-lucide="code"></i>
+          JSON (.json)
+        </button>
+        <button class="btn btn-secondary btn-lg export-option" data-format="txt">
+          <i data-lucide="file"></i>
+          Plain Text (.txt)
+        </button>
+      </div>
+      <div class="flex justify-end gap-3" style="margin-top: var(--space-4);">
+        <button id="cancelExport" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/static/js/note-interaction.js"></script>
   <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+    
+    // Initialize note interaction
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeNoteInteraction({
+        noteId: {{ note.id }},
+        noteTitle: {{ note.title | tojson }},
+        noteContent: {{ note.content | tojson }},
+        noteTags: {{ note.tags | tojson }},
+        audioFilename: {{ note.audio_filename | tojson }}
+      });
+    });
+    
+    {% if note.status != 'complete' %}
+    // Status polling for incomplete notes
     setInterval(async () => {
-      const resp = await fetch('/status/{{ note.id }}');
-      const data = await resp.json();
-      if (data.status === 'complete') {
-        location.reload();
+      try {
+        const resp = await fetch('/status/{{ note.id }}');
+        const data = await resp.json();
+        if (data.status === 'complete') {
+          location.reload();
+        }
+      } catch (err) {
+        console.error('Status polling error:', err);
       }
     }, 5000);
+    {% endif %}
   </script>
-  {% endif %}
-</body>
-</html>
+{% endblock %}

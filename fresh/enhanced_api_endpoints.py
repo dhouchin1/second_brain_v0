@@ -1,3 +1,8 @@
+"""EXPERIMENTAL/LEGACY PROTOTYPE — Not used by current app.
+
+These snippets are preserved for reference; the live app defines endpoints in
+`app.py` and leverages the unified service layer.
+"""
 # enhanced_endpoints.py - Add these to your existing app.py
 
 from fastapi import HTTPException, Depends, BackgroundTasks

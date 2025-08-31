@@ -1,3 +1,8 @@
+"""LEGACY MODULE — Not used by the current application.
+
+Kept for historical context only. Do not import or modify for new features.
+Prefer `app.py` with the unified `services.SearchService` and modular routers.
+"""
 from fastapi import FastAPI, Request, Form, UploadFile, File, Body
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
@@ -26,11 +31,15 @@ def transcribe_audio(audio_path):
     else:
         wav_path = audio_path
     out_txt_path = wav_path.with_suffix('.txt')
+    # Aggressive CPU throttling to prevent machine slowdown during transcription
     whisper_cmd = [
+        "nice", "-n", "19",  # Maximum niceness (lowest CPU priority)
         str(WHISPER_CPP_PATH),
         "-m", str(WHISPER_MODEL_PATH),
         "-f", str(wav_path),
-        "-otxt"
+        "-otxt",
+        "-t", "1",  # Force single thread to reduce CPU load
+        "--no-gpu",  # Disable GPU to avoid competition
     ]
     result = subprocess.run(whisper_cmd, capture_output=True, text=True)
     if result.returncode == 0 and out_txt_path.exists():

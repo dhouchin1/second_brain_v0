@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Second Brain",
+  "version": "1.0.0",
+  "description": "Capture web content to your Second Brain with AI processing",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:8084/*",
+    "https://*.secondbrain.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Second Brain Capture"
+  },
+  "options_page": "options.html"
+}
