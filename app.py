@@ -423,6 +423,13 @@ from services.smart_automation_router import router as automation_router, init_s
 init_smart_automation_router(get_conn)
 app.include_router(automation_router)
 
+# --- Include Web Ingestion Router ---
+from services.web_ingestion_router import router as web_router, init_web_ingestion_router
+from services.workflow_engine import WorkflowEngine
+workflow_engine = WorkflowEngine(get_conn)
+init_web_ingestion_router(get_conn, workflow_engine, get_current_user)
+app.include_router(web_router)
+
 # --- Simple FIFO job worker for note processing ---
 import asyncio
 
@@ -2133,13 +2140,24 @@ async def capture(
         
         conn.commit()
         
-        # Trigger automated relationship discovery (TEMPORARILY DISABLED)
-        # try:
-        #     automation_engine = getattr(app.state, 'automation_engine', None)
-        #     if automation_engine:
-        #         await automation_engine.on_note_created(note_id, current_user.id)
-        # except Exception as e:
-        #     print(f"Automation trigger failed: {e}")
+        # Trigger Smart Automation workflows
+        try:
+            from services.workflow_engine import TriggerType
+            trigger_data = {
+                "note_id": note_id,
+                "user_id": current_user.id,
+                "title": title,
+                "content": content,
+                "tags": tags,
+                "note_type": note_type
+            }
+            
+            # Trigger content created workflow (which includes URL detection)
+            await workflow_engine.trigger_workflow(TriggerType.CONTENT_CREATED, trigger_data)
+            
+        except Exception as e:
+            print(f"Smart Automation workflow trigger failed: {e}")
+            # Continue without blocking the main capture flow
         
         # Queue background processing if needed
         if processing_status == "pending":

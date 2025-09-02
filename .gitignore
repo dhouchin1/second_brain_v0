@@ -84,8 +84,11 @@ dist/
 scripts/scaffolds/
 /.scaffolds/
 scripts/scaffolds/inactive/
-scripts/scaffolds/run_scaffolds_v4.sh
+scripts/scaffolds/run_scaffolds_v*.sh
 scripts/scaffolds/scaffold_*.sh
+scripts/scaffolds/*.sh
+scripts/run_scaffolds*.sh
+additions/*scaffold*.py
 
 # Test coverage
 .coverage

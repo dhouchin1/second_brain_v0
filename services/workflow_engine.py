@@ -47,6 +47,8 @@ class ActionType(str, Enum):
     CLASSIFY_CONTENT = "classify_content"
     ARCHIVE_CONTENT = "archive_content"
     WEBHOOK_CALL = "webhook_call"
+    DETECT_URLS = "detect_urls"
+    INGEST_WEB_CONTENT = "ingest_web_content"
 
 
 class WorkflowStatus(str, Enum):
@@ -206,6 +208,18 @@ class WorkflowEngine:
                 actions=[
                     {"type": ActionType.SEND_NOTIFICATION, "params": {"channel": "discord"}}
                 ]
+            ),
+            WorkflowRule(
+                id="auto_url_ingestion",
+                name="Auto URL Ingestion",
+                description="Automatically detect and ingest URLs found in content",
+                trigger_type=TriggerType.CONTENT_CREATED,
+                trigger_conditions={"contains_url": True},
+                actions=[
+                    {"type": ActionType.DETECT_URLS, "params": {}},
+                    {"type": ActionType.INGEST_WEB_CONTENT, "params": {"max_urls": 3}},
+                    {"type": ActionType.AUTO_TAG, "params": {"max_tags": 2, "include_web_tags": True}}
+                ]
             )
         ]
         
@@ -246,6 +260,14 @@ class WorkflowEngine:
             elif key == "keywords":
                 content = f"{trigger_data.get('title', '')} {trigger_data.get('content', '')}".lower()
                 if not any(keyword.lower() in content for keyword in expected_value):
+                    return False
+            
+            elif key == "contains_url":
+                content = trigger_data.get("content", "")
+                import re
+                url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
+                has_urls = bool(re.search(url_pattern, content))
+                if has_urls != expected_value:
                     return False
             
             elif key in trigger_data:
@@ -318,6 +340,12 @@ class WorkflowEngine:
         
         elif action_type == ActionType.CREATE_OBSIDIAN_NOTE:
             return await self._action_create_obsidian_note(trigger_data, params)
+        
+        elif action_type == ActionType.DETECT_URLS:
+            return await self._action_detect_urls(trigger_data, params)
+        
+        elif action_type == ActionType.INGEST_WEB_CONTENT:
+            return await self._action_ingest_web_content(trigger_data, params)
         
         else:
             raise ValueError(f"Unknown action type: {action_type}")
@@ -482,6 +510,77 @@ class WorkflowEngine:
             "note_id": trigger_data.get("note_id"),
             "obsidian_path": f"{trigger_data.get('title', 'note')}.md"
         }
+    
+    async def _action_detect_urls(self, trigger_data: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
+        """Detect URLs in content"""
+        content = trigger_data.get("content", "")
+        
+        import re
+        url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
+        urls = re.findall(url_pattern, content)
+        
+        # Store detected URLs in the trigger data for subsequent actions
+        trigger_data["detected_urls"] = urls
+        
+        return {
+            "urls_found": urls,
+            "url_count": len(urls),
+            "note_id": trigger_data.get("note_id")
+        }
+    
+    async def _action_ingest_web_content(self, trigger_data: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
+        """Ingest web content from detected URLs"""
+        urls = trigger_data.get("detected_urls", [])
+        max_urls = params.get("max_urls", 3)
+        user_id = trigger_data.get("user_id", 1)
+        
+        if not urls:
+            return {"ingested": 0, "results": []}
+        
+        # Limit URLs to process
+        urls_to_process = urls[:max_urls]
+        results = []
+        
+        try:
+            # Import web ingestion service
+            from services.web_ingestion_service import WebIngestionService, ExtractionConfig
+            
+            web_service = WebIngestionService(self.get_conn)
+            config = ExtractionConfig(
+                take_screenshot=True,
+                extract_images=False,
+                timeout=30
+            )
+            
+            for url in urls_to_process:
+                try:
+                    result = await web_service.ingest_url(url, user_id, config=config)
+                    results.append({
+                        "url": url,
+                        "success": True,
+                        "note_id": result.get("note_id"),
+                        "title": result.get("title"),
+                        "summary": result.get("summary")
+                    })
+                except Exception as e:
+                    results.append({
+                        "url": url,
+                        "success": False,
+                        "error": str(e)
+                    })
+            
+            return {
+                "ingested": sum(1 for r in results if r["success"]),
+                "total_urls": len(urls_to_process),
+                "results": results
+            }
+            
+        except ImportError:
+            return {
+                "ingested": 0,
+                "error": "Web ingestion service not available",
+                "results": []
+            }
     
     async def _store_execution_record(self, execution: WorkflowExecution):
         """Store workflow execution record for auditing"""
