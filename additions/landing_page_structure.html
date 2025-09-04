@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Second Brain - AI-Powered Note Taking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🧠</span>
+                    <span class="text-white font-bold text-xl">Second Brain</span>
+                </div>
+                <div class="flex gap-6">
+                    <a href="#features" class="text-white/80 hover:text-white">Features</a>
+                    <a href="#pricing" class="text-white/80 hover:text-white">Pricing</a>
+                    <a href="#docs" class="text-white/80 hover:text-white">Docs</a>
+                    <a href="/login" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-semibold hover:bg-white/90">Login</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative py-20 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+                Your AI-Powered<br>
+                <span class="bg-gradient-to-r from-yellow-400 to-pink-400 bg-clip-text text-transparent">
+                    Second Brain
+                </span>
+            </h1>
+            <p class="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+                Capture thoughts instantly, transcribe audio automatically, and let AI organize everything. 
+                Integrates seamlessly with Apple Shortcuts, Obsidian, and your entire workflow.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/register" class="bg-white text-indigo-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/90 transition">
+                    Start Free Trial
+                </a>
+                <a href="#demo" class="bg-white/20 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/30 transition border border-white/30">
+                    Watch Demo
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section id="features" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Everything You Need</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="text-center p-6">
+                    <div class="text-4xl mb-4">🎙️</div>
+                    <h3 class="text-xl font-semibold mb-2">Audio to Text</h3>
+                    <p class="text-gray-600">Record or upload audio. Get instant transcription and AI summaries.</p>
+                </div>
+                <div class="text-center p-6">
+                    <div class="text-4xl mb-4">📱</div>
+                    <h3 class="text-xl font-semibold mb-2">Apple Shortcuts</h3>
+                    <p class="text-gray-600">Capture from any iOS device with one tap. Widget support included.</p>
+                </div>
+                <div class="text-center p-6">
+                    <div class="text-4xl mb-4">🤖</div>
+                    <h3 class="text-xl font-semibold mb-2">AI Organization</h3>
+                    <p class="text-gray-600">Automatic tagging, summaries, and smart search across all your notes.</p>
+                </div>
+                <div class="text-center p-6">
+                    <div class="text-4xl mb-4">🔗</div>
+                    <h3 class="text-xl font-semibold mb-2">Obsidian Sync</h3>
+                    <p class="text-gray-600">Perfect integration with your existing Obsidian vault.</p>
+                </div>
+                <div class="text-center p-6">
+                    <div class="text-4xl mb-4">🔍</div>
+                    <h3 class="text-xl font-semibold mb-2">Powerful Search</h3>
+                    <p class="text-gray-600">Find anything instantly with semantic search and smart filters.</p>
+                </div>
+                <div class="text-center p-6">
+                    <div class="text-4xl mb-4">🛡️</div>
+                    <h3 class="text-xl font-semibold mb-2">Privacy First</h3>
+                    <p class="text-gray-600">Your data stays yours. Local AI processing available.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Video Section -->
+    <section id="demo" class="py-20 bg-gray-50">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold mb-8">See It In Action</h2>
+            <div class="bg-gray-800 rounded-2xl p-8 mb-8">
+                <div class="aspect-video bg-gray-700 rounded-lg flex items-center justify-center">
+                    <div class="text-white text-center">
+                        <div class="text-6xl mb-4">▶️</div>
+                        <p class="text-xl">Demo Video Coming Soon</p>
+                        <p class="text-sm text-gray-300 mt-2">Show Apple Shortcuts → Audio Transcription → AI Summary</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="py-20 bg-white">
+        <div class="max-w-6xl mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Simple Pricing</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="border border-gray-200 rounded-2xl p-8">
+                    <h3 class="text-xl font-semibold mb-4">Free</h3>
+                    <div class="text-3xl font-bold mb-4">$0<span class="text-lg text-gray-500">/month</span></div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center gap-2">✅ 100 notes/month</li>
+                        <li class="flex items-center gap-2">✅ Basic AI summaries</li>
+                        <li class="flex items-center gap-2">✅ Apple Shortcuts</li>
+                        <li class="flex items-center gap-2">✅ Obsidian export</li>
+                    </ul>
+                    <a href="/register" class="block w-full text-center bg-gray-900 text-white py-3 rounded-lg font-semibold hover:bg-gray-800">
+                        Get Started
+                    </a>
+                </div>
+                
+                <div class="border-2 border-indigo-500 rounded-2xl p-8 relative">
+                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                        Most Popular
+                    </div>
+                    <h3 class="text-xl font-semibold mb-4">Pro</h3>
+                    <div class="text-3xl font-bold mb-4">$9<span class="text-lg text-gray-500">/month</span></div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center gap-2">✅ Unlimited notes</li>
+                        <li class="flex items-center gap-2">✅ Advanced AI features</li>
+                        <li class="flex items-center gap-2">✅ Discord bot</li>
+                        <li class="flex items-center gap-2">✅ Browser extension</li>
+                        <li class="flex items-center gap-2">✅ Vector search</li>
+                        <li class="flex items-center gap-2">✅ API access</li>
+                    </ul>
+                    <a href="/register?plan=pro" class="block w-full text-center bg-indigo-500 text-white py-3 rounded-lg font-semibold hover:bg-indigo-600">
+                        Start Free Trial
+                    </a>
+                </div>
+                
+                <div class="border border-gray-200 rounded-2xl p-8">
+                    <h3 class="text-xl font-semibold mb-4">Team</h3>
+                    <div class="text-3xl font-bold mb-4">$29<span class="text-lg text-gray-500">/month</span></div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center gap-2">✅ Everything in Pro</li>
+                        <li class="flex items-center gap-2">✅ Team workspaces</li>
+                        <li class="flex items-center gap-2">✅ Shared knowledge base</li>
+                        <li class="flex items-center gap-2">✅ Admin dashboard</li>
+                        <li class="flex items-center gap-2">✅ Priority support</li>
+                    </ul>
+                    <a href="/register?plan=team" class="block w-full text-center bg-gray-900 text-white py-3 rounded-lg font-semibold hover:bg-gray-800">
+                        Contact Sales
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-20 bg-gradient-to-r from-indigo-600 to-purple-600">
+        <div class="max-w-4xl mx-auto text-center px-4">
+            <h2 class="text-3xl font-bold text-white mb-4">Ready to Build Your Second Brain?</h2>
+            <p class="text-xl text-white/90 mb-8">Join thousands of users who've transformed how they capture and organize knowledge.</p>
+            <a href="/register" class="bg-white text-indigo-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/90 transition">
+                Start Your Free Trial
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-2xl">🧠</span>
+                        <span class="font-bold text-xl">Second Brain</span>
+                    </div>
+                    <p class="text-gray-400">AI-powered note taking for the modern knowledge worker.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#features" class="hover:text-white">Features</a></li>
+                        <li><a href="#pricing" class="hover:text-white">Pricing</a></li>
+                        <li><a href="/api-docs" class="hover:text-white">API</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Resources</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="/docs" class="hover:text-white">Documentation</a></li>
+                        <li><a href="/blog" class="hover:text-white">Blog</a></li>
+                        <li><a href="/shortcuts" class="hover:text-white">Apple Shortcuts</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Company</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="/about" class="hover:text-white">About</a></li>
+                        <li><a href="/privacy" class="hover:text-white">Privacy</a></li>
+                        <li><a href="/terms" class="hover:text-white">Terms</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-12 pt-8 flex justify-between items-center">
+                <p class="text-gray-400">© 2025 Second Brain. All rights reserved.</p>
+                <div class="flex gap-4">
+                    <a href="https://github.com/dhouchin1/second_brain" class="text-gray-400 hover:text-white">GitHub</a>
+                    <a href="https://twitter.com/secondbrain" class="text-gray-400 hover:text-white">Twitter</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
