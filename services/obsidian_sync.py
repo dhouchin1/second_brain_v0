@@ -1,12 +1,19 @@
 from __future__ import annotations
+<<<<<<< HEAD
 import os
+=======
+import os, json
+>>>>>>> origin/main
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
 from services.search_adapter import SearchService
 from services.utils import make_zid, slugify
+<<<<<<< HEAD
 from obsidian_common import sanitize_filename, frontmatter_yaml
+=======
+>>>>>>> origin/main
 
 VAULT = Path(os.getenv('OBSIDIAN_VAULT_PATH', '')).expanduser()
 PROJECTS_ROOT = os.getenv('OBSIDIAN_PROJECTS_ROOT', '').strip('/')
@@ -31,7 +38,11 @@ class ObsidianSync:
             cur = self.svc.conn.cursor()
             cur.execute("UPDATE notes SET zettel_id=? WHERE id=?", (zid, row['id']))
             self.svc.conn.commit()
+<<<<<<< HEAD
         fname = f"{zid} {slugify(sanitize_filename(title))}.md"
+=======
+        fname = f"{zid} {slugify(title)}.md"
+>>>>>>> origin/main
         base = (VAULT / (PROJECTS_ROOT or '') / self._project_for(row)) if PER_PROJECT else VAULT
         base.mkdir(parents=True, exist_ok=True)
         return base / fname
@@ -40,6 +51,7 @@ class ObsidianSync:
         created = row.get('created_at') or datetime.now().isoformat()
         updated = row.get('updated_at') or datetime.now().isoformat()
         tags = (row.get('tags') or '').split()
+<<<<<<< HEAD
         fm = {
             'id': row.get('zettel_id'),
             'title': row.get('title'),
@@ -48,6 +60,12 @@ class ObsidianSync:
             'tags': tags,
         }
         return frontmatter_yaml(fm)
+=======
+        fm = {'id': row.get('zettel_id'), 'title': row.get('title'),
+              'created': created, 'updated': updated, 'tags': tags}
+        lines = ['---'] + [f"{k}: {json.dumps(v)}" for k,v in fm.items()] + ['---','']
+        return "\n".join(lines)
+>>>>>>> origin/main
 
     def _append_build_log(self, project_dir: Path, line: str) -> None:
         log = project_dir / 'BuildLog.md'

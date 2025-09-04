@@ -1,6 +1,11 @@
 import sqlite3
+<<<<<<< HEAD
 from config import settings
 from obsidian_common import load_frontmatter_file
+=======
+import frontmatter
+from config import settings
+>>>>>>> origin/main
 
 def create_db():
     db_path = settings.vault_path / "secondbrain_index.db"

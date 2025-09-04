@@ -1,6 +1,7 @@
 import requests
 import json
 from config import settings
+<<<<<<< HEAD
 
 def _ollama_options_dict():
     """Build an options dict for Ollama from settings, skipping Nones.
@@ -19,6 +20,8 @@ def _ollama_options_dict():
     if getattr(settings, 'ollama_num_gpu', None) is not None:
         opts['num_gpu'] = int(settings.ollama_num_gpu)
     return opts
+=======
+>>>>>>> origin/main
 
 
 def ollama_summarize(text, prompt=None):
@@ -37,10 +40,16 @@ def ollama_summarize(text, prompt=None):
             f"{system_prompt}\n\n{text}\n\n"
             "Respond in JSON with keys 'summary', 'tags', and 'actions'."
         ),
+<<<<<<< HEAD
         "options": _ollama_options_dict() or None,
     }
     try:
         resp = requests.post(settings.ollama_api_url, json=data, stream=True, timeout=60)
+=======
+    }
+    try:
+        resp = requests.post(settings.ollama_api_url, json=data, stream=True, timeout=120)
+>>>>>>> origin/main
         output = ""
         for line in resp.iter_lines():
             if line:
@@ -84,6 +93,7 @@ def ollama_generate_title(text):
     try:
         resp = requests.post(
             settings.ollama_api_url,
+<<<<<<< HEAD
             json={
                 "model": settings.ollama_model,
                 "prompt": prompt,
@@ -91,6 +101,10 @@ def ollama_generate_title(text):
                 "options": _ollama_options_dict() or None,
             },
             timeout=30,
+=======
+            json={"model": settings.ollama_model, "prompt": prompt, "stream": True},
+            timeout=60,
+>>>>>>> origin/main
         )
         title = ""
         for line in resp.iter_lines():
@@ -102,3 +116,7 @@ def ollama_generate_title(text):
     except Exception as e:
         print("Ollama title exception:", e)
         return "Untitled Note"
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main

@@ -4,6 +4,7 @@ jinja2
 watchdog>=3.0.0
 python-frontmatter>=1.0.0
 requests
+<<<<<<< HEAD
 pydantic>=2.9.0,<2.11.0
 pydantic-settings>=2.5.0,<2.6.0
 passlib[bcrypt]
@@ -35,3 +36,17 @@ playwright>=1.40.0
 beautifulsoup4>=4.12.0
 html2text>=2020.1.16
 readability-lxml>=0.8.1
+=======
+pydantic
+pydantic-settings
+passlib[bcrypt]
+python-jose
+python-multipartsentence-transformers>=2.2.2
+discord.py==2.3.2
+aiohttp==3.9.0
+sentence-transformers>=2.2.2
+discord.py>=2.3.2
+aiohttp>=3.9.0
+python-frontmatter>=1.0.0
+watchdog>=3.0.0
+>>>>>>> origin/main

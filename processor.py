@@ -85,7 +85,7 @@ def create_note_from_audio(audio_path: Path, transcript: str, summary: str, tags
     yaml_header += "---\n\n"
     with open(md_file, "w") as f:
         f.write(yaml_header)
-        f.write("# Transcript\n\n")
+        f.write("# Transcript\n\n")ç
         f.write(transcript)
     print(f"Wrote note: {md_file}")
 

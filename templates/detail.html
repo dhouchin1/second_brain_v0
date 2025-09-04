@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {% extends 'base.html' %}
 {% block title %}{{ note.title or 'Note Detail' }} – Second Brain{% endblock %}
 {% block head_extra %}
@@ -618,3 +619,193 @@
     {% endif %}
   </script>
 {% endblock %}
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ note.title or 'Note Detail' }} – Second Brain</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="/static/brain-logo.png" />
+  <style>
+    body { background: #181b24; font-family: 'Inter', Arial, sans-serif; }
+    ::-webkit-scrollbar { width: 8px; background: #23243a; }
+    ::-webkit-scrollbar-thumb { background: #36374c; border-radius: 6px; }
+    .prose pre, .prose code { background: #1a2233 !important; color: #ffeabf !important; }
+    .prose blockquote { border-left: 3px solid #8c8eea; background: #202340; color: #c2cbff;}
+    .fade-in { animation: fadeIn 0.5s cubic-bezier(.47,1.64,.41,.8) both;}
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px);} to {opacity:1; transform:none;}}
+  </style>
+</head>
+<body class="min-h-screen text-[#232a3c] bg-[#181b24]">
+
+  <!-- Header / Logo / Topbar -->
+  <header class="w-full pt-6 pb-4 flex flex-col items-center border-b border-[#26283c] bg-[#191b24]">
+    <div class="flex items-center gap-3 mb-1">
+      <img src="/static/brain-logo.png" alt="Second Brain Logo" class="h-8 w-8">
+      <a href="/" class="text-2xl font-extrabold text-pink-200 hover:text-pink-300 transition tracking-tight drop-shadow">
+        Second Brain
+      </a>
+    </div>
+    <p class="text-blue-300 text-xs mt-0.5">Capture, transcribe & connect your notes – anywhere, any device.</p>
+  </header>
+
+  <main class="max-w-2xl mx-auto fade-in p-4">
+
+    <!-- Note Card -->
+    <section class="bg-white/90 shadow-xl border border-[#ebe5f8] rounded-2xl px-8 py-7 my-8 flex flex-col gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+        <div class="flex gap-2 items-center">
+          {% if note.type == 'audio' %}
+            <span class="inline-flex items-center gap-1 text-yellow-400 bg-yellow-100/60 rounded-full px-3 py-0.5 text-xs font-semibold">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="3" width="12" height="18" rx="2" fill="#fffbea"/>
+                <path d="M9 7h6" stroke="#ffb300" stroke-width="1.5"/>
+              </svg>
+              Audio
+            </span>
+          {% elif note.type == 'apple' %}
+            <span class="inline-flex items-center gap-1 text-green-400 bg-green-100/60 rounded-full px-3 py-0.5 text-xs font-semibold">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 2a6 6 0 00-6 6v4a6 6 0 006 6 6 6 0 006-6V8a6 6 0 00-6-6z" />
+              </svg>
+              Shortcut
+            </span>
+          {% else %}
+            <span class="inline-flex items-center gap-1 text-blue-400 bg-blue-100/70 rounded-full px-3 py-0.5 text-xs font-semibold">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M5 12h14M12 5l7 7-7 7" stroke="#488cff" stroke-width="2"/>
+              </svg>
+              Note
+            </span>
+          {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="/edit/{{ note.id }}" class="text-blue-500 text-xs hover:underline">Edit</a>
+          <form method="post" action="/delete/{{ note.id }}" onsubmit="return confirm('Delete note?');">
+            <button type="submit" class="text-red-500 text-xs">Delete</button>
+          </form>
+          <span class="text-xs text-gray-400 font-mono">
+            {{ note.timestamp or '' }}
+          </span>
+        </div>
+      </div>
+      <!-- Title -->
+      <div class="font-extrabold text-2xl md:text-3xl text-[#232a3c] break-words leading-tight tracking-tight mb-1">{{ note.title }}</div>
+      {% if note.status != 'complete' %}
+        <div class="text-gray-500 text-sm">Processing...</div>
+      {% endif %}
+      <!-- Audio Playback -->
+      {% if note.audio_filename %}
+        <audio controls class="mt-1 mb-2 w-full max-w-lg rounded-lg shadow-lg bg-[#232a3c]">
+          <source src="/audio/{{ note.audio_filename }}" type="audio/wav">
+          Your browser does not support audio playback.
+        </audio>
+      {% endif %}
+      <!-- Summary -->
+      {% if note.summary %}
+        <div class="prose max-w-full text-[#37405c] text-lg leading-relaxed mb-2 whitespace-pre-line">
+          {{ note.summary }}
+        </div>
+      {% endif %}
+      <!-- Actions -->
+      {% if note.actions %}
+        <div class="mt-2">
+          <h3 class="text-blue-500 font-semibold text-sm mb-1">Action Items</h3>
+          <ul class="list-disc list-inside text-[#37405c] text-sm whitespace-pre-line">
+            {% for act in note.actions.split('\n') if act.strip() %}
+              <li>{{ act }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+      <!-- Content (full transcript or note) -->
+      {% if note.content and note.content.strip() != note.summary.strip() %}
+        <details class="mt-2 mb-2">
+          <summary class="cursor-pointer text-blue-500 hover:underline font-semibold text-sm">Show Full Note/Transcript</summary>
+          <div class="prose max-w-full bg-[#f9fafb] text-[#2a3a5a] px-5 py-3 rounded-lg mt-2 overflow-x-auto whitespace-pre-line">
+            {{ note.content }}
+          </div>
+        </details>
+      {% endif %}
+      <!-- Tags -->
+      {% if note.tags %}
+        <div class="flex flex-wrap gap-2 mt-2">
+          {% for tag_ in note.tags.split(',') if tag_.strip() %}
+            <a href="/?tag={{ tag_.strip() }}" class="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-500 text-xs font-semibold hover:bg-blue-200 transition">#{{ tag_.strip() }}</a>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+
+    <!-- AI Callout / Apple Shortcuts callout -->
+    <section class="bg-[#232c4e] rounded-xl px-5 py-3 shadow flex items-center gap-3 mb-6 border border-[#2d395c]">
+      <svg class="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M3 10h18M8 2v4m8-4v4" />
+        <rect x="3" y="4" width="18" height="18" rx="4" fill="#232c4e"/>
+      </svg>
+      <div>
+        <b class="text-pink-200">Did you know?</b>
+        <span class="text-blue-100">
+          You can add notes from <span class="text-yellow-200">anywhere</span> using the <b>Apple Shortcuts widget</b>!  
+          Notes are instantly processed, titled & summarized using AI.
+        </span>
+      </div>
+    </section>
+
+    <!-- Related Notes -->
+    {% if related and related|length > 0 %}
+      <section class="mt-10">
+        <div class="text-blue-400 text-lg font-semibold mb-2 flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+          </svg>
+          Related Notes
+        </div>
+        <div class="flex flex-col gap-2">
+          {% for rel in related %}
+            <a href="/detail/{{ rel.id }}" class="block bg-white/80 hover:bg-pink-50 transition border border-[#eae2fa] rounded-lg px-4 py-2 text-blue-700 font-medium shadow-sm">
+              {{ rel.title }}
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    <!-- Obsidian Export / Sync block -->
+    <section class="mt-10 mb-12 bg-[#212231] border border-[#353659] rounded-xl px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-2 shadow">
+      <div>
+        <span class="text-blue-100 font-semibold">Export or sync this note to <span class="text-blue-300">Obsidian</span> anytime!</span>
+      </div>
+      <button class="bg-blue-500 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-bold shadow transition">Sync Now</button>
+    </section>
+  </main>
+
+  <footer class="w-full py-7 flex flex-col items-center text-xs text-blue-300 mt-10">
+    <div class="mb-2">
+      <span class="font-semibold text-pink-200">Second Brain</span> — Where your best ideas live.
+    </div>
+    <div>
+      Powered by AI. Built for <b>Obsidian</b>, <b>Apple Shortcuts</b>, and thinkers everywhere.
+    </div>
+    <div class="mt-2">
+      <a href="https://github.com/dhouchin1/second_brain" class="text-blue-400 hover:text-pink-400 underline">GitHub</a>
+    </div>
+  </footer>
+
+  {% if note.status != 'complete' %}
+  <script>
+    setInterval(async () => {
+      const resp = await fetch('/status/{{ note.id }}');
+      const data = await resp.json();
+      if (data.status === 'complete') {
+        location.reload();
+      }
+    }, 5000);
+  </script>
+  {% endif %}
+</body>
+</html>
+>>>>>>> origin/main

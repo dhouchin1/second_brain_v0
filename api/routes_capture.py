@@ -64,6 +64,7 @@ def _transcribe(wav_path: Path) -> str | None:
         return txt.read_text(encoding='utf-8') if txt.exists() else None
 
 @router.post('/capture/audio')
+<<<<<<< HEAD
 def capture_audio(
     file: UploadFile = File(...),
     title: str | None = Form(None),
@@ -116,11 +117,34 @@ def capture_audio(
     if effective_skip:
         body_lines.append("")
         body_lines.append("Transcript: [deferred]")
+=======
+def capture_audio(file: UploadFile = File(...), title: str | None = Form(None), tags: str | None = Form('')):
+    # Save upload
+    ts = int(time.time())
+    raw_path = AUDIO_DIR / f"rec_{ts}_{file.filename or 'audio'}"
+    with raw_path.open('wb') as f:
+        f.write(file.file.read())
+    # Convert to wav
+    wav_path = raw_path.with_suffix('.wav')
+    try:
+        _to_wav(raw_path, wav_path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Audio convert failed: {e}")
+    # Try to transcribe (optional)
+    transcript = None
+    try:
+        transcript = _transcribe(wav_path)
+    except Exception:
+        transcript = None
+    # Build note body
+    body_lines = [f"[Audio] {raw_path.name}", f"WAV: {wav_path.name}"]
+>>>>>>> origin/main
     if transcript:
         body_lines += ["", "Transcript:", transcript]
     body = "\n".join(body_lines)
     note_title = title or (transcript[:80] + '…' if transcript else f"Voice Capture {ts}")
     note_id = svc.upsert_note(None, note_title, body, tags or '')
+<<<<<<< HEAD
     return {
         "ok": True,
         "id": note_id,
@@ -128,3 +152,6 @@ def capture_audio(
         "skipped": bool(effective_skip),
         "converted": bool(wav_path is not None),
     }
+=======
+    return {"ok": True, "id": note_id, "transcribed": bool(transcript)}
+>>>>>>> origin/main

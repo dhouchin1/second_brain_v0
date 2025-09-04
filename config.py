@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     db_path: Path = BASE_DIR / "notes.db"
     vault_path: Path = BASE_DIR
     audio_dir: Path = BASE_DIR / "audio"
+<<<<<<< HEAD
     uploads_dir: Path = BASE_DIR / "uploads"
     # Maximum size (in bytes) for any uploaded file (audio/images/pdfs)
     # Can be overridden via env var MAX_FILE_SIZE
@@ -63,6 +64,12 @@ class Settings(BaseSettings):
     )
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+=======
+    whisper_cpp_path: Path = BASE_DIR / "whisper.cpp/build/bin/whisper-cli"
+    whisper_model_path: Path = BASE_DIR / "whisper.cpp/models/ggml-base.en.bin"
+    ollama_api_url: str = "http://localhost:11434/api/generate"
+    ollama_model: str = "llama3.2"
+>>>>>>> origin/main
 
  # NEW: Obsidian + Raindrop
     obsidian_vault_path: str | None = Field(
@@ -82,6 +89,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices('raindrop_token','RAINDROP_TOKEN')
     )
 
+<<<<<<< HEAD
     # Advanced Search Configuration
     search_rerank_enabled: bool = Field(
         default=True,
@@ -177,6 +185,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices('auto_seeding_min_notes', 'AUTO_SEEDING_MIN_NOTES')
     )
 
+=======
+>>>>>>> origin/main
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

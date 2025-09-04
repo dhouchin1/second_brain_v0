@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Virtual environment
 venv/
 __pycache__/
@@ -104,3 +105,24 @@ local/
 .local/
 dev_notes.md
 TODO_private.md
+=======
+venv/
+__pycache__/
+*.db
+audio/
+*.pyc
+.DS_Store
+# Local artifacts
+backups/
+*.bundle
+/.logs/
+/.scaffolds/
+/.bak/
+*.bak
+
+# Scaffold files
+scripts/scaffolds/inactive/
+scripts/scaffolds/run_scaffolds_v4.sh
+scripts/scaffolds/scaffold_*.sh
+scripts/scaffolds/
+>>>>>>> origin/main

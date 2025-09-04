@@ -6,6 +6,7 @@ from typing import Optional
 from llm_utils import ollama_summarize, ollama_generate_title
 from config import settings
 from audio_utils import transcribe_audio
+<<<<<<< HEAD
 from services.audio_queue import audio_queue
 try:
     # Optional realtime status broadcasting
@@ -13,6 +14,8 @@ try:
     _REALTIME = True
 except Exception:
     _REALTIME = False
+=======
+>>>>>>> origin/main
 
 
 def get_conn():
@@ -36,6 +39,7 @@ def process_note(note_id: int):
 
     if note_type == "audio" and audio_filename:
         audio_path = settings.audio_dir / audio_filename
+<<<<<<< HEAD
         # Mark start of transcription
         try:
             c.execute("UPDATE notes SET status=? WHERE id=?", ("transcribing:0", note_id))
@@ -67,6 +71,9 @@ def process_note(note_id: int):
                 pass
 
         transcript, converted_name = transcribe_audio(audio_path, progress_cb=_on_progress)
+=======
+        transcript, converted_name = transcribe_audio(audio_path)
+>>>>>>> origin/main
         if transcript:
             content = transcript
             audio_filename = converted_name
@@ -96,6 +103,7 @@ def process_note(note_id: int):
     )
     conn.commit()
     conn.close()
+<<<<<<< HEAD
     
     # Mark as completed in FIFO queue
     audio_queue.mark_completed(note_id, success=True)
@@ -168,6 +176,20 @@ def process_batch():
         time.sleep(1)
     
     print(f"Completed batch processing of {len(queued_items)} items")
+=======
+
+
+def run_worker(poll_interval: int = 5):
+    while True:
+        conn = get_conn()
+        c = conn.cursor()
+        row = c.execute("SELECT id FROM notes WHERE status='pending' ORDER BY id LIMIT 1").fetchone()
+        conn.close()
+        if row:
+            process_note(row[0])
+        else:
+            time.sleep(poll_interval)
+>>>>>>> origin/main
 
 
 if __name__ == "__main__":

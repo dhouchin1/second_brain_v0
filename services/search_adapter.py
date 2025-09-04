@@ -12,16 +12,23 @@ import os
 import sqlite3
 import json
 from pathlib import Path
+<<<<<<< HEAD
 from typing import Optional
+=======
+from typing import Iterable, Optional
+>>>>>>> origin/main
 
 from services.embeddings import Embeddings
 
 MIGRATIONS = [
     Path('db/migrations/001_core.sql'),
     Path('db/migrations/002_vec.sql'),
+<<<<<<< HEAD
     Path('db/migrations/004_search_features.sql'),
     Path('db/migrations/005_github_integration.sql'),
     Path('db/migrations/006_search_benchmarking.sql'),
+=======
+>>>>>>> origin/main
 ]
 
 class SearchService:
@@ -99,6 +106,7 @@ class SearchService:
             print(f"[search] vector upsert failed (note {note_id}): {e}")
             self.conn.rollback()
 
+<<<<<<< HEAD
     def _sanitize_fts_query(self, q: str) -> str:
         """Sanitize query for FTS5 compatibility"""
         if not q or not q.strip():
@@ -138,6 +146,8 @@ class SearchService:
             # Use phrase search for multi-word queries
             return f'"{q}"'
 
+=======
+>>>>>>> origin/main
     # ─── Search ─────────────────────────────────────────────────────────────
     def search(self, q: str, mode: str = 'hybrid', k: int = 20) -> list[sqlite3.Row]:
         if mode not in {'hybrid','keyword','semantic'}:
@@ -149,6 +159,7 @@ class SearchService:
         return self._hybrid(q, k)
 
     def _keyword(self, q: str, k: int) -> list[sqlite3.Row]:
+<<<<<<< HEAD
         # Sanitize query for FTS5
         sanitized_query = self._sanitize_fts_query(q)
         if not sanitized_query:
@@ -170,6 +181,20 @@ class SearchService:
         except Exception as e:
             print(f"[search] FTS query failed for '{sanitized_query}': {e}")
             return []
+=======
+        cur = self.conn.cursor()
+        rows = cur.execute(
+            """
+            SELECT n.*,
+                   bm25(notes_fts) AS kw_rank,
+                   snippet(notes_fts, 1, '<b>', '</b>', '…', 12) AS snippet
+            FROM notes_fts JOIN notes n ON notes_fts.rowid = n.id
+            WHERE notes_fts MATCH ?
+            ORDER BY kw_rank
+            LIMIT ?
+            """, (q, k)).fetchall()
+        return rows
+>>>>>>> origin/main
 
     def _semantic(self, q: str, k: int) -> list[sqlite3.Row]:
         if not self._vec_table_exists():
@@ -193,6 +218,7 @@ class SearchService:
     def _hybrid(self, q: str, k: int) -> list[sqlite3.Row]:
         if not self._vec_table_exists():
             return self._keyword(q, k)
+<<<<<<< HEAD
         
         # Sanitize query for FTS part
         sanitized_query = self._sanitize_fts_query(q)
@@ -204,6 +230,11 @@ class SearchService:
         cur = self.conn.cursor()
         try:
             rows = cur.execute(
+=======
+        qvec = self.embedder.embed(q)
+        cur = self.conn.cursor()
+        rows = cur.execute(
+>>>>>>> origin/main
             """
             WITH kw AS (
               SELECT rowid AS id, bm25(notes_fts) AS kw_rank
@@ -229,9 +260,14 @@ class SearchService:
             GROUP BY n.id
             ORDER BY score DESC
             LIMIT ?
+<<<<<<< HEAD
             """, (sanitized_query, json.dumps(qvec), k)).fetchall()
             return rows
         except Exception as e:
             print(f"[search] Hybrid search failed for '{sanitized_query}': {e}")
             # Fallback to semantic search only
             return self._semantic(q, k)
+=======
+            """, (q, json.dumps(qvec), k)).fetchall()
+        return rows
+>>>>>>> origin/main

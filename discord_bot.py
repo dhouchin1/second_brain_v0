@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # discord_bot.py
 # Discord Bot Integration with Slash Commands + FastAPI backend
 
@@ -52,41 +53,86 @@ bot = SecondBrainBot()
 SECOND_BRAIN_API = os.getenv("SECOND_BRAIN_API_URL", "http://localhost:8082")
 WEBHOOK_TOKEN = os.getenv("WEBHOOK_TOKEN", "your-secret-token")
 
+=======
+# Discord Bot Integration
+import discord
+from discord.ext import commands
+import aiohttp
+import os
+from datetime import datetime
+
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+SECOND_BRAIN_API = os.getenv('SECOND_BRAIN_API_URL', 'http://localhost:8084')
+WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN', 'your-secret-token')
+>>>>>>> origin/main
 
 class SecondBrainCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+<<<<<<< HEAD
         self.session: aiohttp.ClientSession | None = None
         self.db_path = Path(__file__).parent / "notes.db"
 
     async def cog_load(self):
         self.session = aiohttp.ClientSession()
 
+=======
+        self.session = None
+    
+    async def cog_load(self):
+        self.session = aiohttp.ClientSession()
+    
+>>>>>>> origin/main
     async def cog_unload(self):
         if self.session:
             await self.session.close()
 
+<<<<<<< HEAD
     # -------------------------
     # Helpers
     # -------------------------
     async def save_to_second_brain(self, content: str, user_id: int, tags: str = ""):
+=======
+    async def save_to_second_brain(self, content: str, user_id: int, tags: str = ""):
+        """Save content to Second Brain via API"""
+>>>>>>> origin/main
         payload = {
             "note": content,
             "tags": tags,
             "type": "discord",
             "discord_user_id": user_id,
+<<<<<<< HEAD
             "timestamp": datetime.utcnow().isoformat(),
         }
         headers = {"Authorization": f"Bearer {WEBHOOK_TOKEN}", "Content-Type": "application/json"}
         try:
             async with self.session.post(
                 f"{SECOND_BRAIN_API}/webhook/discord", json=payload, headers=headers
+=======
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {WEBHOOK_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            async with self.session.post(
+                f"{SECOND_BRAIN_API}/webhook/discord", 
+                json=payload, 
+                headers=headers
+>>>>>>> origin/main
             ) as resp:
                 return resp.status == 200
         except Exception as e:
             print(f"Failed to save to Second Brain: {e}")
             return False
 
+<<<<<<< HEAD
     def get_db_stats(self):
         try:
             conn = sqlite3.connect(self.db_path)
@@ -293,10 +339,22 @@ class SecondBrainCog(commands.Cog):
     async def save_slash(self, interaction: discord.Interaction, content: str, tags: str = ""):
         await interaction.response.defer()
         success = await self.save_to_second_brain(content, interaction.user.id, tags)
+=======
+    @commands.command(name='save')
+    async def save_note(self, ctx, *, content):
+        """Save a note to Second Brain"""
+        words = content.split()
+        tags = [word[1:] for word in words if word.startswith('#')]
+        note_content = ' '.join(word for word in words if not word.startswith('#'))
+        
+        success = await self.save_to_second_brain(note_content, ctx.author.id, ','.join(tags))
+        
+>>>>>>> origin/main
         if success:
             embed = discord.Embed(
                 title="✅ Note Saved",
                 description="Successfully saved to Second Brain",
+<<<<<<< HEAD
                 color=0x4F46E5,
             )
             embed.add_field(
@@ -306,10 +364,18 @@ class SecondBrainCog(commands.Cog):
             )
             if tags:
                 embed.add_field(name="Tags", value=tags, inline=True)
+=======
+                color=0x4F46E5
+            )
+            embed.add_field(name="Content", value=note_content[:100] + "..." if len(note_content) > 100 else note_content, inline=False)
+            if tags:
+                embed.add_field(name="Tags", value=" ".join(f"#{tag}" for tag in tags), inline=True)
+>>>>>>> origin/main
         else:
             embed = discord.Embed(
                 title="❌ Save Failed",
                 description="Failed to save note to Second Brain",
+<<<<<<< HEAD
                 color=0xEF4444,
             )
         await interaction.followup.send(embed=embed)
@@ -961,3 +1027,17 @@ if __name__ == "__main__":
     print("🚀 Starting Second Brain Discord Bot...")
     print(f"🔗 API Endpoint: {SECOND_BRAIN_API}")
     bot.run(token)
+=======
+                color=0xEF4444
+            )
+        
+        await ctx.reply(embed=embed)
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+    await bot.add_cog(SecondBrainCog(bot))
+
+if __name__ == "__main__":
+    bot.run(os.getenv('DISCORD_BOT_TOKEN'))
+>>>>>>> origin/main
