@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><title>Icon Generator</title></head>
+<body>
+<canvas id="canvas" width="96" height="96"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Background
+ctx.fillStyle = '#2563eb';
+ctx.fillRect(0, 0, 96, 96);
+
+// Brain shape (simplified)
+ctx.fillStyle = 'white';
+ctx.beginPath();
+ctx.arc(48, 36, 24, 0, 2 * Math.PI);
+ctx.fill();
+ctx.beginPath();
+ctx.arc(60, 48, 16, 0, 2 * Math.PI);
+ctx.fill();
+ctx.beginPath();
+ctx.arc(36, 48, 16, 0, 2 * Math.PI);
+ctx.fill();
+
+// Download function
+function download() {
+    const link = document.createElement('a');
+    link.download = 'icon-96x96.png';
+    link.href = canvas.toDataURL();
+    link.click();
+}
+</script>
+<button onclick="download()">Download PNG</button>
+</body>
+</html>

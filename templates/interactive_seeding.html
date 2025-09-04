@@ -1,0 +1,749 @@
+{% extends "base.html" %}
+
+{% block title %}Interactive Seeding - Second Brain{% endblock %}
+
+{% block extra_head %}
+<style>
+    .seeding-progress {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+    
+    .level-badge {
+        display: inline-block;
+        background: rgba(255,255,255,0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-weight: bold;
+        margin-right: 1rem;
+    }
+    
+    .points-display {
+        font-size: 1.5em;
+        font-weight: bold;
+    }
+    
+    .prompt-card {
+        border: 1px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .prompt-card:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .prompt-card.completed {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        border-color: #28a745;
+    }
+    
+    .prompt-card.required {
+        border-left: 4px solid #dc3545;
+    }
+    
+    .prompt-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .prompt-progress {
+        width: 100%;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        margin: 1rem 0;
+        overflow: hidden;
+    }
+    
+    .prompt-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4e73df, #224abe);
+        transition: width 0.3s ease;
+    }
+    
+    .achievement-popup {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        z-index: 1000;
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+    }
+    
+    .achievement-popup.show {
+        transform: translateX(0);
+    }
+    
+    .leaderboard {
+        background: #f8f9fc;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .leaderboard-item {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e3e6f0;
+    }
+    
+    .leaderboard-item:last-child {
+        border-bottom: none;
+    }
+    
+    .examples-list {
+        background: #f8f9fc;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+    }
+    
+    .examples-list ul {
+        margin: 0;
+        padding-left: 1.2rem;
+    }
+    
+    .examples-list li {
+        color: #6c757d;
+        font-size: 0.9em;
+        margin-bottom: 0.3rem;
+    }
+    
+    .question-card {
+        background: white;
+        border: 1px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .question-card.answered {
+        background: #f8f9fc;
+        border-color: #28a745;
+    }
+    
+    .file-upload-area {
+        border: 2px dashed #ccc;
+        padding: 2rem;
+        text-align: center;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .file-upload-area:hover {
+        border-color: #4e73df;
+        background: #f8f9fc;
+    }
+    
+    .file-upload-area.dragover {
+        border-color: #28a745;
+        background: #d4edda;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Progress Header -->
+            <div class="seeding-progress">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="level-badge">Level <span id="userLevel">1</span></div>
+                        <h2 class="mb-1">Interactive Content Seeding</h2>
+                        <p class="mb-0">Help train your search algorithms by adding diverse content</p>
+                    </div>
+                    <div class="col-md-4 text-md-right">
+                        <div class="points-display">
+                            <span id="userPoints">0</span> points
+                        </div>
+                        <small class="d-block">Next level: <span id="nextLevelPoints">100</span> points</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Achievements -->
+            <div id="achievementsSection" class="mb-4" style="display: none;">
+                <h4><i class="fas fa-trophy text-warning"></i> Recent Achievements</h4>
+                <div id="achievementsList" class="row"></div>
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="leaderboard">
+                <h5><i class="fas fa-chart-line"></i> Community Leaderboard</h5>
+                <div id="leaderboardList">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seeding Prompts -->
+            <div class="row">
+                <div class="col-12">
+                    <h3>Content Collection Tasks</h3>
+                    <p class="text-muted">Complete these tasks to improve your search experience. Required tasks are marked with a red border.</p>
+                </div>
+            </div>
+
+            <div id="promptsList">
+                <!-- Prompts loaded via JavaScript -->
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Loading prompts...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Achievement Popup -->
+<div id="achievementPopup" class="achievement-popup">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-trophy mr-2"></i>
+        <div>
+            <strong id="achievementName">Achievement Unlocked!</strong>
+            <div id="achievementDescription" class="small"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+
+<!-- Text Question Modal -->
+<div class="modal fade" id="textQuestionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Personal Questions</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-4">Answer these questions to help personalize your search experience. Your answers will be added as searchable content.</p>
+                <div id="questionsContainer"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="submitAnswers">Submit Answers</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Upload Modal -->
+<div class="modal fade" id="fileUploadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalTitle">Upload Files</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="file-upload-area" id="fileUploadArea">
+                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                    <p class="mb-2">Drag and drop files here or click to browse</p>
+                    <small class="text-muted">Supported formats: PDF, TXT, DOC, DOCX</small>
+                    <input type="file" id="fileInput" multiple style="display: none;">
+                </div>
+                <div id="uploadProgress" class="mt-3" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="uploadedFiles" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="processUploads">Process Files</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audio Recording Modal -->
+<div class="modal fade" id="audioRecordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Voice Memo</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="recordingIndicator" class="mb-3">
+                    <i class="fas fa-microphone fa-3x text-muted" id="micIcon"></i>
+                    <p class="mt-2">Click to start recording</p>
+                </div>
+                <div id="recordingTimer" style="display: none;">
+                    <h3 class="text-danger">⏺ <span id="timerDisplay">00:00</span></h3>
+                    <p>Recording in progress...</p>
+                </div>
+                <div id="recordingComplete" style="display: none;">
+                    <i class="fas fa-check-circle fa-3x text-success"></i>
+                    <p class="mt-2">Recording complete! Add a title and description.</p>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="audioTitle" placeholder="Recording title">
+                    </div>
+                    <div class="form-group">
+                        <textarea class="form-control" id="audioDescription" placeholder="Brief description" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="recordButton">Start Recording</button>
+                <button type="button" class="btn btn-primary" id="saveRecording" style="display: none;">Save Recording</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+class InteractiveSeedingInterface {
+    constructor() {
+        this.currentPromptId = null;
+        this.userProgress = null;
+        this.mediaRecorder = null;
+        this.recordingData = [];
+        this.recordingTimer = null;
+        this.recordingStartTime = null;
+        
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.loadUserProgress();
+        this.loadPrompts();
+        this.loadLeaderboard();
+    }
+    
+    bindEvents() {
+        // File upload events
+        document.getElementById('fileUploadArea').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+        
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            this.handleFileSelect(e.target.files);
+        });
+        
+        // Drag and drop
+        const uploadArea = document.getElementById('fileUploadArea');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            this.handleFileSelect(e.dataTransfer.files);
+        });
+        
+        // Audio recording events
+        document.getElementById('recordButton').addEventListener('click', () => {
+            this.toggleRecording();
+        });
+        
+        document.getElementById('saveRecording').addEventListener('click', () => {
+            this.saveAudioRecording();
+        });
+        
+        // Form submissions
+        document.getElementById('submitAnswers').addEventListener('click', () => {
+            this.submitTextAnswers();
+        });
+        
+        document.getElementById('processUploads').addEventListener('click', () => {
+            this.processFileUploads();
+        });
+    }
+    
+    async loadUserProgress() {
+        try {
+            const response = await fetch('/api/interactive-seeding/progress');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.userProgress = result.data;
+                this.updateProgressDisplay();
+            }
+        } catch (error) {
+            console.error('Failed to load user progress:', error);
+        }
+    }
+    
+    async loadPrompts() {
+        try {
+            const response = await fetch('/api/interactive-seeding/prompts');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.renderPrompts(result.data);
+            }
+        } catch (error) {
+            console.error('Failed to load prompts:', error);
+            document.getElementById('promptsList').innerHTML = '<div class="alert alert-danger">Failed to load prompts</div>';
+        }
+    }
+    
+    async loadLeaderboard() {
+        try {
+            const response = await fetch('/api/interactive-seeding/leaderboard');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.renderLeaderboard(result.data);
+            }
+        } catch (error) {
+            console.error('Failed to load leaderboard:', error);
+        }
+    }
+    
+    updateProgressDisplay() {
+        if (!this.userProgress) return;
+        
+        document.getElementById('userLevel').textContent = this.userProgress.level;
+        document.getElementById('userPoints').textContent = this.userProgress.total_points;
+        document.getElementById('nextLevelPoints').textContent = (this.userProgress.level * 100);
+        
+        // Show achievements if any
+        if (this.userProgress.achievements && this.userProgress.achievements.length > 0) {
+            document.getElementById('achievementsSection').style.display = 'block';
+            // Render achievements here
+        }
+    }
+    
+    renderPrompts(prompts) {
+        const container = document.getElementById('promptsList');
+        container.innerHTML = '';
+        
+        prompts.forEach(prompt => {
+            const promptCard = document.createElement('div');
+            promptCard.className = `prompt-card ${prompt.completed ? 'completed' : ''} ${prompt.required ? 'required' : ''}`;
+            
+            promptCard.innerHTML = `
+                <div class="prompt-header">
+                    <h5 class="mb-0">${prompt.title}</h5>
+                    <div>
+                        ${prompt.required ? '<span class="badge badge-danger">Required</span>' : ''}
+                        ${prompt.completed ? '<span class="badge badge-success">Complete</span>' : ''}
+                        <span class="badge badge-primary">${prompt.points} pts</span>
+                    </div>
+                </div>
+                <p class="text-muted">${prompt.description}</p>
+                <div class="prompt-progress">
+                    <div class="prompt-progress-fill" style="width: ${prompt.progress_percentage}%"></div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">Progress: ${prompt.current_count}/${prompt.target_count}</small>
+                    <button class="btn btn-primary btn-sm" onclick="seedingInterface.openPrompt('${prompt.id}', '${prompt.type}')">
+                        ${prompt.completed ? 'Add More' : 'Start'}
+                    </button>
+                </div>
+                ${prompt.examples && prompt.examples.length > 0 ? `
+                    <div class="examples-list">
+                        <small><strong>Examples:</strong></small>
+                        <ul>
+                            ${prompt.examples.map(ex => `<li>${ex}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            `;
+            
+            container.appendChild(promptCard);
+        });
+    }
+    
+    renderLeaderboard(leaderboard) {
+        const container = document.getElementById('leaderboardList');
+        container.innerHTML = '';
+        
+        leaderboard.forEach((user, index) => {
+            const item = document.createElement('div');
+            item.className = 'leaderboard-item';
+            item.innerHTML = `
+                <div>
+                    <span class="font-weight-bold">#${user.rank}</span>
+                    <span class="ml-2">${user.username}</span>
+                    <small class="text-muted ml-2">Level ${user.level}</small>
+                </div>
+                <div>
+                    <span class="font-weight-bold">${user.points}</span> pts
+                    <small class="text-muted ml-2">${user.achievement_count} achievements</small>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    }
+    
+    openPrompt(promptId, type) {
+        this.currentPromptId = promptId;
+        
+        if (type === 'text') {
+            this.openTextModal();
+        } else if (type === 'pdf') {
+            this.openFileModal();
+        } else if (type === 'audio') {
+            this.openAudioModal();
+        } else if (type === 'web') {
+            this.openWebModal();
+        }
+    }
+    
+    async openTextModal() {
+        const response = await fetch('/api/interactive-seeding/questions');
+        const result = await response.json();
+        
+        if (result.success) {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = '';
+            
+            result.data.forEach(question => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = `question-card ${question.answered ? 'answered' : ''}`;
+                questionDiv.innerHTML = `
+                    <h6>${question.question}</h6>
+                    <textarea 
+                        class="form-control" 
+                        data-question-id="${question.id}"
+                        placeholder="${question.placeholder}"
+                        rows="3"
+                        ${question.answered ? 'disabled' : ''}
+                    ></textarea>
+                    ${question.answered ? '<small class="text-success">✓ Already answered</small>' : ''}
+                `;
+                container.appendChild(questionDiv);
+            });
+            
+            $('#textQuestionModal').modal('show');
+        }
+    }
+    
+    openFileModal() {
+        document.getElementById('uploadModalTitle').textContent = 'Upload Documents (PDF, TXT, DOC)';
+        document.getElementById('fileInput').accept = '.pdf,.txt,.doc,.docx';
+        $('#fileUploadModal').modal('show');
+    }
+    
+    openAudioModal() {
+        $('#audioRecordModal').modal('show');
+    }
+    
+    openWebModal() {
+        // Implement web content capture modal
+        alert('Web content capture coming soon!');
+    }
+    
+    async submitTextAnswers() {
+        const textareas = document.querySelectorAll('#questionsContainer textarea:not([disabled])');
+        const answers = [];
+        
+        textareas.forEach(textarea => {
+            if (textarea.value.trim()) {
+                answers.push({
+                    question_id: textarea.dataset.questionId,
+                    answer: textarea.value.trim()
+                });
+            }
+        });
+        
+        if (answers.length === 0) {
+            alert('Please answer at least one question.');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/interactive-seeding/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt_id: this.currentPromptId,
+                    content_data: { answers }
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showSuccess(`Great! You earned ${result.points_awarded} points.`);
+                this.showNewAchievements(result.new_achievements);
+                $('#textQuestionModal').modal('hide');
+                this.loadUserProgress();
+                this.loadPrompts();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Submission failed:', error);
+            alert('Submission failed. Please try again.');
+        }
+    }
+    
+    async toggleRecording() {
+        const button = document.getElementById('recordButton');
+        
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            // Stop recording
+            this.mediaRecorder.stop();
+            button.textContent = 'Start Recording';
+            button.className = 'btn btn-danger';
+            
+            clearInterval(this.recordingTimer);
+            document.getElementById('recordingTimer').style.display = 'none';
+            document.getElementById('recordingComplete').style.display = 'block';
+            document.getElementById('saveRecording').style.display = 'inline-block';
+            
+        } else {
+            // Start recording
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                this.mediaRecorder = new MediaRecorder(stream);
+                this.recordingData = [];
+                
+                this.mediaRecorder.ondataavailable = (event) => {
+                    this.recordingData.push(event.data);
+                };
+                
+                this.mediaRecorder.start();
+                button.textContent = 'Stop Recording';
+                button.className = 'btn btn-success';
+                
+                document.getElementById('recordingIndicator').style.display = 'none';
+                document.getElementById('recordingTimer').style.display = 'block';
+                
+                this.recordingStartTime = Date.now();
+                this.recordingTimer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                    const seconds = (elapsed % 60).toString().padStart(2, '0');
+                    document.getElementById('timerDisplay').textContent = `${minutes}:${seconds}`;
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Recording failed:', error);
+                alert('Unable to access microphone. Please check permissions.');
+            }
+        }
+    }
+    
+    async saveAudioRecording() {
+        const title = document.getElementById('audioTitle').value.trim();
+        const description = document.getElementById('audioDescription').value.trim();
+        
+        if (!title) {
+            alert('Please provide a title for the recording.');
+            return;
+        }
+        
+        const audioBlob = new Blob(this.recordingData, { type: 'audio/wav' });
+        const duration = Math.floor((Date.now() - this.recordingStartTime) / 1000 / 60); // minutes
+        
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.wav');
+        formData.append('prompt_id', this.currentPromptId);
+        formData.append('content_data', JSON.stringify({
+            title: title,
+            description: description,
+            duration_minutes: duration
+        }));
+        
+        try {
+            const response = await fetch('/api/interactive-seeding/submit-audio', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showSuccess(`Recording saved! You earned ${result.points_awarded} points.`);
+                this.showNewAchievements(result.new_achievements);
+                $('#audioRecordModal').modal('hide');
+                this.loadUserProgress();
+                this.loadPrompts();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Audio submission failed:', error);
+            alert('Failed to save recording. Please try again.');
+        }
+    }
+    
+    handleFileSelect(files) {
+        const container = document.getElementById('uploadedFiles');
+        container.innerHTML = '';
+        
+        Array.from(files).forEach(file => {
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'border p-2 mb-2 rounded';
+            fileDiv.innerHTML = `
+                <div class="d-flex justify-content-between">
+                    <span><i class="fas fa-file"></i> ${file.name}</span>
+                    <small class="text-muted">${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+                </div>
+            `;
+            container.appendChild(fileDiv);
+        });
+    }
+    
+    showSuccess(message) {
+        // Show success notification
+        alert(message); // TODO: Replace with better notification system
+    }
+    
+    showNewAchievements(achievements) {
+        achievements.forEach((achievement, index) => {
+            setTimeout(() => {
+                this.showAchievementPopup(achievement);
+            }, index * 2000);
+        });
+    }
+    
+    showAchievementPopup(achievement) {
+        const popup = document.getElementById('achievementPopup');
+        document.getElementById('achievementName').textContent = achievement.name;
+        document.getElementById('achievementDescription').textContent = achievement.description;
+        
+        popup.classList.add('show');
+        
+        setTimeout(() => {
+            popup.classList.remove('show');
+        }, 4000);
+    }
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    window.seedingInterface = new InteractiveSeedingInterface();
+});
+</script>
+{% endblock %}

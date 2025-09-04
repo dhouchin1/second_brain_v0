@@ -59,6 +59,7 @@
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Capture</h2>
                     
                     <form method="post" action="/capture" enctype="multipart/form-data" class="space-y-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div>
                             <textarea name="note" 
                                       placeholder="What's on your mind?" 
@@ -75,8 +76,9 @@
                         
                         <div class="flex items-center gap-2">
                             <input type="file" 
-                                   name="file"
-                                   accept="audio/*" 
+                                   name="file" 
+                                   id="enhancedFileInput"
+                                   accept="image/*,audio/*,.pdf,application/pdf" 
                                    class="text-sm">
                         </div>
                         
@@ -170,3 +172,17 @@
     </script>
 </body>
 </html>
+<script>
+  // Auto-submit for audio & image files on enhanced dashboard
+  (function(){
+    const input = document.getElementById('enhancedFileInput');
+    const form = input ? input.closest('form') : null;
+    if (!input || !form) return;
+    input.addEventListener('change', () => {
+      const f = input.files && input.files[0];
+      if (f && (/^audio\//.test(f.type) || /^image\//.test(f.type))) {
+        try { form.submit(); } catch (e) { console.error('Auto-submit failed', e); }
+      }
+    });
+  })();
+</script>

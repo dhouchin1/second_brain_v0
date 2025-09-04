@@ -1,0 +1,202 @@
+{
+  "name": "Second Brain - Quick Note",
+  "description": "Quickly capture notes to Second Brain with voice or text input",
+  "version": "1.0",
+  "url_scheme": "secondbrain://capture",
+  "workflows": [
+    {
+      "id": "quick_note",
+      "name": "📝 Quick Note",
+      "description": "Capture text or voice note instantly",
+      "actions": [
+        {
+          "type": "text_input",
+          "prompt": "What's on your mind?",
+          "allow_multiline": true,
+          "default_text": ""
+        },
+        {
+          "type": "web_request",
+          "method": "POST",
+          "url": "https://your-domain.com/api/shortcuts/quick-note",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer YOUR_API_KEY"
+          },
+          "body": {
+            "content": "${text_input}",
+            "source": "apple_shortcuts",
+            "device": "${device_name}",
+            "timestamp": "${current_date}"
+          }
+        },
+        {
+          "type": "notification",
+          "title": "✅ Note Saved",
+          "body": "Your note has been saved to Second Brain"
+        }
+      ]
+    },
+    {
+      "id": "voice_note",
+      "name": "🎤 Voice Note", 
+      "description": "Record and transcribe voice notes",
+      "actions": [
+        {
+          "type": "dictate_text",
+          "prompt": "Speak your note",
+          "language": "en-US",
+          "stop_listening": "pause"
+        },
+        {
+          "type": "web_request",
+          "method": "POST", 
+          "url": "https://your-domain.com/api/shortcuts/voice-note",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer YOUR_API_KEY"
+          },
+          "body": {
+            "content": "${dictated_text}",
+            "source": "apple_shortcuts_voice",
+            "device": "${device_name}",
+            "timestamp": "${current_date}",
+            "audio_duration": "${dictation_duration}"
+          }
+        },
+        {
+          "type": "notification",
+          "title": "🎤 Voice Note Saved",
+          "body": "Transcription: ${dictated_text}"
+        }
+      ]
+    },
+    {
+      "id": "web_clip",
+      "name": "🔗 Web Clip",
+      "description": "Save web pages and articles", 
+      "actions": [
+        {
+          "type": "get_webpage_contents",
+          "url": "${current_url}"
+        },
+        {
+          "type": "web_request",
+          "method": "POST",
+          "url": "https://your-domain.com/api/shortcuts/web-clip", 
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer YOUR_API_KEY"
+          },
+          "body": {
+            "url": "${current_url}",
+            "title": "${webpage_title}",
+            "content": "${webpage_text}",
+            "source": "apple_shortcuts_web",
+            "device": "${device_name}",
+            "timestamp": "${current_date}"
+          }
+        },
+        {
+          "type": "notification",
+          "title": "🔗 Web Page Saved",
+          "body": "Saved: ${webpage_title}"
+        }
+      ]
+    },
+    {
+      "id": "meeting_prep",
+      "name": "📅 Meeting Prep",
+      "description": "Prepare for upcoming meetings",
+      "actions": [
+        {
+          "type": "get_calendar_events",
+          "filter": "next_24_hours"
+        },
+        {
+          "type": "choose_from_list",
+          "prompt": "Select meeting to prepare for:",
+          "items": "${calendar_events}"
+        },
+        {
+          "type": "text_input",
+          "prompt": "Meeting notes or preparation:",
+          "allow_multiline": true,
+          "default_text": "# ${selected_event_title}\n\n## Preparation Notes\n\n\n## Agenda\n\n\n## Action Items\n- [ ] "
+        },
+        {
+          "type": "web_request",
+          "method": "POST",
+          "url": "https://your-domain.com/api/shortcuts/meeting-prep",
+          "headers": {
+            "Content-Type": "application/json", 
+            "Authorization": "Bearer YOUR_API_KEY"
+          },
+          "body": {
+            "content": "${text_input}",
+            "meeting_title": "${selected_event_title}",
+            "meeting_date": "${selected_event_date}",
+            "source": "apple_shortcuts_meeting",
+            "device": "${device_name}",
+            "tags": "meeting,preparation",
+            "timestamp": "${current_date}"
+          }
+        },
+        {
+          "type": "notification",
+          "title": "📅 Meeting Notes Ready",
+          "body": "Prepared for: ${selected_event_title}"
+        }
+      ]
+    },
+    {
+      "id": "daily_capture",
+      "name": "🌅 Daily Capture",
+      "description": "End-of-day reflection and capture",
+      "actions": [
+        {
+          "type": "text_input",
+          "prompt": "How was your day? Key highlights, learnings, or thoughts:",
+          "allow_multiline": true,
+          "default_text": "# Daily Reflection - ${current_date}\n\n## Highlights\n\n\n## Learnings\n\n\n## Tomorrow's Focus\n\n"
+        },
+        {
+          "type": "web_request",
+          "method": "POST",
+          "url": "https://your-domain.com/api/shortcuts/daily-capture",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer YOUR_API_KEY"
+          },
+          "body": {
+            "content": "${text_input}",
+            "source": "apple_shortcuts_daily",
+            "device": "${device_name}",
+            "tags": "daily,reflection",
+            "timestamp": "${current_date}"
+          }
+        },
+        {
+          "type": "notification",
+          "title": "🌅 Daily Reflection Saved",
+          "body": "Great job reflecting on your day!"
+        }
+      ]
+    }
+  ],
+  "setup_instructions": [
+    "1. Install the Shortcuts app on your iOS device",
+    "2. Import this shortcut configuration",
+    "3. Update the URL to point to your Second Brain instance",
+    "4. Add your API key for authentication",
+    "5. Test the shortcut with a simple note",
+    "6. Add to your home screen or Siri for quick access"
+  ],
+  "siri_phrases": [
+    "Quick note to Second Brain",
+    "Save a voice note",
+    "Capture this page",
+    "Prepare for meeting",
+    "Daily reflection time"
+  ]
+}

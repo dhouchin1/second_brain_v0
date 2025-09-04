@@ -1,0 +1,162 @@
+{
+  "WFWorkflowActions": [
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.selectcontact",
+      "WFWorkflowActionParameters": {
+        "WFSelectContactActionSelectMultiple": false
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getdetailsofcontacts",
+      "WFWorkflowActionParameters": {
+        "WFContentItemPropertyName": "Name"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getdetailsofcontacts",
+      "WFWorkflowActionParameters": {
+        "WFContentItemPropertyName": "Phone Number"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getdetailsofcontacts",
+      "WFWorkflowActionParameters": {
+        "WFContentItemPropertyName": "Email Address"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getdetailsofcontacts",
+      "WFWorkflowActionParameters": {
+        "WFContentItemPropertyName": "Company"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionParameters": {
+        "WFAskActionPrompt": "Notes about this contact:",
+        "WFInputType": "Text",
+        "WFInputTextActionMultiline": true,
+        "WFAskActionDefaultAnswer": "Met today - follow up needed"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+      "WFWorkflowActionParameters": {
+        "WFURL": "http://localhost:8082/api/shortcuts/contact",
+        "WFHTTPMethod": "POST",
+        "WFHTTPHeaders": {
+          "Content-Type": "application/json"
+        },
+        "WFRequestVariable": {
+          "Value": {
+            "WFDictionaryFieldValueItems": [
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "name"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Name"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "phone"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Phone Number"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "email"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Email Address"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "company"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Company"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "content"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Provided Input"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "source"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "string": "apple_shortcuts_contact"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "shortcuts_response"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "notification_title"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.shownotification",
+      "WFWorkflowActionParameters": {
+        "WFNotificationActionTitle": "Second Brain"
+      }
+    }
+  ],
+  "WFWorkflowName": "👤 Contact to Second Brain",
+  "WFWorkflowDescription": "Save contact information with notes to Second Brain"
+}

@@ -1,0 +1,140 @@
+{
+  "WFWorkflowActions": [
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionParameters": {
+        "WFAskActionPrompt": "Event Title:",
+        "WFInputType": "Text"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionParameters": {
+        "WFAskActionPrompt": "Start Date & Time:",
+        "WFInputType": "Text",
+        "WFAskActionDefaultAnswer": "Today 2:00 PM"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionParameters": {
+        "WFAskActionPrompt": "Location (optional):",
+        "WFInputType": "Text",
+        "WFAskActionDefaultAnswer": ""
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionParameters": {
+        "WFAskActionPrompt": "Notes about this event:",
+        "WFInputType": "Text",
+        "WFInputTextActionMultiline": true
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+      "WFWorkflowActionParameters": {
+        "WFURL": "http://localhost:8082/api/shortcuts/calendar-event",
+        "WFHTTPMethod": "POST",
+        "WFHTTPHeaders": {
+          "Content-Type": "application/json"
+        },
+        "WFRequestVariable": {
+          "Value": {
+            "WFDictionaryFieldValueItems": [
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "event_title"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Provided Input"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "content"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Provided Input"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "start_date"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Provided Input"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "location"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Provided Input"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "source"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "string": "apple_shortcuts_calendar"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "shortcuts_response"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "notification_title"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.shownotification",
+      "WFWorkflowActionParameters": {
+        "WFNotificationActionTitle": "Second Brain"
+      }
+    }
+  ],
+  "WFWorkflowName": "📅 Calendar Event to Second Brain",
+  "WFWorkflowDescription": "Create calendar event notes in Second Brain"
+}

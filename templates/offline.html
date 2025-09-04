@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Offline - Second Brain{% endblock %}
+
+{% block head_extra %}
+<style>
+  .offline-container {
+    min-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+  }
+  
+  .offline-icon {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 2rem;
+    opacity: 0.6;
+  }
+  
+  .offline-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 2rem;
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  .quick-note-offline {
+    padding: 1rem;
+    border: 2px dashed #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    margin-top: 1.5rem;
+  }
+  
+  .quick-note-offline textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    resize: vertical;
+    font-family: inherit;
+  }
+  
+  .offline-note-count {
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 1rem;
+    font-size: 14px;
+    color: #92400e;
+  }
+  
+  @media (max-width: 640px) {
+    .offline-container {
+      padding: 1rem;
+    }
+    
+    .offline-icon {
+      width: 80px;
+      height: 80px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="offline-container">
+  <!-- Offline Icon -->
+  <svg class="offline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 5.636l-12.728 12.728m0 0L12 12m-6.364 6.364L12 12m6.364-6.364L12 12"></path>
+    <circle cx="12" cy="12" r="10"></circle>
+  </svg>
+  
+  <!-- Offline Message -->
+  <div class="text-center">
+    <h1 class="text-3xl font-bold text-gray-900 mb-4">You're Offline</h1>
+    <p class="text-lg text-gray-600 mb-2">No internet connection detected</p>
+    <p class="text-sm text-gray-500">Your notes will sync when connection is restored</p>
+  </div>
+  
+  <!-- Offline Actions -->
+  <div class="offline-actions">
+    <button 
+      onclick="window.location.reload()" 
+      class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+    >
+      🔄 Try Again
+    </button>
+    
+    <button 
+      onclick="toggleQuickNote()" 
+      class="bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors"
+    >
+      📝 Create Offline Note
+    </button>
+  </div>
+  
+  <!-- Quick Note Offline -->
+  <div id="quick-note-offline" class="quick-note-offline" style="display: none;">
+    <h3 class="text-lg font-semibold mb-3">📝 Offline Quick Note</h3>
+    <form onsubmit="saveOfflineNote(event)">
+      <textarea 
+        id="offline-note-content" 
+        placeholder="Write your note here... It will sync when you're back online."
+        required
+      ></textarea>
+      <div class="flex gap-2 mt-3">
+        <button 
+          type="submit" 
+          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium flex-1"
+        >
+          💾 Save Offline
+        </button>
+        <button 
+          type="button" 
+          onclick="toggleQuickNote()" 
+          class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-medium"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+    
+    <!-- Offline Notes Counter -->
+    <div id="offline-count" class="offline-note-count" style="display: none;">
+      <span id="offline-count-text">0 offline notes saved</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// Offline functionality
+let offlineNotes = JSON.parse(localStorage.getItem('offlineNotes') || '[]');
+
+function toggleQuickNote() {
+  const element = document.getElementById('quick-note-offline');
+  if (element.style.display === 'none') {
+    element.style.display = 'block';
+    document.getElementById('offline-note-content').focus();
+  } else {
+    element.style.display = 'none';
+    document.getElementById('offline-note-content').value = '';
+  }
+  updateOfflineCount();
+}
+
+function saveOfflineNote(event) {
+  event.preventDefault();
+  
+  const content = document.getElementById('offline-note-content').value.trim();
+  if (!content) return;
+  
+  const note = {
+    id: Date.now().toString(),
+    content: content,
+    timestamp: new Date().toISOString(),
+    type: 'text',
+    status: 'offline'
+  };
+  
+  offlineNotes.push(note);
+  localStorage.setItem('offlineNotes', JSON.stringify(offlineNotes));
+  
+  // Clear form
+  document.getElementById('offline-note-content').value = '';
+  
+  // Show success
+  window.showToast && window.showToast('Note saved offline! Will sync when connected.', 'success');
+  
+  // Update counter
+  updateOfflineCount();
+  
+  // Register background sync
+  if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+    navigator.serviceWorker.ready.then(registration => {
+      return registration.sync.register('offline-note-sync');
+    }).catch(console.error);
+  }
+}
+
+function updateOfflineCount() {
+  const countElement = document.getElementById('offline-count');
+  const textElement = document.getElementById('offline-count-text');
+  
+  if (offlineNotes.length > 0) {
+    textElement.textContent = `${offlineNotes.length} offline note${offlineNotes.length === 1 ? '' : 's'} saved`;
+    countElement.style.display = 'block';
+  } else {
+    countElement.style.display = 'none';
+  }
+}
+
+// Check connection status
+function checkConnection() {
+  if (navigator.onLine) {
+    window.location.reload();
+  }
+}
+
+// Listen for connection changes
+window.addEventListener('online', checkConnection);
+window.addEventListener('offline', () => {
+  console.log('Connection lost');
+});
+
+// Initialize
+updateOfflineCount();
+
+// Auto-check connection every 30 seconds
+setInterval(checkConnection, 30000);
+</script>
+{% endblock %}

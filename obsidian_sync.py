@@ -1,7 +1,13 @@
-# obsidian_sync.py - Enhanced bidirectional sync with transcription
+"""Obsidian sync utilities.
+
+Provides the `ObsidianSync` class used by the app without registering FastAPI
+routes at import-time. Optional dependencies (watchdog) are imported lazily.
+Frontmatter read/write is handled via `obsidian_common` with a graceful
+fallback, so a hard dependency on `python-frontmatter` is not required.
+"""
 
 import os
-import yaml
+# Note: yaml handled via obsidian_common helpers when needed
 import shutil
 from pathlib import Path
 from datetime import datetime
@@ -9,10 +15,9 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import hashlib
 import time
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-import frontmatter
 from config import settings
+from obsidian_common import sanitize_filename, dump_frontmatter_file, load_frontmatter_file
+import json
 
 @dataclass
 class SyncState:
@@ -22,23 +27,31 @@ class SyncState:
     note_id: Optional[int] = None
 
 class ObsidianSync:
-    def __init__(self, vault_path: Path, db_path: Path):
-        self.vault_path = vault_path
-        self.db_path = db_path
-        self.sync_state_file = vault_path / ".secondbrain" / "sync_state.json"
-        self.audio_dir = vault_path / "audio"
-        self.attachments_dir = vault_path / "attachments"
+    def __init__(self, vault_path: Optional[Path] = None, db_path: Optional[Path] = None):
+        """Initialize sync manager with defaults from settings if not provided."""
+        # Resolve vault path; allow relative paths (e.g., "vault") by anchoring to base_dir
+        vpath = Path(vault_path) if vault_path else Path(settings.vault_path)
+        if not vpath.is_absolute():
+            vpath = Path(settings.base_dir) / vpath
+        self.vault_path = vpath
+        self.db_path = db_path or settings.db_path
+        self.sync_state_file = self.vault_path / ".secondbrain" / "sync_state.json"
+        self.audio_dir = self.vault_path / "audio"
+        self.attachments_dir = self.vault_path / "attachments"
         self._ensure_directories()
         
     def _ensure_directories(self):
         """Create necessary directories"""
-        (self.vault_path / ".secondbrain").mkdir(exist_ok=True)
-        self.audio_dir.mkdir(exist_ok=True)
-        self.attachments_dir.mkdir(exist_ok=True)
+        # Ensure vault root exists first, then subdirectories
+        self.vault_path.mkdir(parents=True, exist_ok=True)
+        (self.vault_path / ".secondbrain").mkdir(parents=True, exist_ok=True)
+        self.audio_dir.mkdir(parents=True, exist_ok=True)
+        self.attachments_dir.mkdir(parents=True, exist_ok=True)
     
     def export_note_to_obsidian(self, note_id: int) -> Path:
         """Export a single note to Obsidian vault"""
         import sqlite3
+        # frontmatter is optional; use common helpers for writing
         
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -50,11 +63,15 @@ class ObsidianSync:
         if not note:
             raise ValueError(f"Note {note_id} not found")
         
-        # Generate filename
-        timestamp = note['timestamp'][:19] if note['timestamp'] else datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        safe_title = self._sanitize_filename(note['title'] or 'untitled')
-        filename = f"{timestamp}_{safe_title}.md"
-        filepath = self.vault_path / filename
+        # Determine target file: prefer existing file for this note id to avoid duplicates
+        existing_rel = self._find_note_file(note_id)
+        if existing_rel:
+            filepath = self.vault_path / existing_rel
+        else:
+            timestamp = (note['timestamp'] or datetime.now().strftime("%Y-%m-%d %H:%M:%S")).replace(":", "-").replace(" ", "_")
+            safe_title = sanitize_filename(note['title'] or 'untitled')
+            filename = f"{timestamp}_{safe_title}_id{note_id}.md"
+            filepath = self.vault_path / filename
         
         # Prepare frontmatter
         frontmatter_data = {
@@ -66,38 +83,81 @@ class ObsidianSync:
             'summary': note['summary'],
             'status': note['status']
         }
+        # Optional metadata fields if present in schema
+        for opt_key in [
+            'file_filename','file_type','file_mime_type','file_size','extracted_text',
+            'file_metadata','source_url','web_metadata','screenshot_path'
+        ]:
+            try:
+                if opt_key in note.keys() and note[opt_key] is not None and note[opt_key] != '':
+                    # Parse JSON for metadata fields if possible
+                    if opt_key in {'file_metadata','web_metadata'} and isinstance(note[opt_key], (str, bytes)):
+                        try:
+                            frontmatter_data[opt_key] = json.loads(note[opt_key])
+                        except Exception:
+                            frontmatter_data[opt_key] = note[opt_key]
+                    else:
+                        frontmatter_data[opt_key] = note[opt_key]
+            except Exception:
+                pass
         
         if note['actions']:
             frontmatter_data['actions'] = note['actions'].split('\n')
         
-        # Handle audio files
-        audio_link = ""
-        if note['audio_filename']:
-            audio_src = settings.audio_dir / note['audio_filename']
-            audio_dest = self.audio_dir / note['audio_filename']
-            
-            if audio_src.exists():
-                shutil.copy2(audio_src, audio_dest)
-                audio_link = f"\n\n![[audio/{note['audio_filename']}]]\n"
+        # Handle media/attachments copies and embed links
+        media_links: List[str] = []
+        # Audio (original and converted wav if present)
+        try:
+            if 'audio_filename' in note.keys() and note['audio_filename']:
+                orig = settings.audio_dir / note['audio_filename']
+                if orig.exists():
+                    shutil.copy2(orig, self.audio_dir / orig.name)
+                    media_links.append(f"![[audio/{orig.name}]]")
+                conv = orig.with_suffix('.converted.wav')
+                if conv.exists():
+                    shutil.copy2(conv, self.audio_dir / conv.name)
+                    media_links.append(f"![[audio/{conv.name}]]")
+        except Exception:
+            pass
+        # Other attachments (images, PDFs)
+        try:
+            if 'file_filename' in note.keys() and note['file_filename']:
+                fsrc = (settings.uploads_dir / note['file_filename']) if hasattr(settings, 'uploads_dir') else None
+                if fsrc and fsrc.exists():
+                    shutil.copy2(fsrc, self.attachments_dir / fsrc.name)
+                    media_links.append(f"![[attachments/{fsrc.name}]]")
+        except Exception:
+            pass
         
         # Create content
         content = note['content'] or ""
-        if note['summary'] and note['summary'] != content:
-            content = f"## Summary\n{note['summary']}\n\n## Full Content\n{content}"
+        # Add source URL if available
+        try:
+            if 'source_url' in note.keys() and note['source_url']:
+                content = f"Source: {note['source_url']}\n\n" + content
+        except Exception:
+            pass
+        # Include summary and extracted text sections when present
+        if note['summary'] and (not content or note['summary'] != content):
+            content = f"## Summary\n{note['summary']}\n\n## Full Content\n{content}".strip()
+        try:
+            if 'extracted_text' in note.keys() and note['extracted_text']:
+                content = content + ("\n\n## Extracted Text\n" + str(note['extracted_text']))
+        except Exception:
+            pass
         
         # Add action items
         if note['actions']:
-            actions = note['actions'].split('\n')
-            content += f"\n\n## Action Items\n"
-            for action in actions:
-                content += f"- [ ] {action}\n"
+            actions = [a.strip() for a in str(note['actions']).split('\n') if a.strip()]
+            if actions:
+                content += f"\n\n## Action Items\n"
+                for action in actions:
+                    content += f"- [ ] {action}\n"
         
-        # Create markdown with frontmatter
-        post = frontmatter.Post(content + audio_link, **frontmatter_data)
-        
-        # Write file
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(frontmatter.dumps(post))
+        # Create markdown with frontmatter and write
+        # Append media links at end
+        media_block = ("\n\n" + "\n".join(media_links) + "\n") if media_links else ""
+        dump_frontmatter_file(filepath, content + media_block, frontmatter_data)
         
         conn.close()
         return filepath
@@ -105,16 +165,13 @@ class ObsidianSync:
     def import_note_from_obsidian(self, filepath: Path) -> Optional[int]:
         """Import a note from Obsidian vault"""
         import sqlite3
+        # frontmatter optional; use common helper for reading
         
         if not filepath.suffix == '.md':
             return None
         
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                post = frontmatter.load(f)
-            
-            metadata = post.metadata
-            content = post.content
+            metadata, content = load_frontmatter_file(filepath)
             
             # Extract components
             title = metadata.get('title', filepath.stem)
@@ -145,14 +202,20 @@ class ObsidianSync:
                 
                 # Update file with new ID
                 metadata['id'] = note_id
-                post.metadata = metadata
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    f.write(frontmatter.dumps(post))
+                dump_frontmatter_file(filepath, content, metadata)
             
-            # Update search index
-            from search_engine import EnhancedSearchEngine
-            search_engine = EnhancedSearchEngine(str(self.db_path))
-            search_engine.index_note(note_id, title, content, summary, tags, actions)
+            # Update vector index (FTS updates via triggers). Try unified service if available.
+            try:
+                import os as _os
+                from services.search_adapter import SearchService as _SS
+                svc = _SS(db_path=str(self.db_path), vec_ext_path=_os.getenv('SQLITE_VEC_PATH'))
+                try:
+                    svc._upsert_vector(note_id, f"{title}\n\n{content}")
+                except Exception:
+                    pass
+            except Exception:
+                # If service layer unavailable, proceed without vector update
+                pass
             
             conn.commit()
             conn.close()
@@ -283,7 +346,12 @@ class ObsidianSync:
     
     def watch_obsidian_changes(self, user_id: int = 1):
         """Watch Obsidian vault for changes and auto-sync"""
-        
+        try:
+            from watchdog.observers import Observer
+            from watchdog.events import FileSystemEventHandler
+        except ImportError as e:
+            raise RuntimeError("watchdog package is required for watching vault changes") from e
+
         class ObsidianEventHandler(FileSystemEventHandler):
             def __init__(self, sync_manager):
                 self.sync_manager = sync_manager
@@ -314,7 +382,6 @@ class ObsidianSync:
     
     def _load_sync_state(self) -> Dict[str, SyncState]:
         """Load previous sync state"""
-        import json
         
         if not self.sync_state_file.exists():
             return {}
@@ -332,7 +399,6 @@ class ObsidianSync:
     
     def _save_sync_state(self, current_files: Dict[str, SyncState], db_notes: List):
         """Save current sync state"""
-        import json
         
         # Combine file and database states
         state_data = {}
@@ -382,10 +448,9 @@ class ObsidianSync:
     def _extract_note_id(self, filepath: Path) -> Optional[int]:
         """Extract note ID from frontmatter"""
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                post = frontmatter.load(f)
-            return post.metadata.get('id')
-        except:
+            meta, _ = load_frontmatter_file(filepath)
+            return meta.get('id')
+        except Exception:
             return None
     
     def _find_note_file(self, note_id: int) -> Optional[str]:
@@ -417,15 +482,7 @@ class ObsidianSync:
         current_hash = self._hash_note_content(note)
         return current_hash != last_sync_state.content_hash
     
-    def _sanitize_filename(self, filename: str) -> str:
-        """Sanitize filename for filesystem"""
-        import re
-        # Remove invalid characters
-        filename = re.sub(r'[<>:"/\\|?*]', '', filename)
-        # Replace spaces with underscores
-        filename = filename.replace(' ', '_')
-        # Limit length
-        return filename[:50]
+    # _sanitize_filename provided by obsidian_common.sanitize_filename
     
     def create_obsidian_plugin_config(self):
         """Create configuration for Second Brain Obsidian plugin"""
@@ -433,7 +490,7 @@ class ObsidianSync:
         plugin_dir.mkdir(parents=True, exist_ok=True)
         
         config = {
-            "apiUrl": "http://localhost:8084",
+            "apiUrl": "http://localhost:8082",
             "autoSync": True,
             "syncInterval": 300,  # 5 minutes
             "audioTranscription": True,
@@ -457,88 +514,17 @@ class ObsidianSync:
         with open(plugin_dir / "manifest.json", 'w') as f:
             json.dump(manifest, f, indent=2)
 
+    async def save_note_to_obsidian(self, filename: str, markdown_content: str) -> bool:
+        """Save provided markdown content as a file in the Obsidian vault.
 
-# API endpoints for Obsidian sync
-@app.post("/api/obsidian/sync")
-async def obsidian_sync(
-    direction: str = "bidirectional",  # "to_obsidian", "from_obsidian", "bidirectional"
-    background_tasks: BackgroundTasks = None,
-    current_user: User = Depends(get_current_user)
-):
-    """Sync with Obsidian vault"""
-    
-    def perform_sync(user_id: int, sync_direction: str):
-        obsidian = ObsidianSync(settings.vault_path, settings.db_path)
-        
-        if sync_direction == "to_obsidian":
-            result = obsidian.sync_all_to_obsidian(user_id)
-            return {"exported": result}
-        elif sync_direction == "from_obsidian":
-            result = obsidian.sync_from_obsidian()
-            return {"imported": result}
-        else:
-            result = obsidian.bidirectional_sync(user_id)
-            return result
-    
-    if background_tasks:
-        background_tasks.add_task(perform_sync, current_user.id, direction)
-        return {"status": "sync_started", "direction": direction}
-    else:
-        result = perform_sync(current_user.id, direction)
-        return {"status": "completed", "result": result}
-
-@app.post("/api/obsidian/watch")
-async def start_obsidian_watch(
-    current_user: User = Depends(get_current_user)
-):
-    """Start watching Obsidian vault for changes"""
-    
-    obsidian = ObsidianSync(settings.vault_path, settings.db_path)
-    observer = obsidian.watch_obsidian_changes(current_user.id)
-    
-    # Store observer reference (in production, use proper process management)
-    app.state.obsidian_observer = observer
-    
-    return {"status": "watching_started"}
-
-@app.post("/api/obsidian/stop-watch")
-async def stop_obsidian_watch():
-    """Stop watching Obsidian vault"""
-    
-    if hasattr(app.state, 'obsidian_observer'):
-        app.state.obsidian_observer.stop()
-        app.state.obsidian_observer.join()
-        delattr(app.state, 'obsidian_observer')
-    
-    return {"status": "watching_stopped"}
-
-@app.get("/api/obsidian/status")
-async def obsidian_sync_status(
-    current_user: User = Depends(get_current_user)
-):
-    """Get Obsidian sync status"""
-    
-    obsidian = ObsidianSync(settings.vault_path, settings.db_path)
-    
-    # Count files in vault
-    vault_files = len(list(obsidian.vault_path.rglob("*.md")))
-    
-    # Count notes in database
-    conn = get_conn()
-    c = conn.cursor()
-    db_notes = c.execute(
-        "SELECT COUNT(*) FROM notes WHERE user_id = ?", 
-        (current_user.id,)
-    ).fetchone()[0]
-    conn.close()
-    
-    # Check if watching
-    watching = hasattr(app.state, 'obsidian_observer')
-    
-    return {
-        "vault_path": str(settings.vault_path),
-        "vault_files": vault_files,
-        "database_notes": db_notes,
-        "auto_watching": watching,
-        "last_sync": "2025-01-12T10:30:00Z"  # This would be stored in database
-    }
+        Matches the usage in app.py where the markdown for a single note is
+        generated and needs to be written to disk. Returns True on success.
+        """
+        try:
+            self.vault_path.mkdir(parents=True, exist_ok=True)
+            out = self.vault_path / (f"{filename}.md" if not filename.endswith('.md') else filename)
+            out.write_text(markdown_content, encoding='utf-8')
+            return True
+        except Exception as e:
+            print(f"Failed to save note to Obsidian: {e}")
+            return False

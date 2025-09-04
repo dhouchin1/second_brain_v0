@@ -1,0 +1,951 @@
+/* Dashboard Enhanced Styles - Modern UX Improvements */
+/* Built on top of the design system for professional note-taking experience */
+
+/* === ENHANCED FORM COMPONENTS === */
+
+/* Quick Capture Form Enhancements */
+.quick-capture-form {
+  position: relative;
+  transition: all var(--transition-base);
+}
+
+.quick-capture-form:focus-within {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+}
+
+/* Auto-save indicator */
+.auto-save-indicator {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-success-50);
+  color: var(--color-success-700);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all var(--transition-fast);
+  z-index: 10;
+}
+
+.auto-save-indicator.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.auto-save-indicator.saving {
+  background: var(--color-warning-50);
+  color: var(--color-warning-700);
+}
+
+.auto-save-indicator.error {
+  background: var(--color-error-50);
+  color: var(--color-error-700);
+}
+
+.auto-save-indicator.loaded {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+/* Character Counter */
+.character-counter {
+  position: absolute;
+  bottom: var(--space-2);
+  right: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  background: var(--bg-primary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-base);
+  transition: all var(--transition-fast);
+}
+
+.character-counter.warning {
+  color: var(--color-warning-600);
+  font-weight: var(--font-weight-medium);
+}
+
+.character-counter.danger {
+  color: var(--color-error-600);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Enhanced Form Inputs */
+.form-input-enhanced {
+  position: relative;
+  transition: all var(--transition-base);
+  border-width: 2px;
+}
+
+.form-input-enhanced:focus {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: scale(1.01);
+}
+
+.form-input-enhanced.has-error {
+  border-color: var(--color-error-400);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Form Validation Messages */
+.validation-message {
+  position: absolute;
+  bottom: -22px;
+  left: 0;
+  font-size: var(--text-xs);
+  color: var(--color-error-600);
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all var(--transition-fast);
+}
+
+.validation-message.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* === ENHANCED AUDIO RECORDING === */
+
+/* Audio Recording Container */
+.audio-recording-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-2);
+}
+
+.audio-container-enhanced {
+  transition: all var(--transition-base);
+}
+
+.audio-container-enhanced:hover {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Text Save Button */
+#saveTextBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  min-height: 44px;
+}
+
+#saveTextBtn:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+}
+
+#saveTextBtn:active {
+  transform: translateY(0);
+}
+
+#saveTextBtn:disabled {
+  background: #6b7280;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Recording Button Enhanced */
+.record-btn-enhanced {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  min-height: 44px;
+  width: 100%;
+}
+
+.record-btn-enhanced:hover {
+  background: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(220, 38, 38, 0.3);
+}
+
+.record-btn-enhanced:active {
+  transform: translateY(0);
+}
+
+.record-btn-enhanced.recording {
+  background: #ef4444;
+  animation: pulse-recording 2s infinite;
+}
+
+.record-btn-enhanced.recording:hover {
+  background: #dc2626;
+}
+
+.record-btn-enhanced:disabled {
+  background: #6b7280;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@keyframes pulse-recording {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    background: #ef4444;
+  }
+  50% { 
+    box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+    background: #f87171;
+  }
+}
+
+/* Recording Waveform Visualizer */
+.waveform-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 50px;
+  padding: var(--space-3);
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-2);
+  transition: all var(--transition-base);
+}
+
+.waveform-visualizer.hidden {
+  display: none;
+}
+
+.waveform-bar {
+  width: 4px;
+  background: #3b82f6;
+  border-radius: 2px;
+  transition: height 0.1s ease;
+  min-height: 8px;
+}
+
+.waveform-bar:nth-child(odd) {
+  background: #60a5fa;
+}
+
+.waveform-bar:nth-child(even) {
+  background: #2563eb;
+}
+
+/* Recording Timer */
+.recording-timer {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: var(--text-lg);
+  color: #ef4444;
+  font-weight: bold;
+  text-align: center;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.recording-timer.hidden {
+  display: none;
+}
+
+/* Audio Status Messages */
+.audio-status {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-align: center;
+  min-height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.audio-status.processing {
+  color: var(--color-primary-600);
+}
+
+.audio-status.success {
+  color: var(--color-success-600);
+}
+
+.audio-status.error {
+  color: var(--color-error-600);
+}
+
+/* === ENHANCED RECENT NOTES PANEL === */
+
+/* Recent Panel Enhancements */
+.recent-panel-enhanced {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Recent Panel Search */
+.recent-search-container {
+  position: relative;
+  margin-bottom: var(--space-3);
+}
+
+.recent-search-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  padding-right: var(--space-8);
+  font-size: var(--text-sm);
+  background: var(--surface-interactive);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.recent-search-input:focus {
+  border-color: var(--color-primary-400);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.recent-search-clear {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-base);
+  transition: all var(--transition-fast);
+}
+
+.recent-search-clear:hover {
+  color: var(--text-primary);
+  background: var(--surface-interactive);
+}
+
+/* Recent Panel Sorting */
+.recent-sort-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-md);
+}
+
+.sort-button {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-base);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.sort-button:hover {
+  background: var(--surface-interactive);
+  color: var(--text-primary);
+}
+
+.sort-button.active {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-300);
+}
+
+.sort-button .sort-icon {
+  display: inline-block;
+  margin-left: var(--space-1);
+  transition: transform var(--transition-fast);
+}
+
+.sort-button.desc .sort-icon {
+  transform: rotate(180deg);
+}
+
+/* Enhanced Recent Note Items */
+.recent-note-item {
+  position: relative;
+  transition: all var(--transition-base);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+}
+
+.recent-note-item:hover {
+  background: var(--surface-interactive);
+  transform: translateX(4px);
+}
+
+.recent-note-item.pinned {
+  background: linear-gradient(90deg, var(--color-warning-50) 0%, transparent 100%);
+  border-left: 3px solid var(--color-warning-400);
+}
+
+.recent-note-item.editing {
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+}
+
+/* Note Type Icons with Animation */
+.note-type-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-base);
+  transition: all var(--transition-base);
+}
+
+.note-type-icon.text-note {
+  background: var(--color-primary-100);
+  color: var(--color-primary-600);
+}
+
+.note-type-icon.audio-note {
+  background: var(--color-warning-100);
+  color: var(--color-warning-600);
+}
+
+.note-type-icon.shortcut-note {
+  background: var(--color-success-100);
+  color: var(--color-success-600);
+}
+
+.recent-note-item:hover .note-type-icon {
+  transform: scale(1.1);
+}
+
+/* Enhanced Inline Editing */
+.inline-edit-container {
+  background: var(--surface-primary);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-top: var(--space-2);
+  transform: translateY(-10px);
+  opacity: 0;
+  transition: all var(--transition-base);
+}
+
+.inline-edit-container.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.inline-edit-field {
+  width: 100%;
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-base);
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+}
+
+.inline-edit-field:focus {
+  border-color: var(--color-primary-400);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.inline-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* === ENHANCED LOADING STATES === */
+
+/* Professional Skeleton Loading */
+.loading-skeleton-enhanced {
+  background: linear-gradient(
+    90deg,
+    var(--surface-secondary) 25%,
+    var(--surface-interactive) 50%,
+    var(--surface-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+  height: 1rem;
+  margin-bottom: var(--space-2);
+}
+
+.skeleton-text.large {
+  height: 1.5rem;
+}
+
+.skeleton-text.small {
+  height: 0.75rem;
+}
+
+.skeleton-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+/* Enhanced Spinner */
+.spinner-enhanced {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--surface-interactive);
+  border-top: 2px solid var(--color-primary-500);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+/* Button Loading State */
+.btn-loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* === MICRO-INTERACTIONS AND ANIMATIONS === */
+
+/* Bounce Effect for Success Actions */
+@keyframes bounce-success {
+  0%, 20%, 60%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  80% { transform: translateY(-5px); }
+}
+
+.animate-bounce-success {
+  animation: bounce-success 0.6s ease-out;
+}
+
+/* Shake Effect for Errors */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.6s ease-in-out;
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Scale In Animation */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* === ACCESSIBILITY ENHANCEMENTS === */
+
+/* Focus Indicators */
+.focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .waveform-visualizer,
+  .spinner-enhanced,
+  .loading-skeleton-enhanced {
+    animation: none !important;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .recent-note-item:hover {
+    border: 2px solid var(--text-primary);
+  }
+  
+  .form-input-enhanced:focus {
+    border-width: 3px;
+  }
+}
+
+/* Form Layout Improvements */
+.quick-capture-form {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+}
+
+/* Section Separators */
+.form-section-separator {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  margin: var(--space-4) 0;
+}
+
+/* Enhanced Button Group */
+.button-group {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+/* Tips Section */
+.tips-section {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.tips-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tips-section li {
+  position: relative;
+  padding-left: var(--space-4);
+  margin-bottom: var(--space-1);
+}
+
+.tips-section li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #3b82f6;
+  font-weight: bold;
+}
+
+/* === LINE CLAMP UTILITIES FOR COMPACT CARDS === */
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.4;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-height: 1.4;
+}
+
+/* === COMPACT LAYOUT ENHANCEMENTS === */
+
+/* Optimized for 50% zoom viewing */
+@media (max-width: 1920px) {
+  .compact-layout {
+    --compact-spacing: 0.5rem;
+    --compact-text: 0.75rem;
+  }
+  
+  .quick-capture-form {
+    padding: 1rem;
+  }
+  
+  .card-interactive {
+    min-height: 120px;
+    max-height: 200px;
+  }
+  
+  /* Ensure timeline cards are visible at small zoom levels */
+  .card-interactive:hover {
+    transform: scale(1.02);
+    z-index: 10;
+  }
+}
+
+/* === RESPONSIVE ENHANCEMENTS === */
+
+/* Mobile-First Touch Targets */
+@media (max-width: 768px) {
+  .sort-button,
+  .recent-pin,
+  .recent-edit,
+  #saveTextBtn,
+  .record-btn-enhanced {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .quick-capture-form:focus-within {
+    transform: none; /* Disable transform on mobile to prevent layout issues */
+  }
+  
+  .recent-note-item:hover {
+    transform: none; /* Disable hover transforms on touch devices */
+  }
+  
+  .waveform-visualizer {
+    height: 60px; /* Larger touch target */
+  }
+  
+  .audio-recording-container {
+    padding: var(--space-4);
+  }
+  
+  .button-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Desktop Enhancements */
+@media (min-width: 1024px) {
+  .recent-panel-enhanced {
+    position: sticky;
+    top: var(--space-6);
+  }
+  
+  .quick-capture-form {
+    transition: all var(--transition-base);
+  }
+  
+  .quick-capture-form:hover {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* === ENHANCED COMPACT LAYOUT OPTIMIZATIONS === */
+
+/* Universal compact layout for better content density */
+.compact-header {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.compact-section {
+  margin-bottom: 1rem !important;
+}
+
+.compact-grid {
+  gap: 0.75rem !important;
+}
+
+.compact-card {
+  padding: 0.75rem !important;
+  border-radius: 0.5rem !important;
+  min-height: 110px;
+  max-height: 180px;
+}
+
+.compact-form {
+  padding: 1rem !important;
+  border-radius: 0.75rem !important;
+}
+
+/* Enhanced recent notes panel for better density */
+.recent-panel-enhanced {
+  max-height: 420px !important;
+}
+
+.recent-note-item {
+  padding-top: 0.375rem !important;
+  padding-bottom: 0.375rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* Compact timeline day labels */
+.timeline-day-indicator {
+  width: 0.5rem !important;
+  height: 0.5rem !important;
+}
+
+/* Optimized font scaling for density */
+.compact-title {
+  font-size: 1rem !important;
+  line-height: 1.3 !important;
+}
+
+.compact-subtitle {
+  font-size: 0.9rem !important;
+  line-height: 1.2 !important;
+}
+
+.compact-text {
+  font-size: 0.8rem !important;
+  line-height: 1.2 !important;
+}
+
+/* High-density display optimizations (for 50% zoom and small screens) */
+@media (max-height: 800px) and (max-width: 1400px) {
+  /* Reduce spacing for compact viewing */
+  header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  
+  .quick-capture-form {
+    padding: 0.75rem;
+  }
+  
+  .card-interactive {
+    padding: 0.75rem;
+    min-height: 100px;
+  }
+  
+  /* Make timeline day labels more compact */
+  .w-3.h-3 {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+  
+  /* Reduce font sizes for better density */
+  .text-xl {
+    font-size: 1rem;
+  }
+  
+  .text-lg {
+    font-size: 0.95rem;
+  }
+}
+
+/* Ultra-compact optimizations for very small screens or high zoom */
+@media (max-height: 700px), (max-width: 1200px) {
+  body {
+    font-size: 0.875rem;
+  }
+  
+  .quick-capture-form {
+    padding: 0.5rem;
+  }
+  
+  .card-interactive {
+    padding: 0.5rem;
+    min-height: 80px;
+  }
+  
+  .recent-panel-enhanced {
+    max-height: 350px;
+  }
+  
+  /* Further reduce spacing */
+  .grid {
+    gap: 0.5rem;
+  }
+  
+  /* Make form elements more compact */
+  input, textarea, button {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  button {
+    min-height: 32px;
+  }
+}
+
+/* === DARK MODE SPECIFIC ENHANCEMENTS === */
+@media (prefers-color-scheme: dark) {
+  .auto-save-indicator {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--color-success-400);
+  }
+  
+  .auto-save-indicator.saving {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--color-warning-400);
+  }
+  
+  .auto-save-indicator.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-error-400);
+  }
+  
+  .auto-save-indicator.loaded {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--color-primary-400);
+  }
+  
+  .waveform-bar {
+    background: var(--color-primary-400);
+  }
+  
+  .recent-note-item.pinned {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
+  }
+}

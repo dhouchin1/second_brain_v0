@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block title %}Vault Seeding - Second Brain{% endblock %}
+
+{% block extra_head %}
+<style>
+    .seed-card {
+        border: 1px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background: #fff;
+    }
+    
+    .seed-status {
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-weight: 500;
+        display: inline-block;
+        margin-bottom: 1rem;
+    }
+    
+    .status-not-seeded {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .status-seeded {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .content-preview {
+        max-height: 200px;
+        overflow-y: auto;
+        background: #f8f9fc;
+        padding: 1rem;
+        border-radius: 4px;
+        margin: 1rem 0;
+    }
+    
+    .seed-item {
+        border-left: 3px solid #4e73df;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .seed-item.bookmark {
+        border-left-color: #36b9cc;
+    }
+    
+    .dependency-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.5rem 0;
+    }
+    
+    .status-icon {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+    }
+    
+    .status-ok {
+        background-color: #28a745;
+    }
+    
+    .status-warning {
+        background-color: #ffc107;
+    }
+    
+    .status-error {
+        background-color: #dc3545;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 20px;
+        background-color: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background-color: #4e73df;
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">Vault Seeding</h1>
+                <button id="refreshBtn" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+
+            <!-- Status Overview -->
+            <div class="seed-card">
+                <h4>Seeding Status</h4>
+                <div id="statusOverview">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dependencies Check -->
+            <div class="seed-card">
+                <h4>System Dependencies</h4>
+                <div id="dependenciesCheck">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Checking dependencies...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Content Preview -->
+            <div class="seed-card">
+                <h4>Available Seed Content</h4>
+                <div id="contentPreview">
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading content...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seeding Actions -->
+            <div class="seed-card">
+                <h4>Actions</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Seed Vault</h5>
+                        <p class="text-muted">Add starter content to improve search performance</p>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="forceOverwrite" class="mr-1">
+                                Force overwrite existing files
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="includeEmbeddings" class="mr-1" checked>
+                                Generate embeddings (requires Ollama)
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="namespace">Namespace folder:</label>
+                            <input type="text" id="namespace" class="form-control" value=".seed_samples" placeholder="Folder name for seed content">
+                        </div>
+                        
+                        <button id="seedBtn" class="btn btn-primary" disabled>
+                            <i class="fas fa-seedling"></i> Seed Vault
+                        </button>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Clear Seed Content</h5>
+                        <p class="text-muted">Remove all seed content from vault and database</p>
+                        
+                        <button id="clearBtn" class="btn btn-warning" disabled>
+                            <i class="fas fa-trash-alt"></i> Clear Seed Content
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div id="operationProgress" style="display: none;">
+                    <h6 id="progressTitle">Processing...</h6>
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div id="progressMessage" class="text-muted mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+class VaultSeedingInterface {
+    constructor() {
+        this.status = null;
+        this.dependencies = null;
+        this.availableContent = null;
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.loadData();
+    }
+    
+    bindEvents() {
+        document.getElementById('refreshBtn').addEventListener('click', () => this.loadData());
+        document.getElementById('seedBtn').addEventListener('click', () => this.seedVault());
+        document.getElementById('clearBtn').addEventListener('click', () => this.clearContent());
+    }
+    
+    async loadData() {
+        await Promise.all([
+            this.loadStatus(),
+            this.loadDependencies(),
+            this.loadAvailableContent()
+        ]);
+        this.updateUI();
+    }
+    
+    async loadStatus() {
+        try {
+            const response = await fetch('/api/vault/seeding/status');
+            const result = await response.json();
+            this.status = result.success ? result.data : null;
+        } catch (error) {
+            console.error('Failed to load status:', error);
+            this.status = null;
+        }
+    }
+    
+    async loadDependencies() {
+        try {
+            const response = await fetch('/api/vault/seeding/test-dependencies');
+            const result = await response.json();
+            this.dependencies = result.success ? result.data : null;
+        } catch (error) {
+            console.error('Failed to load dependencies:', error);
+            this.dependencies = null;
+        }
+    }
+    
+    async loadAvailableContent() {
+        try {
+            const response = await fetch('/api/vault/seeding/available-content');
+            const result = await response.json();
+            this.availableContent = result.success ? result.data : null;
+        } catch (error) {
+            console.error('Failed to load content:', error);
+            this.availableContent = null;
+        }
+    }
+    
+    updateUI() {
+        this.renderStatus();
+        this.renderDependencies();
+        this.renderContent();
+        this.updateButtons();
+    }
+    
+    renderStatus() {
+        const container = document.getElementById('statusOverview');
+        
+        if (!this.status) {
+            container.innerHTML = '<div class="alert alert-danger">Failed to load status</div>';
+            return;
+        }
+        
+        const isSeeded = this.status.is_seeded;
+        const statusClass = isSeeded ? 'status-seeded' : 'status-not-seeded';
+        const statusText = isSeeded ? 'Vault is seeded' : 'Vault not seeded';
+        
+        container.innerHTML = `
+            <div class="seed-status ${statusClass}">
+                <i class="fas fa-${isSeeded ? 'check-circle' : 'exclamation-triangle'}"></i>
+                ${statusText}
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Seed Notes:</strong> ${this.status.seed_notes_count}
+                </div>
+                <div class="col-md-4">
+                    <strong>Seed Files:</strong> ${this.status.seed_files_exist ? 'Present' : 'None'}
+                </div>
+                <div class="col-md-4">
+                    <strong>Vault Path:</strong> <code>${this.status.vault_path}</code>
+                </div>
+            </div>
+        `;
+    }
+    
+    renderDependencies() {
+        const container = document.getElementById('dependenciesCheck');
+        
+        if (!this.dependencies) {
+            container.innerHTML = '<div class="alert alert-danger">Failed to check dependencies</div>';
+            return;
+        }
+        
+        const ollamaStatus = this.dependencies.ollama.available ? 'ok' : 'error';
+        const vaultStatus = this.dependencies.vault.exists && this.dependencies.vault.writable ? 'ok' : 'error';
+        const overallStatus = this.dependencies.overall_ready ? 'ok' : 'warning';
+        
+        container.innerHTML = `
+            <div class="dependency-status">
+                <div class="status-icon status-${overallStatus}"></div>
+                <strong>Overall Status:</strong> ${this.dependencies.overall_ready ? 'Ready' : 'Issues detected'}
+            </div>
+            <div class="dependency-status">
+                <div class="status-icon status-${ollamaStatus}"></div>
+                <strong>Ollama:</strong> ${this.dependencies.ollama.message}
+            </div>
+            <div class="dependency-status">
+                <div class="status-icon status-${vaultStatus}"></div>
+                <strong>Vault:</strong> ${this.dependencies.vault.path} (${this.dependencies.vault.exists ? 'exists' : 'missing'}, ${this.dependencies.vault.writable ? 'writable' : 'read-only'})
+            </div>
+        `;
+    }
+    
+    renderContent() {
+        const container = document.getElementById('contentPreview');
+        
+        if (!this.availableContent) {
+            container.innerHTML = '<div class="alert alert-danger">Failed to load content</div>';
+            return;
+        }
+        
+        let html = `
+            <div class="mb-3">
+                <strong>Total Items:</strong> ${this.availableContent.total_items}
+                (${this.availableContent.notes.length} notes, ${this.availableContent.bookmarks.length} bookmarks)
+            </div>
+            <div class="content-preview">
+        `;
+        
+        // Render notes
+        this.availableContent.notes.forEach(note => {
+            html += `
+                <div class="seed-item">
+                    <h6><i class="fas fa-sticky-note"></i> ${note.title}</h6>
+                    <p class="text-muted">${note.summary}</p>
+                    <small><strong>Tags:</strong> ${note.tags.join(', ')}</small>
+                </div>
+            `;
+        });
+        
+        // Render bookmarks
+        this.availableContent.bookmarks.forEach(bookmark => {
+            html += `
+                <div class="seed-item bookmark">
+                    <h6><i class="fas fa-bookmark"></i> ${bookmark.title}</h6>
+                    <p class="text-muted">${bookmark.summary}</p>
+                    <small><strong>Tags:</strong> ${bookmark.tags.join(', ')} | <strong>URL:</strong> ${bookmark.url}</small>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+    
+    updateButtons() {
+        const canSeed = this.dependencies && this.dependencies.vault.exists && this.dependencies.vault.writable;
+        const canClear = this.status && this.status.is_seeded;
+        
+        document.getElementById('seedBtn').disabled = !canSeed;
+        document.getElementById('clearBtn').disabled = !canClear;
+    }
+    
+    async seedVault() {
+        if (!confirm('Are you sure you want to seed the vault? This will add starter content to your vault.')) {
+            return;
+        }
+        
+        this.showProgress('Seeding vault...', 0);
+        
+        try {
+            const request = {
+                namespace: document.getElementById('namespace').value || '.seed_samples',
+                force_overwrite: document.getElementById('forceOverwrite').checked,
+                include_embeddings: document.getElementById('includeEmbeddings').checked
+            };
+            
+            // Simulate progress updates
+            this.updateProgress(25, 'Preparing seed data...');
+            
+            const response = await fetch('/api/vault/seeding/seed', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(request)
+            });
+            
+            this.updateProgress(75, 'Processing content...');
+            
+            const result = await response.json();
+            
+            this.updateProgress(100, 'Complete!');
+            
+            if (result.success) {
+                setTimeout(() => {
+                    this.hideProgress();
+                    alert(`Success! Created ${result.data.notes_created} notes and ${result.data.files_written} files.`);
+                    this.loadData();
+                }, 1000);
+            } else {
+                this.hideProgress();
+                alert(`Failed to seed vault: ${result.message}`);
+            }
+            
+        } catch (error) {
+            this.hideProgress();
+            alert(`Error seeding vault: ${error.message}`);
+        }
+    }
+    
+    async clearContent() {
+        if (!confirm('Are you sure you want to clear all seed content? This cannot be undone.')) {
+            return;
+        }
+        
+        this.showProgress('Clearing seed content...', 0);
+        
+        try {
+            const request = {
+                namespace: document.getElementById('namespace').value || '.seed_samples'
+            };
+            
+            this.updateProgress(50, 'Removing content...');
+            
+            const response = await fetch('/api/vault/seeding/clear', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(request)
+            });
+            
+            const result = await response.json();
+            
+            this.updateProgress(100, 'Complete!');
+            
+            if (result.success) {
+                setTimeout(() => {
+                    this.hideProgress();
+                    alert(`Success! Removed ${result.data.notes_removed} notes and ${result.data.files_removed} files.`);
+                    this.loadData();
+                }, 1000);
+            } else {
+                this.hideProgress();
+                alert(`Failed to clear content: ${result.message}`);
+            }
+            
+        } catch (error) {
+            this.hideProgress();
+            alert(`Error clearing content: ${error.message}`);
+        }
+    }
+    
+    showProgress(title, percentage) {
+        const progressDiv = document.getElementById('operationProgress');
+        document.getElementById('progressTitle').textContent = title;
+        this.updateProgress(percentage, '');
+        progressDiv.style.display = 'block';
+        
+        // Disable buttons during operation
+        document.getElementById('seedBtn').disabled = true;
+        document.getElementById('clearBtn').disabled = true;
+    }
+    
+    updateProgress(percentage, message) {
+        document.getElementById('progressFill').style.width = percentage + '%';
+        document.getElementById('progressMessage').textContent = message;
+    }
+    
+    hideProgress() {
+        document.getElementById('operationProgress').style.display = 'none';
+        this.updateButtons(); // Re-enable appropriate buttons
+    }
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new VaultSeedingInterface();
+});
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 import sqlite3
-import frontmatter
 from config import settings
+from obsidian_common import load_frontmatter_file
 
 def create_db():
     db_path = settings.vault_path / "secondbrain_index.db"
@@ -27,8 +27,7 @@ def index_vault():
     c = conn.cursor()
     for note_path in settings.vault_path.glob("*.md"):
         try:
-            post = frontmatter.load(note_path)
-            fm = post.metadata
+            fm, _ = load_frontmatter_file(note_path)
             note_id = fm.get("id", note_path.stem)
             c.execute("""
                 INSERT OR REPLACE INTO notes

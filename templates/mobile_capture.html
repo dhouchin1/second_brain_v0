@@ -1,0 +1,604 @@
+{% extends "base.html" %}
+
+{% block title %}Quick Capture - Second Brain{% endblock %}
+
+{% block head_extra %}
+<style>
+  /* Mobile-first capture interface */
+  .capture-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+  }
+  
+  .capture-header {
+    text-align: center;
+    padding: 2rem 0 1rem;
+    color: white;
+  }
+  
+  .capture-modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 2rem 0;
+  }
+  
+  .capture-mode {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+  
+  .capture-mode:hover,
+  .capture-mode.active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+  }
+  
+  .capture-mode-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  
+  .capture-form {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 2rem;
+    margin: 1rem 0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px; /* Prevents iOS zoom */
+    transition: border-color 0.2s;
+    background: white;
+  }
+  
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  .form-textarea {
+    min-height: 120px;
+    resize: vertical;
+    font-family: inherit;
+  }
+  
+  .voice-controls {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+  }
+  
+  .voice-controls.active {
+    display: block;
+  }
+  
+  .voice-button {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: none;
+    background: #ef4444;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+  }
+  
+  .voice-button:hover {
+    background: #dc2626;
+    transform: scale(1.05);
+  }
+  
+  .voice-button.recording {
+    background: #f59e0b;
+    animation: pulse 1.5s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+    70% { box-shadow: 0 0 0 20px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+  }
+  
+  .voice-status {
+    color: #374151;
+    font-weight: 500;
+    margin-top: 0.5rem;
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  
+  .btn-primary {
+    flex: 1;
+    padding: 1rem 2rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+  
+  .btn-secondary {
+    padding: 1rem 2rem;
+    background: transparent;
+    color: #6b7280;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .btn-secondary:hover {
+    border-color: #d1d5db;
+    background: #f9fafb;
+  }
+  
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .quick-action {
+    background: #f3f4f6;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .quick-action:hover {
+    background: #e5e7eb;
+  }
+  
+  .processing-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  
+  .processing-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 16px;
+    text-align: center;
+    max-width: 300px;
+    margin: 1rem;
+  }
+  
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Mobile optimizations */
+  @media (max-width: 640px) {
+    .capture-container {
+      padding: 0.5rem;
+    }
+    
+    .capture-modes {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+    
+    .capture-mode {
+      padding: 1rem;
+    }
+    
+    .capture-form {
+      padding: 1.5rem;
+      margin: 0.5rem 0;
+    }
+    
+    .action-buttons {
+      flex-direction: column;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="capture-container">
+  <!-- Header -->
+  <div class="capture-header">
+    <h1 class="text-2xl font-bold mb-2">📝 Quick Capture</h1>
+    <p class="text-white/80 text-sm">Capture your thoughts instantly</p>
+  </div>
+  
+  <!-- Capture Modes -->
+  <div class="capture-modes">
+    <div class="capture-mode active" id="text-mode" onclick="setMode('text')">
+      <span class="capture-mode-icon">✍️</span>
+      <div class="font-semibold">Text Note</div>
+      <div class="text-sm opacity-75">Type or paste</div>
+    </div>
+    
+    <div class="capture-mode" id="voice-mode" onclick="setMode('voice')">
+      <span class="capture-mode-icon">🎤</span>
+      <div class="font-semibold">Voice Note</div>
+      <div class="text-sm opacity-75">Record audio</div>
+    </div>
+  </div>
+  
+  <!-- Capture Form -->
+  <div class="capture-form">
+    <form id="capture-form" method="POST" action="/capture" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token if csrf_token else '' }}">
+      
+      <!-- Voice Controls (Hidden by default) -->
+      <div class="voice-controls" id="voice-controls">
+        <button type="button" class="voice-button" id="voice-btn" onclick="toggleRecording()">
+          🎤
+        </button>
+        <div class="voice-status" id="voice-status">Tap to start recording</div>
+        <audio id="audio-preview" controls style="width: 100%; margin-top: 1rem; display: none;"></audio>
+        <input type="file" id="audio-file" name="file" accept="audio/*" style="display: none;">
+      </div>
+      
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button type="button" class="quick-action" onclick="insertTemplate('meeting')">📅 Meeting Notes</button>
+        <button type="button" class="quick-action" onclick="insertTemplate('idea')">💡 Quick Idea</button>
+        <button type="button" class="quick-action" onclick="insertTemplate('todo')">✅ To-Do Item</button>
+        <button type="button" class="quick-action" onclick="insertTemplate('link')">🔗 Web Link</button>
+      </div>
+      
+      <!-- Main Content Input -->
+      <div class="form-group">
+        <label for="note" class="form-label">Content</label>
+        <textarea 
+          id="note" 
+          name="note" 
+          class="form-input form-textarea" 
+          placeholder="What's on your mind? Paste URLs for automatic web content extraction..."
+          required
+        ></textarea>
+      </div>
+      
+      <!-- Tags Input -->
+      <div class="form-group">
+        <label for="tags" class="form-label">Tags (optional)</label>
+        <input 
+          type="text" 
+          id="tags" 
+          name="tags" 
+          class="form-input" 
+          placeholder="work, personal, ideas..."
+        >
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button type="submit" class="btn-primary">
+          💾 Save Note
+        </button>
+        <button type="button" class="btn-secondary" onclick="clearForm()">
+          🗑️ Clear
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Processing Overlay -->
+<div class="processing-overlay" id="processing-overlay">
+  <div class="processing-content">
+    <div class="spinner"></div>
+    <div class="font-semibold text-gray-900 mb-1">Processing...</div>
+    <div class="text-sm text-gray-600">AI is analyzing your content</div>
+  </div>
+</div>
+
+<script>
+// Mobile capture functionality
+let currentMode = 'text';
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+// Mode switching
+function setMode(mode) {
+  const modes = ['text', 'voice'];
+  currentMode = mode;
+  
+  // Update UI
+  modes.forEach(m => {
+    const element = document.getElementById(`${m}-mode`);
+    if (m === mode) {
+      element.classList.add('active');
+    } else {
+      element.classList.remove('active');
+    }
+  });
+  
+  // Show/hide voice controls
+  const voiceControls = document.getElementById('voice-controls');
+  if (mode === 'voice') {
+    voiceControls.classList.add('active');
+    requestMicrophonePermission();
+  } else {
+    voiceControls.classList.remove('active');
+    stopRecording();
+  }
+}
+
+// Template insertion
+function insertTemplate(type) {
+  const textarea = document.getElementById('note');
+  const templates = {
+    meeting: `# Meeting Notes - ${new Date().toLocaleDateString()}
+
+## Attendees
+- 
+
+## Agenda
+- 
+
+## Action Items
+- [ ] 
+
+## Notes
+`,
+    idea: `💡 **Quick Idea**
+
+`,
+    todo: `## ✅ To-Do
+
+- [ ] 
+- [ ] 
+- [ ] 
+
+Priority: 
+Due Date: `,
+    link: `🔗 **Link:** 
+
+Summary: 
+
+Tags: `
+  };
+  
+  if (templates[type]) {
+    textarea.value = templates[type];
+    textarea.focus();
+    // Move cursor to end
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  }
+}
+
+// Voice recording functionality
+async function requestMicrophonePermission() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.log('Microphone access granted');
+    // Stop the stream immediately, we'll start a new one when recording
+    stream.getTracks().forEach(track => track.stop());
+  } catch (error) {
+    console.error('Microphone access denied:', error);
+    if (window.showToast) {
+      window.showToast('Microphone access required for voice notes', 'error');
+    }
+  }
+}
+
+async function toggleRecording() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    
+    mediaRecorder.ondataavailable = event => {
+      audioChunks.push(event.data);
+    };
+    
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Show audio preview
+      const preview = document.getElementById('audio-preview');
+      preview.src = audioUrl;
+      preview.style.display = 'block';
+      
+      // Create file for upload
+      const file = new File([audioBlob], `recording-${Date.now()}.wav`, { type: 'audio/wav' });
+      const fileInput = document.getElementById('audio-file');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      
+      // Update UI
+      document.getElementById('voice-status').textContent = 'Recording saved! You can play it back or record again.';
+    };
+    
+    mediaRecorder.start();
+    isRecording = true;
+    
+    // Update UI
+    const voiceBtn = document.getElementById('voice-btn');
+    voiceBtn.classList.add('recording');
+    voiceBtn.textContent = '⏹️';
+    document.getElementById('voice-status').textContent = 'Recording... Tap to stop';
+    
+  } catch (error) {
+    console.error('Failed to start recording:', error);
+    if (window.showToast) {
+      window.showToast('Failed to start recording. Please check microphone permissions.', 'error');
+    }
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && isRecording) {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    isRecording = false;
+    
+    // Update UI
+    const voiceBtn = document.getElementById('voice-btn');
+    voiceBtn.classList.remove('recording');
+    voiceBtn.textContent = '🎤';
+  }
+}
+
+// Form handling
+function clearForm() {
+  document.getElementById('capture-form').reset();
+  document.getElementById('audio-preview').style.display = 'none';
+  document.getElementById('voice-status').textContent = 'Tap to start recording';
+  stopRecording();
+}
+
+// Form submission with processing overlay
+document.getElementById('capture-form').addEventListener('submit', function(e) {
+  const overlay = document.getElementById('processing-overlay');
+  overlay.style.display = 'flex';
+  
+  // Add timeout to hide overlay in case of error
+  setTimeout(() => {
+    overlay.style.display = 'none';
+  }, 10000);
+});
+
+// Handle URL query parameters for shortcut actions
+const urlParams = new URLSearchParams(window.location.search);
+const action = urlParams.get('action');
+
+if (action === 'voice-note') {
+  setMode('voice');
+} else if (action === 'quick-note') {
+  document.getElementById('note').focus();
+}
+
+// PWA shortcut handling
+window.addEventListener('load', () => {
+  if (action) {
+    // Clear the URL parameter for cleaner experience
+    const url = new URL(window.location);
+    url.searchParams.delete('action');
+    window.history.replaceState({}, document.title, url);
+  }
+});
+
+// Auto-save to localStorage for offline support
+function autoSave() {
+  const content = document.getElementById('note').value;
+  const tags = document.getElementById('tags').value;
+  
+  if (content.trim()) {
+    localStorage.setItem('draft-content', content);
+    localStorage.setItem('draft-tags', tags);
+  }
+}
+
+// Restore draft on load
+window.addEventListener('load', () => {
+  const draftContent = localStorage.getItem('draft-content');
+  const draftTags = localStorage.getItem('draft-tags');
+  
+  if (draftContent && !document.getElementById('note').value) {
+    document.getElementById('note').value = draftContent;
+    document.getElementById('tags').value = draftTags || '';
+    
+    if (window.showToast) {
+      window.showToast('Draft restored', 'info');
+    }
+  }
+});
+
+// Auto-save every 30 seconds
+setInterval(autoSave, 30000);
+
+// Save on input
+document.getElementById('note').addEventListener('input', autoSave);
+document.getElementById('tags').addEventListener('input', autoSave);
+
+// Clear draft on successful submission
+window.addEventListener('beforeunload', () => {
+  // Only clear if form is being submitted
+  if (document.querySelector('form').checkValidity()) {
+    localStorage.removeItem('draft-content');
+    localStorage.removeItem('draft-tags');
+  }
+});
+
+console.log('[Mobile Capture] Interface loaded successfully');
+</script>
+{% endblock %}

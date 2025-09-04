@@ -37,7 +37,16 @@ Unlike traditional note-taking apps, Second Brain focuses on intelligent preproc
 - **Audio Capture**: File upload with automatic transcription via Whisper.cpp
 - **Apple Shortcuts Integration**: iOS shortcuts for voice dictation and quick notes
 - **Browser Extension**: One-click capture from web pages
+- **Web Link Ingestion**: Intelligent web content extraction from pasted URLs
 - **API Endpoints**: Webhook support for external integrations
+
+#### 3.1.1.1 Web Content Ingestion (NEW)
+- **URL Detection**: Automatic recognition of web links in Quick Notes text
+- **Content Extraction**: Playwright-powered web scraping with JavaScript rendering
+- **Rich Metadata Capture**: Page title, description, author, publish date extraction
+- **Screenshot Capture**: Visual snapshots of web pages for context and reference
+- **Content Processing**: AI-powered summarization and tagging of extracted web content
+- **Smart Deduplication**: Intelligent handling of duplicate URLs and content
 
 #### 3.1.2 AI Processing Pipeline
 - **Automatic Transcription**: Whisper.cpp integration for audio-to-text
@@ -74,13 +83,14 @@ Unlike traditional note-taking apps, Second Brain focuses on intelligent preproc
 - **Browser Extension**: Cross-platform web content capture
 - **Webhook API**: Generic integration endpoint for automation
 
-### 3.3 Advanced Features (Post-MVP)
+### 3.3 Advanced Features (Partially Implemented)
 
 #### 3.3.1 Enhanced AI Capabilities
-- **Semantic Search**: Vector embedding-based content discovery
-- **Content Recommendations**: AI-powered content suggestions
-- **Meeting Intelligence**: Calendar integration with pre/post meeting notes
-- **Smart Templates**: Context-aware note templates
+- ✅ **Semantic Search**: Vector embedding-based content discovery with hybrid FTS5 integration
+- ✅ **Real-time Status Updates**: Server-Sent Events for processing status tracking
+- 📋 **Content Recommendations**: AI-powered content suggestions
+- 📋 **Meeting Intelligence**: Calendar integration with pre/post meeting notes
+- 📋 **Smart Templates**: Context-aware note templates
 
 #### 3.3.2 Collaboration Features
 - **Shared Notebooks**: Team-based note sharing
@@ -89,23 +99,36 @@ Unlike traditional note-taking apps, Second Brain focuses on intelligent preproc
 - **Activity Feeds**: Team activity tracking
 
 #### 3.3.3 Analytics & Insights
-- **Usage Analytics**: Personal productivity insights
-- **Search Analytics**: Query performance and patterns
-- **Content Metrics**: Note creation and engagement statistics
-- **AI Performance**: Processing accuracy and efficiency tracking
+- ✅ **Search Analytics**: Query performance tracking and search result analytics
+- ✅ **Processing Status**: Real-time AI processing monitoring and queue management  
+- 📋 **Usage Analytics**: Personal productivity insights
+- 📋 **Content Metrics**: Note creation and engagement statistics
+- 📋 **AI Performance**: Processing accuracy and efficiency tracking
 
 ## 4. Technical Architecture
 
 ### 4.1 Technology Stack
-- **Backend**: FastAPI (Python)
-- **Database**: SQLite with FTS5 for search
+- **Backend**: FastAPI (Python) with enhanced error handling and validation
+- **Database**: SQLite with FTS5 for text search + optional sqlite-vec extension for semantic search
+- **Real-time Communication**: Server-Sent Events (SSE) for status updates
 - **AI Processing**: 
-  - Ollama (local LLM inference)
+  - Ollama (local LLM inference with embedding generation)
   - Whisper.cpp (audio transcription)
-  - Sentence Transformers (semantic search)
-- **Frontend**: Jinja2 templates with progressive enhancement
+  - Advanced Search Indexer (chunk-based FTS5 + vector hybrid search)
+  - Reciprocal Rank Fusion (RRF) for optimal result ranking
+- **Auto-Seeding Infrastructure**:
+  - Intelligent content bootstrapping for new users
+  - Configurable seed content sets (notes, bookmarks, examples)
+  - Automatic embedding generation for seeded content
+- **Web Content Extraction**: 
+  - Playwright (browser automation and JavaScript rendering)
+  - BeautifulSoup4 (HTML parsing and cleaning)
+  - Readability-lxml (main content extraction)
+  - html2text (HTML to markdown conversion)
+- **Frontend**: Jinja2 templates with progressive enhancement and modern design system
 - **Authentication**: JWT-based auth with bcrypt
-- **File Storage**: Local filesystem with configurable paths
+- **File Storage**: Local filesystem with configurable paths and media handling
+- **Screenshot Storage**: Optimized image storage with WebP format
 
 ### 4.2 Data Models
 
@@ -114,7 +137,9 @@ Unlike traditional note-taking apps, Second Brain focuses on intelligent preproc
 notes (
   id, title, content, summary, tags, actions,
   type, timestamp, audio_filename, status,
-  user_id, metadata, archive_path
+  user_id, metadata, archive_path,
+  source_url, web_metadata, screenshot_path,
+  content_hash, extracted_text, file_metadata
 )
 
 users (
@@ -135,11 +160,19 @@ search_analytics (
 ### 4.3 API Design
 
 #### 4.3.1 Core Endpoints
-- `POST /capture` - Multi-modal content capture
+- `POST /capture` - Multi-modal content capture (enhanced with URL detection)
 - `GET /` - Dashboard with search and filtering
 - `GET /detail/{id}` - Individual note view
-- `POST /api/search/enhanced` - Advanced search
+- `POST /api/search/fused` - Ultimate hybrid search with RRF and re-ranking
+- `POST /api/search/reranked` - Cross-encoder re-ranking search
+- `POST /api/search/sparse` - BM25 keyword search
 - `POST /sync/obsidian` - Trigger export
+
+#### 4.3.1.1 Web Content Endpoints (NEW)
+- `POST /web-extract` - Manual web content extraction
+- `GET /web-preview/{note_id}` - Preview extracted web content
+- `GET /web-metadata/{url_hash}` - Cached web content metadata
+- `GET /web-screenshot/{note_id}` - Serve captured screenshots
 
 #### 4.3.2 Integration Endpoints
 - `POST /webhook/apple` - Apple Shortcuts integration
@@ -211,11 +244,16 @@ search_analytics (
 - 🔄 Enhanced mobile experience
 - 🔄 Batch operations interface
 
-### 7.3 Phase 3: Advanced AI Features
-- 📋 Semantic search implementation
-- 📋 Content recommendation system
-- 📋 Meeting intelligence features
-- 📋 Advanced analytics dashboard
+### 7.3 Phase 3: Advanced AI Features ✅ COMPLETED
+- ✅ **Semantic Search**: Vector embeddings with hybrid FTS5 + sqlite-vec integration
+- ✅ **Advanced Search Analytics**: Performance tracking and query analytics with real-time monitoring
+- ✅ **Real-time Status Updates**: Server-Sent Events for processing status tracking
+- ✅ **Auto-Seeding Service**: Intelligent new user onboarding with curated starter content
+- ✅ **Advanced Search Indexer**: Chunk-based indexing with Reciprocal Rank Fusion (RRF)
+- ✅ **Service Architecture**: Complete modular router system with comprehensive service layer
+- ✅ **Search Performance**: Sub-100ms response times with BM25 + vector hybrid search
+- 📋 Content recommendation system (planned)
+- 📋 Meeting intelligence features (planned)
 
 ### 7.4 Phase 4: Collaboration & Scale
 - 📋 Multi-user support
@@ -273,7 +311,8 @@ search_analytics (
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: August 27, 2025  
-**Status**: Active Development  
-**Next Review**: September 15, 2025
+**Document Version**: 1.3  
+**Last Updated**: September 4, 2025  
+**Status**: Phase 3 Complete - Auto-Seeding & Advanced Search Indexer Deployed  
+**Next Review**: September 15, 2025  
+**Major Milestones Achieved**: ✅ Auto-Seeding Service, ✅ Chunk-based Search Indexer, ✅ Hybrid RRF Search

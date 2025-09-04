@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>{% block title %}Second Brain{% endblock %}</title>
+  
+  <!-- Standard favicon -->
+  <link rel="icon" href="/static/brain-logo.svg" />
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/static/manifest.json" />
+  
+  <!-- PWA Meta Tags -->
+  <meta name="application-name" content="Second Brain" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Second Brain" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="msapplication-TileColor" content="#2563eb" />
+  <meta name="theme-color" content="#2563eb" />
+  
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/icon-152x152.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-192x192.png" />
+  
+  <!-- Microsoft Tile -->
+  <meta name="msapplication-square150x150logo" content="/static/icons/icon-152x152.png" />
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="/static/css/design-system.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  {% block head_extra %}{% endblock %}
+  <style>
+    /* Lightweight toast system */
+    #toast-container { position: fixed; top: 16px; right: 16px; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 10px 12px; border-radius: 10px; font-size: 14px; color: #fff; box-shadow: var(--shadow-lg); opacity: .98; transition: transform .2s ease, opacity .2s ease; }
+    .toast.success { background: rgba(34,197,94,.95); }
+    .toast.error { background: rgba(239,68,68,.95); }
+    .toast.info { background: rgba(59,130,246,.95); }
+    .toast.hide { opacity: 0; transform: translateY(-8px); }
+  </style>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <script>
+    // Provide SSE token globally if available
+    window.SSE_TOKEN = '{{ sse_token if sse_token is defined else "" }}';
+  </script>
+  {% include 'partials/header.html' %}
+  {% include 'partials/userbar.html' %}
+  {% include 'partials/flash.html' %}
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  {% block content %}{% endblock %}
+  <script>
+    // Global toast helper
+    window.showToast = function(message, type){
+      try {
+        const cont = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = 'toast ' + (type || 'info');
+        el.textContent = message;
+        cont.appendChild(el);
+        setTimeout(()=>{ el.classList.add('hide'); }, 2000);
+        setTimeout(()=>{ el.remove(); }, 2400);
+      } catch {}
+    }
+    
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/static/sw.js');
+          console.log('[PWA] Service worker registered:', registration.scope);
+          
+          // Handle service worker updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // Show update notification
+                if (window.showToast) {
+                  window.showToast('New app version available! Refresh to update.', 'info');
+                }
+              }
+            });
+          });
+          
+        } catch (error) {
+          console.log('[PWA] Service worker registration failed:', error);
+        }
+      });
+    }
+    
+    // PWA Install Prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      // Show install button or notification
+      if (window.showToast) {
+        window.showToast('Add Second Brain to your home screen for quick access!', 'info');
+      }
+    });
+    
+    // PWA Install Function (can be called from UI)
+    window.installPWA = async function() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('[PWA] Install prompt result:', outcome);
+        deferredPrompt = null;
+      }
+    };
+    
+    // Handle PWA app installed
+    window.addEventListener('appinstalled', (evt) => {
+      console.log('[PWA] App installed successfully');
+      if (window.showToast) {
+        window.showToast('Second Brain installed! Launch from your home screen.', 'success');
+      }
+    });
+  </script>
+</body>
+</html>

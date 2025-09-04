@@ -1,0 +1,488 @@
+/* Enhanced Note Detail Styles */
+/* Complementary styles for the note detail page using the design system */
+
+/* Audio Player Enhancements */
+.audio-section {
+  background: var(--surface-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  border: 1px solid var(--border-primary);
+}
+
+.audio-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.audio-controls-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.audio-controls-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.audio-time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.playback-speed-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.playback-speed-control label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.playback-speed-control select {
+  min-width: auto;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+}
+
+/* Waveform Container Styling */
+.audio-waveform {
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+}
+
+.audio-waveform::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, var(--color-primary-50) 50%, transparent 100%);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Waveform loading state */
+.waveform-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  background: var(--surface-secondary);
+  border-radius: var(--radius-md);
+}
+
+.waveform-loading .spinner {
+  margin-right: var(--space-2);
+}
+
+/* Rich Text Editor Enhancements */
+.quill-editor {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--surface-primary);
+}
+
+.quill-editor .ql-toolbar {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--surface-secondary);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.quill-editor .ql-container {
+  border: none;
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+}
+
+.quill-editor .ql-editor {
+  padding: var(--space-4);
+  min-height: 300px;
+}
+
+.quill-editor .ql-editor::before {
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+/* Quill toolbar button styling */
+.quill-editor .ql-toolbar button {
+  padding: var(--space-1);
+  margin: 0 1px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.quill-editor .ql-toolbar button:hover {
+  background-color: var(--surface-interactive);
+}
+
+.quill-editor .ql-toolbar button.ql-active {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.quill-editor .ql-toolbar .ql-picker {
+  color: var(--text-primary);
+}
+
+.quill-editor .ql-toolbar .ql-picker-options {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.quill-editor .ql-toolbar .ql-picker-item:hover {
+  background-color: var(--surface-interactive);
+}
+
+/* Content formatting within editor */
+.quill-editor .ql-editor h1,
+.quill-editor .ql-editor h2,
+.quill-editor .ql-editor h3 {
+  font-weight: var(--font-weight-bold);
+  margin: var(--space-3) 0 var(--space-2) 0;
+}
+
+.quill-editor .ql-editor h1 { font-size: var(--text-2xl); }
+.quill-editor .ql-editor h2 { font-size: var(--text-xl); }
+.quill-editor .ql-editor h3 { font-size: var(--text-lg); }
+
+.quill-editor .ql-editor blockquote {
+  border-left: 3px solid var(--color-primary-400);
+  background: var(--color-primary-50);
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-3) 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  color: var(--text-secondary);
+}
+
+.quill-editor .ql-editor code {
+  background: var(--surface-secondary);
+  padding: var(--space-0-5) var(--space-1);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-primary-700);
+}
+
+.quill-editor .ql-editor pre {
+  background: var(--surface-secondary);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+  overflow-x: auto;
+  margin: var(--space-3) 0;
+}
+
+.quill-editor .ql-editor pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.quill-editor .ql-editor ul,
+.quill-editor .ql-editor ol {
+  padding-left: var(--space-6);
+  margin: var(--space-2) 0;
+}
+
+.quill-editor .ql-editor li {
+  margin-bottom: var(--space-1);
+}
+
+/* Tag Input Enhancements */
+.tag-input-container {
+  position: relative;
+}
+
+.tag-input-field {
+  position: relative;
+}
+
+.tag-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: var(--z-dropdown);
+  box-shadow: var(--shadow-lg);
+}
+
+.tag-suggestion {
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.tag-suggestion:last-child {
+  border-bottom: none;
+}
+
+.tag-suggestion:hover,
+.tag-suggestion.selected {
+  background: var(--surface-interactive);
+}
+
+.tag-suggestion:focus {
+  background: var(--color-primary-50);
+  outline: none;
+}
+
+/* Note Actions Enhancement */
+.note-actions-toolbar {
+  position: sticky;
+  top: 0;
+  background: var(--surface-primary);
+  border-bottom: 1px solid var(--border-primary);
+  padding: var(--space-3) 0;
+  z-index: var(--z-sticky);
+  backdrop-filter: blur(8px);
+}
+
+.note-actions-toolbar.editing {
+  background: var(--color-warning-50);
+  border-bottom-color: var(--color-warning-200);
+}
+
+/* Edit Mode Styling */
+.edit-mode .note-metadata {
+  background: var(--color-info-50);
+  border: 1px solid var(--color-info-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.edit-mode .card-header {
+  background: var(--color-warning-50);
+  border-bottom-color: var(--color-warning-200);
+}
+
+/* Modal Enhancements */
+.modal-overlay {
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  animation: slideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Export Options Styling */
+.export-option {
+  justify-content: flex-start;
+  text-align: left;
+  transition: all var(--transition-base);
+}
+
+.export-option:hover {
+  transform: translateX(4px);
+  box-shadow: var(--shadow-md);
+}
+
+.export-option i {
+  margin-right: var(--space-3);
+  opacity: 0.7;
+}
+
+/* Auto-save Indicator Enhancement */
+.auto-save-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  animation: slideInRight 0.3s ease;
+}
+
+.auto-save-indicator.error {
+  background: var(--color-error-500);
+}
+
+.auto-save-indicator.saving {
+  background: var(--color-warning-500);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .note-metadata {
+    grid-template-columns: 1fr;
+  }
+  
+  .audio-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .audio-controls-left,
+  .audio-controls-right {
+    justify-content: center;
+  }
+  
+  .action-buttons {
+    justify-content: center;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: var(--space-4);
+  }
+  
+  .quill-editor .ql-toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+  
+  .card-header h1 {
+    text-align: center;
+  }
+  
+  .action-buttons {
+    justify-content: space-around;
+  }
+  
+  .auto-save-indicator {
+    position: fixed;
+    top: auto;
+    bottom: var(--space-4);
+    right: var(--space-4);
+    left: var(--space-4);
+    text-align: center;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .note-actions-toolbar,
+  .action-buttons,
+  .auto-save-indicator,
+  .modal-overlay,
+  header {
+    display: none !important;
+  }
+  
+  .card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  .note-content {
+    display: block !important;
+  }
+  
+  .note-editor {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .quill-editor .ql-toolbar {
+    border-bottom-width: 2px;
+  }
+  
+  .tag-suggestion:hover,
+  .tag-suggestion.selected {
+    border: 2px solid var(--color-primary-600);
+  }
+  
+  .audio-waveform {
+    border-width: 2px;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .auto-save-indicator,
+  .modal-overlay,
+  .modal-content,
+  .export-option,
+  .card-interactive {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Focus Management */
+.keyboard-user *:focus {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Dark mode specific adjustments */
+.dark .quill-editor .ql-editor {
+  color: var(--text-primary);
+}
+
+.dark .quill-editor .ql-toolbar {
+  background: var(--surface-tertiary);
+}
+
+.dark .audio-waveform::before {
+  background: linear-gradient(90deg, transparent 0%, var(--color-primary-900) 50%, transparent 100%);
+}

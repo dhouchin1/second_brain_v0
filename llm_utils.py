@@ -2,6 +2,24 @@ import requests
 import json
 from config import settings
 
+def _ollama_options_dict():
+    """Build an options dict for Ollama from settings, skipping Nones.
+
+    Common useful keys: num_ctx, num_predict, temperature, top_p, num_gpu
+    """
+    opts = {}
+    if getattr(settings, 'ollama_num_ctx', None) is not None:
+        opts['num_ctx'] = int(settings.ollama_num_ctx)
+    if getattr(settings, 'ollama_num_predict', None) is not None:
+        opts['num_predict'] = int(settings.ollama_num_predict)
+    if getattr(settings, 'ollama_temperature', None) is not None:
+        opts['temperature'] = float(settings.ollama_temperature)
+    if getattr(settings, 'ollama_top_p', None) is not None:
+        opts['top_p'] = float(settings.ollama_top_p)
+    if getattr(settings, 'ollama_num_gpu', None) is not None:
+        opts['num_gpu'] = int(settings.ollama_num_gpu)
+    return opts
+
 
 def ollama_summarize(text, prompt=None):
     """Return summary, tags and actions extracted from *text* using Ollama."""
@@ -19,9 +37,10 @@ def ollama_summarize(text, prompt=None):
             f"{system_prompt}\n\n{text}\n\n"
             "Respond in JSON with keys 'summary', 'tags', and 'actions'."
         ),
+        "options": _ollama_options_dict() or None,
     }
     try:
-        resp = requests.post(settings.ollama_api_url, json=data, stream=True, timeout=120)
+        resp = requests.post(settings.ollama_api_url, json=data, stream=True, timeout=60)
         output = ""
         for line in resp.iter_lines():
             if line:
@@ -65,8 +84,13 @@ def ollama_generate_title(text):
     try:
         resp = requests.post(
             settings.ollama_api_url,
-            json={"model": settings.ollama_model, "prompt": prompt, "stream": True},
-            timeout=60,
+            json={
+                "model": settings.ollama_model,
+                "prompt": prompt,
+                "stream": True,
+                "options": _ollama_options_dict() or None,
+            },
+            timeout=30,
         )
         title = ""
         for line in resp.iter_lines():
@@ -78,4 +102,3 @@ def ollama_generate_title(text):
     except Exception as e:
         print("Ollama title exception:", e)
         return "Untitled Note"
-

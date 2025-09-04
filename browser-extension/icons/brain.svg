@@ -1,0 +1,28 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="brainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Brain outline -->
+  <path d="M64 16C44 16 28 32 28 52C28 58 30 64 34 68C32 72 30 76 30 82C30 94 40 104 52 104C54 104 56 104 58 103C60 106 63 108 66 108C70 108 74 105 76 101C78 102 80 102 82 102C94 102 104 92 104 80C104 76 103 72 101 69C105 65 108 59 108 52C108 32 92 16 72 16C69 16 66 17 64 18C64 17 64 16 64 16Z" fill="url(#brainGradient)" stroke="#5a67d8" stroke-width="2"/>
+  
+  <!-- Brain details -->
+  <path d="M45 40C40 42 37 46 37 52C37 56 39 59 42 61" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round"/>
+  <path d="M75 42C80 44 83 48 83 54C83 58 81 61 78 63" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round"/>
+  <path d="M55 75C60 77 65 79 70 75" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Neural connections -->
+  <circle cx="45" cy="50" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="75" cy="52" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="60" cy="72" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="65" cy="40" r="2" fill="#ffffff" opacity="0.6"/>
+  <circle cx="85" cy="65" r="2" fill="#ffffff" opacity="0.6"/>
+  
+  <!-- Connecting lines -->
+  <path d="M45 50L60 72" stroke="#ffffff" stroke-width="1" opacity="0.4"/>
+  <path d="M75 52L60 72" stroke="#ffffff" stroke-width="1" opacity="0.4"/>
+  <path d="M65 40L75 52" stroke="#ffffff" stroke-width="1" opacity="0.4"/>
+</svg>

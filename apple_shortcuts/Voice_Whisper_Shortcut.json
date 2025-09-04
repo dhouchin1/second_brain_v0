@@ -1,0 +1,122 @@
+{
+  "WFWorkflowActions": [
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.recordaudio",
+      "WFWorkflowActionParameters": {
+        "WFRecordingStart": "On Run",
+        "WFRecordingFormat": "M4A"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.base64encode",
+      "WFWorkflowActionParameters": {}
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.detect.duration",
+      "WFWorkflowActionParameters": {}
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+      "WFWorkflowActionParameters": {
+        "WFURL": "http://localhost:8082/api/shortcuts/voice-note",
+        "WFHTTPMethod": "POST",
+        "WFHTTPHeaders": {
+          "Content-Type": "application/json"
+        },
+        "WFRequestVariable": {
+          "Value": {
+            "WFDictionaryFieldValueItems": [
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "content"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "string": "Voice recording captured - processing with Whisper..."
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "source"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "string": "apple_shortcuts_voice_whisper"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "audio_file"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Base64 Encoded"
+                  }
+                }
+              },
+              {
+                "WFItemType": 1,
+                "WFKey": {
+                  "Value": {
+                    "string": "audio_duration"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Duration"
+                  }
+                }
+              },
+              {
+                "WFItemType": 4,
+                "WFKey": {
+                  "Value": {
+                    "string": "use_whisper"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "bool": true
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "shortcuts_response"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "notification_title"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.shownotification",
+      "WFWorkflowActionParameters": {
+        "WFNotificationActionTitle": "Second Brain"
+      }
+    }
+  ],
+  "WFWorkflowName": "🎤 Voice to Second Brain (Whisper)",
+  "WFWorkflowDescription": "Record voice note and transcribe with high-quality Whisper.cpp"
+}

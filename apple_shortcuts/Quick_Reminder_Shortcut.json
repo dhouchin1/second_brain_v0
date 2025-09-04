@@ -1,0 +1,150 @@
+{
+  "WFWorkflowActions": [
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionParameters": {
+        "WFAskActionPrompt": "What do you need to remember?",
+        "WFInputType": "Text"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.choosefromlist",
+      "WFWorkflowActionParameters": {
+        "WFChooseFromListActionPrompt": "Priority Level:",
+        "WFChooseFromListActionSelectMultiple": false,
+        "WFChooseFromListActionSelectAll": false,
+        "WFChooseFromListItems": [
+          "🔴 High",
+          "🟡 Normal", 
+          "🟢 Low"
+        ]
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.ask",
+      "WFWorkflowActionParameters": {
+        "WFAskActionPrompt": "Due date (optional):",
+        "WFInputType": "Text",
+        "WFAskActionDefaultAnswer": "Today"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.replacetext",
+      "WFWorkflowActionParameters": {
+        "WFReplaceTextFind": "🔴 |🟡 |🟢 ",
+        "WFReplaceTextReplace": "",
+        "WFReplaceTextCaseSensitive": false,
+        "WFReplaceTextRegularExpression": true
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.lowercasetext",
+      "WFWorkflowActionParameters": {}
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+      "WFWorkflowActionParameters": {
+        "WFURL": "http://localhost:8082/api/shortcuts/reminder",
+        "WFHTTPMethod": "POST",
+        "WFHTTPHeaders": {
+          "Content-Type": "application/json"
+        },
+        "WFRequestVariable": {
+          "Value": {
+            "WFDictionaryFieldValueItems": [
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "reminder_title"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Provided Input"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "content"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Provided Input"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "priority"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Lowercase Text"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "due_date"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Provided Input"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "source"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "string": "apple_shortcuts_reminder"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "shortcuts_response"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "notification_title"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.shownotification",
+      "WFWorkflowActionParameters": {
+        "WFNotificationActionTitle": "Second Brain"
+      }
+    }
+  ],
+  "WFWorkflowName": "🔔 Quick Reminder to Second Brain",
+  "WFWorkflowDescription": "Create prioritized reminders and tasks in Second Brain"
+}

@@ -1,0 +1,364 @@
+{
+  "meta": {
+    "version": "1.0",
+    "created_at": "2025-01-09T00:00:00Z",
+    "description": "Golden queries for Second Brain search benchmarking",
+    "baseline_timestamp": "2025-01-09T00:00:00Z"
+  },
+  "scenarios": [
+    {
+      "category": "keyword_search",
+      "description": "Basic keyword-based search scenarios",
+      "queries": [
+        {
+          "id": "kw_01",
+          "query": "meeting notes",
+          "description": "Find meeting-related content",
+          "expected_result_types": ["note"],
+          "min_results": 1,
+          "quality_threshold": 0.7,
+          "performance_target": {
+            "max_time_ms": 500,
+            "target_recall": 0.8
+          },
+          "context": {
+            "user_intent": "find_existing",
+            "scenario_type": "content_search"
+          },
+          "expected_features": {
+            "should_find": ["meeting", "agenda", "action items", "discussion"],
+            "should_avoid": ["unrelated content"]
+          }
+        },
+        {
+          "id": "kw_02", 
+          "query": "project plan",
+          "description": "Find project planning documents",
+          "expected_result_types": ["note"],
+          "min_results": 1,
+          "quality_threshold": 0.7,
+          "performance_target": {
+            "max_time_ms": 500,
+            "target_recall": 0.75
+          },
+          "context": {
+            "user_intent": "find_existing",
+            "scenario_type": "content_search"
+          },
+          "expected_features": {
+            "should_find": ["project", "plan", "milestone", "timeline"],
+            "should_avoid": ["personal notes"]
+          }
+        },
+        {
+          "id": "kw_03",
+          "query": "Python tutorial",
+          "description": "Find Python learning materials",
+          "expected_result_types": ["note"],
+          "min_results": 1,
+          "quality_threshold": 0.6,
+          "performance_target": {
+            "max_time_ms": 500,
+            "target_recall": 0.7
+          },
+          "context": {
+            "user_intent": "reference",
+            "scenario_type": "learning"
+          },
+          "expected_features": {
+            "should_find": ["python", "programming", "code", "tutorial"],
+            "should_avoid": ["unrelated languages"]
+          }
+        }
+      ]
+    },
+    {
+      "category": "semantic_search",
+      "description": "Concept-based and semantic search scenarios",
+      "queries": [
+        {
+          "id": "sem_01",
+          "query": "how to improve productivity",
+          "description": "Find productivity-related insights",
+          "expected_result_types": ["note", "template"],
+          "min_results": 1,
+          "quality_threshold": 0.6,
+          "performance_target": {
+            "max_time_ms": 1000,
+            "target_recall": 0.7
+          },
+          "context": {
+            "user_intent": "explore",
+            "scenario_type": "advice_seeking"
+          },
+          "expected_features": {
+            "should_find": ["productivity", "efficiency", "workflow", "time management"],
+            "should_avoid": ["unrelated topics"]
+          }
+        },
+        {
+          "id": "sem_02",
+          "query": "machine learning concepts",
+          "description": "Find ML-related educational content",
+          "expected_result_types": ["note"],
+          "min_results": 1,
+          "quality_threshold": 0.65,
+          "performance_target": {
+            "max_time_ms": 1000,
+            "target_recall": 0.75
+          },
+          "context": {
+            "user_intent": "reference",
+            "scenario_type": "technical_learning"
+          },
+          "expected_features": {
+            "should_find": ["machine learning", "algorithms", "neural networks", "AI"],
+            "should_avoid": ["basic programming"]
+          }
+        },
+        {
+          "id": "sem_03",
+          "query": "team collaboration strategies",
+          "description": "Find collaboration and teamwork content",
+          "expected_result_types": ["note", "template"],
+          "min_results": 1,
+          "quality_threshold": 0.6,
+          "performance_target": {
+            "max_time_ms": 1000,
+            "target_recall": 0.7
+          },
+          "context": {
+            "user_intent": "explore",
+            "scenario_type": "management"
+          },
+          "expected_features": {
+            "should_find": ["collaboration", "teamwork", "communication", "leadership"],
+            "should_avoid": ["individual tasks"]
+          }
+        }
+      ]
+    },
+    {
+      "category": "hybrid_search",
+      "description": "Combined keyword and semantic search scenarios",
+      "queries": [
+        {
+          "id": "hyb_01",
+          "query": "daily standup best practices",
+          "description": "Find specific meeting format guidance",
+          "expected_result_types": ["note", "template"],
+          "min_results": 1,
+          "quality_threshold": 0.7,
+          "performance_target": {
+            "max_time_ms": 800,
+            "target_recall": 0.8
+          },
+          "context": {
+            "user_intent": "reference",
+            "scenario_type": "process_improvement"
+          },
+          "expected_features": {
+            "should_find": ["standup", "daily meeting", "agile", "best practices"],
+            "should_avoid": ["other meeting types"]
+          }
+        },
+        {
+          "id": "hyb_02",
+          "query": "API documentation template",
+          "description": "Find template for documenting APIs",
+          "expected_result_types": ["template", "note"],
+          "min_results": 1,
+          "quality_threshold": 0.8,
+          "performance_target": {
+            "max_time_ms": 800,
+            "target_recall": 0.85
+          },
+          "context": {
+            "user_intent": "create_new",
+            "scenario_type": "documentation"
+          },
+          "expected_features": {
+            "should_find": ["API", "documentation", "template", "endpoints"],
+            "should_avoid": ["general documentation"]
+          }
+        }
+      ]
+    },
+    {
+      "category": "intent_based",
+      "description": "Search scenarios based on user intent",
+      "queries": [
+        {
+          "id": "int_01",
+          "query": "create weekly review",
+          "description": "Intent to create new weekly review process",
+          "expected_result_types": ["template", "quick_action"],
+          "min_results": 1,
+          "quality_threshold": 0.7,
+          "performance_target": {
+            "max_time_ms": 600,
+            "target_recall": 0.8
+          },
+          "context": {
+            "user_intent": "create_new",
+            "scenario_type": "process_creation"
+          },
+          "expected_features": {
+            "should_find": ["weekly review", "template", "create"],
+            "should_prioritize": ["templates", "quick_actions"]
+          }
+        },
+        {
+          "id": "int_02",
+          "query": "explore React hooks",
+          "description": "Intent to learn about React hooks",
+          "expected_result_types": ["note", "quick_action"],
+          "min_results": 1,
+          "quality_threshold": 0.6,
+          "performance_target": {
+            "max_time_ms": 600,
+            "target_recall": 0.75
+          },
+          "context": {
+            "user_intent": "explore",
+            "scenario_type": "technical_learning"
+          },
+          "expected_features": {
+            "should_find": ["React", "hooks", "JavaScript", "frontend"],
+            "should_prioritize": ["learning resources", "web_search_action"]
+          }
+        }
+      ]
+    },
+    {
+      "category": "edge_cases",
+      "description": "Edge cases and challenging search scenarios",
+      "queries": [
+        {
+          "id": "edge_01",
+          "query": "docker-compose.yml",
+          "description": "Technical filename search",
+          "expected_result_types": ["note"],
+          "min_results": 0,
+          "quality_threshold": 0.8,
+          "performance_target": {
+            "max_time_ms": 400,
+            "target_recall": 0.9
+          },
+          "context": {
+            "user_intent": "find_existing",
+            "scenario_type": "file_search"
+          },
+          "expected_features": {
+            "should_find": ["docker", "compose", "yaml", "configuration"],
+            "should_avoid": ["unrelated config files"]
+          }
+        },
+        {
+          "id": "edge_02",
+          "query": "a",
+          "description": "Single character query",
+          "expected_result_types": [],
+          "min_results": 0,
+          "quality_threshold": 0.0,
+          "performance_target": {
+            "max_time_ms": 200,
+            "target_recall": 0.0
+          },
+          "context": {
+            "user_intent": "find_existing",
+            "scenario_type": "invalid_query"
+          },
+          "expected_features": {
+            "should_find": [],
+            "should_handle_gracefully": true
+          }
+        },
+        {
+          "id": "edge_03",
+          "query": "日本語 notes",
+          "description": "Mixed language query",
+          "expected_result_types": ["note"],
+          "min_results": 0,
+          "quality_threshold": 0.5,
+          "performance_target": {
+            "max_time_ms": 500,
+            "target_recall": 0.6
+          },
+          "context": {
+            "user_intent": "find_existing",
+            "scenario_type": "multilingual"
+          },
+          "expected_features": {
+            "should_find": ["japanese", "notes", "language"],
+            "should_handle_unicode": true
+          }
+        }
+      ]
+    },
+    {
+      "category": "performance_stress",
+      "description": "Performance and load testing scenarios",
+      "queries": [
+        {
+          "id": "perf_01",
+          "query": "the quick brown fox jumps over the lazy dog",
+          "description": "Long query performance test",
+          "expected_result_types": ["note"],
+          "min_results": 0,
+          "quality_threshold": 0.3,
+          "performance_target": {
+            "max_time_ms": 800,
+            "target_recall": 0.5
+          },
+          "context": {
+            "user_intent": "find_existing",
+            "scenario_type": "stress_test"
+          },
+          "expected_features": {
+            "should_handle_long_queries": true,
+            "should_maintain_performance": true
+          }
+        },
+        {
+          "id": "perf_02",
+          "query": "meeting project plan standup review documentation template",
+          "description": "Multiple keyword stress test",
+          "expected_result_types": ["note", "template"],
+          "min_results": 1,
+          "quality_threshold": 0.4,
+          "performance_target": {
+            "max_time_ms": 1000,
+            "target_recall": 0.6
+          },
+          "context": {
+            "user_intent": "find_existing",
+            "scenario_type": "broad_search"
+          },
+          "expected_features": {
+            "should_handle_multiple_terms": true,
+            "should_prioritize_relevant_results": true
+          }
+        }
+      ]
+    }
+  ],
+  "benchmarking_config": {
+    "default_user_id": 1,
+    "search_modes": ["hybrid", "keyword", "semantic"],
+    "result_limits": [5, 10, 20],
+    "timeout_ms": 5000,
+    "quality_metrics": [
+      "relevance_score",
+      "result_count", 
+      "search_time",
+      "result_diversity",
+      "intent_accuracy"
+    ],
+    "regression_thresholds": {
+      "performance_degradation": 0.2,
+      "quality_degradation": 0.15,
+      "recall_degradation": 0.1
+    }
+  }
+}

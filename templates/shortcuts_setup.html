@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple Shortcuts Setup - Second Brain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <div class="min-h-screen py-8">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-900 mb-2">
+                    📱 Apple Shortcuts Setup
+                </h1>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+                    Transform your iPhone into a powerful Second Brain capture device with these custom shortcuts
+                </p>
+            </div>
+
+            <!-- Quick Start Guide -->
+            <div class="bg-blue-50 rounded-lg p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-rocket mr-2 text-blue-600"></i>
+                    Quick Start (3 Steps)
+                </h2>
+                <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                    <li>Download shortcuts below to your iPhone</li>
+                    <li>Update the server URL to match your Second Brain instance</li>
+                    <li>Add shortcuts to home screen & configure Siri phrases</li>
+                </ol>
+            </div>
+
+            <!-- Available Shortcuts -->
+            <div class="grid gap-6 mb-8">
+                
+                <!-- Photo OCR -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-2 flex items-center">
+                                📸 Photo Text Extraction
+                            </h3>
+                            <p class="text-gray-600">
+                                Take a photo, extract text with OCR, capture location data
+                            </p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="/api/shortcuts/shortcuts/photo-text.json" 
+                               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-download mr-1"></i> Download
+                            </a>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded p-3 text-sm">
+                        <strong>Siri Phrase:</strong> "Extract text to Second Brain"<br>
+                        <strong>Use Cases:</strong> Business cards, whiteboards, documents, signs
+                    </div>
+                </div>
+
+                <!-- Voice with Whisper -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-2 flex items-center">
+                                🎤 Voice Notes (Whisper.cpp)
+                            </h3>
+                            <p class="text-gray-600">
+                                Record voice notes with high-quality Whisper transcription
+                            </p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="/apple_shortcuts/Voice_Whisper_Shortcut.json" 
+                               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-download mr-1"></i> Download
+                            </a>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded p-3 text-sm">
+                        <strong>Siri Phrase:</strong> "Voice note to Second Brain"<br>
+                        <strong>Advantage:</strong> Superior transcription quality vs Apple's built-in
+                    </div>
+                </div>
+
+                <!-- Calendar Event -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-2 flex items-center">
+                                📅 Calendar Event Notes
+                            </h3>
+                            <p class="text-gray-600">
+                                Quickly capture meeting notes and event details
+                            </p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="/apple_shortcuts/Calendar_Event_Shortcut.json" 
+                               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-download mr-1"></i> Download
+                            </a>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded p-3 text-sm">
+                        <strong>Siri Phrase:</strong> "Log meeting to Second Brain"<br>
+                        <strong>Use Cases:</strong> Meeting prep, event planning, appointment notes
+                    </div>
+                </div>
+
+                <!-- Contact -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-2 flex items-center">
+                                👤 Contact & Networking
+                            </h3>
+                            <p class="text-gray-600">
+                                Save contact info with meeting notes and follow-up reminders
+                            </p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="/apple_shortcuts/Contact_Shortcut.json" 
+                               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-download mr-1"></i> Download
+                            </a>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded p-3 text-sm">
+                        <strong>Siri Phrase:</strong> "Save contact to Second Brain"<br>
+                        <strong>Use Cases:</strong> Networking events, client meetings, new connections
+                    </div>
+                </div>
+
+                <!-- Quick Reminder -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-2 flex items-center">
+                                🔔 Quick Reminders & Tasks
+                            </h3>
+                            <p class="text-gray-600">
+                                Create prioritized tasks and reminders with due dates
+                            </p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <a href="/apple_shortcuts/Quick_Reminder_Shortcut.json" 
+                               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-download mr-1"></i> Download
+                            </a>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded p-3 text-sm">
+                        <strong>Siri Phrase:</strong> "Remind me in Second Brain"<br>
+                        <strong>Features:</strong> Priority levels, due dates, smart tagging
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Setup Instructions -->
+            <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-cog mr-2 text-gray-600"></i>
+                    Setup Instructions
+                </h2>
+
+                <!-- Step 1 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold mb-3 flex items-center">
+                        <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm mr-3">1</span>
+                        Download & Import Shortcuts
+                    </h3>
+                    <div class="ml-9 space-y-3 text-gray-700">
+                        <p>1. On your iPhone, tap the download links above</p>
+                        <p>2. Choose "Open in Shortcuts" when prompted</p>
+                        <p>3. Tap "Add Shortcut" to import each one</p>
+                        <div class="bg-yellow-50 p-3 rounded border-l-4 border-yellow-400">
+                            <p class="text-yellow-800"><strong>Note:</strong> You may need to enable "Allow Untrusted Shortcuts" in Settings > Shortcuts > Advanced</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold mb-3 flex items-center">
+                        <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm mr-3">2</span>
+                        Configure Server URL
+                    </h3>
+                    <div class="ml-9 space-y-3 text-gray-700">
+                        <p>Each shortcut needs to be updated with your server URL:</p>
+                        <div class="bg-gray-100 p-4 rounded font-mono text-sm">
+                            <p><strong>Default:</strong> http://localhost:8082</p>
+                            <p><strong>Your URL:</strong> <span id="current-url" class="text-blue-600">http://localhost:8082</span></p>
+                        </div>
+                        <ol class="list-decimal list-inside space-y-1">
+                            <li>Open each shortcut in the Shortcuts app</li>
+                            <li>Find the "Get Contents of URL" action</li>
+                            <li>Replace "localhost:8082" with your server address</li>
+                            <li>Tap "Done" to save</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold mb-3 flex items-center">
+                        <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm mr-3">3</span>
+                        Add to Home Screen & Siri
+                    </h3>
+                    <div class="ml-9 space-y-3 text-gray-700">
+                        <p><strong>Home Screen:</strong></p>
+                        <ol class="list-decimal list-inside space-y-1 mb-4">
+                            <li>Open Shortcuts app</li>
+                            <li>Tap the ⋯ menu on each shortcut</li>
+                            <li>Select "Add to Home Screen"</li>
+                            <li>Customize icon and name if desired</li>
+                        </ol>
+                        
+                        <p><strong>Siri Phrases:</strong></p>
+                        <ol class="list-decimal list-inside space-y-1">
+                            <li>In shortcut settings, tap "Add to Siri"</li>
+                            <li>Record your custom phrase</li>
+                            <li>Use the suggested phrases above or create your own</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold mb-3 flex items-center">
+                        <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm mr-3">4</span>
+                        Test & Authenticate
+                    </h3>
+                    <div class="ml-9 space-y-3 text-gray-700">
+                        <p>1. First, log into Second Brain via Safari on your iPhone</p>
+                        <p>2. Test each shortcut to ensure they work properly</p>
+                        <p>3. Check that notes appear in your Second Brain dashboard</p>
+                        <div class="bg-green-50 p-3 rounded border-l-4 border-green-400">
+                            <p class="text-green-800"><strong>Tip:</strong> Session cookies will be shared between Safari and shortcuts</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Advanced Features -->
+            <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-magic mr-2 text-purple-600"></i>
+                    Advanced Features
+                </h2>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="font-semibold mb-2 text-purple-600">🎤 Whisper.cpp Integration</h3>
+                        <p class="text-gray-700 text-sm mb-4">
+                            Voice notes use advanced Whisper.cpp for superior transcription quality compared to Apple's built-in speech recognition.
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold mb-2 text-purple-600">📍 Location Data</h3>
+                        <p class="text-gray-700 text-sm mb-4">
+                            Photo shortcuts automatically capture location data and address information for context.
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold mb-2 text-purple-600">🏷️ Smart Tagging</h3>
+                        <p class="text-gray-700 text-sm mb-4">
+                            All shortcuts include automatic tagging based on content type and source for easy organization.
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold mb-2 text-purple-600">🔄 Background Processing</h3>
+                        <p class="text-gray-700 text-sm mb-4">
+                            Audio transcription happens in the background using a FIFO queue system.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Troubleshooting -->
+            <div class="bg-white rounded-lg shadow-sm p-8">
+                <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-life-ring mr-2 text-red-600"></i>
+                    Troubleshooting
+                </h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="font-semibold text-red-600 mb-2">❌ "Authentication Required" Error</h3>
+                        <p class="text-gray-700 text-sm">
+                            Make sure you're logged into Second Brain in Safari first. Session cookies are shared between Safari and Shortcuts.
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-red-600 mb-2">📱 Shortcut Won't Import</h3>
+                        <p class="text-gray-700 text-sm">
+                            Go to Settings > Shortcuts > Advanced and enable "Allow Untrusted Shortcuts". This is required for custom shortcuts.
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-red-600 mb-2">🌐 Network Connection Issues</h3>
+                        <p class="text-gray-700 text-sm">
+                            Ensure your iPhone can access your Second Brain server. If running locally, both devices must be on the same network.
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-semibold text-red-600 mb-2">🎤 Voice Transcription Not Working</h3>
+                        <p class="text-gray-700 text-sm">
+                            Check that Whisper.cpp is properly configured on your server. Voice recordings will be queued for processing.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Update current URL display
+        document.getElementById('current-url').textContent = window.location.origin;
+        
+        // Add click to copy functionality
+        document.getElementById('current-url').addEventListener('click', function() {
+            navigator.clipboard.writeText(this.textContent).then(function() {
+                alert('URL copied to clipboard!');
+            });
+        });
+    </script>
+</body>
+</html>

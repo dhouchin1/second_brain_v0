@@ -1,0 +1,149 @@
+{
+  "WFWorkflowActions": [
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.takephoto",
+      "WFWorkflowActionParameters": {
+        "WFCameraCaptureDevice": "Back"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.extracttextfromimage",
+      "WFWorkflowActionParameters": {}
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getlocationoffile",
+      "WFWorkflowActionParameters": {}
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getmylocation",
+      "WFWorkflowActionParameters": {}
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getaddressfromlocation",
+      "WFWorkflowActionParameters": {}
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getitemfromlist",
+      "WFWorkflowActionParameters": {
+        "WFItemSpecifier": "Item At Index",
+        "WFItemIndex": 1
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvariable",
+      "WFWorkflowActionParameters": {
+        "WFVariable": {
+          "Value": {
+            "Type": "Variable",
+            "VariableName": "Extracted Text"
+          }
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+      "WFWorkflowActionParameters": {
+        "WFURL": "http://localhost:8082/api/shortcuts/photo-text",
+        "WFHTTPMethod": "POST",
+        "WFHTTPHeaders": {
+          "Content-Type": "application/json"
+        },
+        "WFRequestVariable": {
+          "Value": {
+            "WFDictionaryFieldValueItems": [
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "extracted_text"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Extracted Text"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "content"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "Type": "Variable",
+                    "VariableName": "Extracted Text"
+                  }
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "source"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "string": "apple_shortcuts_photo_ocr"
+                  }
+                }
+              },
+              {
+                "WFItemType": 3,
+                "WFKey": {
+                  "Value": {
+                    "string": "photo_location"
+                  }
+                },
+                "WFValue": {
+                  "Value": {
+                    "WFDictionaryFieldValueItems": [
+                      {
+                        "WFItemType": 0,
+                        "WFKey": {
+                          "Value": {
+                            "string": "name"
+                          }
+                        },
+                        "WFValue": {
+                          "Value": {
+                            "Type": "Variable",
+                            "VariableName": "Address"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "shortcuts_response"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
+      "WFWorkflowActionParameters": {
+        "WFDictionaryKey": "notification_title"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.shownotification",
+      "WFWorkflowActionParameters": {
+        "WFNotificationActionTitle": "Second Brain"
+      }
+    }
+  ],
+  "WFWorkflowName": "📸 Photo Text to Second Brain",
+  "WFWorkflowDescription": "Take a photo, extract text with OCR, and save to Second Brain with location data"
+}

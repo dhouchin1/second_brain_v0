@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Second Brain</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 380px;
+            min-height: 500px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            color: #1f2937;
+            background: #ffffff;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .status {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .main {
+            padding: 16px;
+        }
+
+        .capture-section {
+            margin-bottom: 20px;
+        }
+
+        .capture-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Enhanced suggestions section */
+        .content-suggestions {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .suggestion-btn {
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #374151;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .suggestion-btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .suggestion-btn.primary {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            font-weight: 500;
+        }
+
+        .suggestion-btn.primary:hover {
+            background: #2563eb;
+        }
+
+        /* Advanced capture buttons */
+        .capture-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .btn {
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #374151;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-full {
+            grid-column: 1 / -1;
+        }
+
+        /* AI features section */
+        .ai-features {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .ai-features h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .ai-toggle label {
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background: #cbd5e1;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #3b82f6;
+        }
+
+        .toggle-switch::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::before {
+            transform: translateX(20px);
+        }
+
+        /* Multi-selection controls */
+        .multi-select-controls {
+            display: none;
+            margin-top: 12px;
+            padding: 12px;
+            background: #fef3c7;
+            border-radius: 6px;
+            border: 1px solid #f59e0b;
+        }
+
+        .multi-select-controls.active {
+            display: block;
+        }
+
+        .multi-select-info {
+            font-size: 12px;
+            color: #92400e;
+            margin-bottom: 8px;
+        }
+
+        /* Tag suggestions */
+        .tag-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .tag-suggestion {
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .tag-suggestion:hover {
+            background: #c7d2fe;
+        }
+
+        .manual-capture textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .manual-capture textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .tag-input {
+            width: 100%;
+            padding: 8px 10px;
+            margin: 8px 0;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .tag-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .recent-section {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 16px;
+        }
+
+        .recent-items {
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .recent-item {
+            padding: 8px 10px;
+            margin: 4px 0;
+            background: #f9fafb;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .recent-item:hover {
+            background: #f3f4f6;
+        }
+
+        .recent-item-title {
+            font-weight: 500;
+            color: #111827;
+            margin-bottom: 2px;
+        }
+
+        .recent-item-meta {
+            color: #6b7280;
+            font-size: 11px;
+        }
+
+        .footer {
+            padding: 12px 16px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 12px;
+        }
+
+        .footer-link {
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .footer-link:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6b7280;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .error {
+            color: #dc2626;
+            background: #fef2f2;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .success {
+            color: #059669;
+            background: #f0fdf4;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .emoji {
+            font-size: 16px;
+        }
+
+        .kbd {
+            background: #f3f4f6;
+            color: #6b7280;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        /* Status indicator styles */
+        .status-connected {
+            color: #10b981;
+        }
+        
+        .status-disconnected {
+            color: #ef4444;
+        }
+
+        /* Advanced features toggle */
+        .advanced-feature {
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .advanced-feature.connected {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 Second Brain</h1>
+        <div id="status" class="status">Checking connection...</div>
+    </div>
+
+    <div class="main">
+        <!-- Error/Success Messages -->
+        <div id="messages"></div>
+
+        <!-- Instant One-Click Actions -->
+        <div class="capture-section">
+            <h3><span class="emoji">⚡</span> Instant Capture</h3>
+            <div class="instant-actions">
+                <button id="instantSelection" class="btn btn-primary btn-full" style="display:none;">
+                    <span class="emoji">📝</span> Save Selection Instantly
+                </button>
+                <button id="instantPage" class="btn btn-secondary btn-full">
+                    <span class="emoji">📄</span> Save Page (1-click)
+                </button>
+                <button id="instantBookmark" class="btn btn-secondary btn-full">
+                    <span class="emoji">🔖</span> Quick Bookmark
+                </button>
+            </div>
+        </div>
+
+        <!-- Smart Content Suggestions -->
+        <div class="capture-section advanced-feature">
+            <h3><span class="emoji">🎯</span> Smart Suggestions</h3>
+            <div id="contentSuggestions" class="content-suggestions">
+                <div class="loading">Analyzing page content...</div>
+            </div>
+        </div>
+
+        <!-- AI Features -->
+        <div class="ai-features advanced-feature">
+            <h4><span class="emoji">🤖</span> AI Processing</h4>
+            
+            <div class="ai-toggle">
+                <label>
+                    <span class="emoji">📝</span> Auto-summarize content
+                </label>
+                <div class="toggle-switch" data-setting="autoSummarize">
+                    <input type="checkbox" id="aiSummarize" hidden>
+                </div>
+            </div>
+            
+            <div class="ai-toggle">
+                <label>
+                    <span class="emoji">🏷️</span> Generate smart tags
+                </label>
+                <div class="toggle-switch" data-setting="autoTags">
+                    <input type="checkbox" id="aiTags" hidden>
+                </div>
+            </div>
+            
+            <div class="ai-toggle">
+                <label>
+                    <span class="emoji">🔍</span> Duplicate detection
+                </label>
+                <div class="toggle-switch" data-setting="duplicateCheck">
+                    <input type="checkbox" id="duplicateCheck" hidden>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Capture Section -->
+        <div class="capture-section">
+            <h3><span class="emoji">⚡</span> Quick Capture</h3>
+            
+            <div class="capture-buttons">
+                <button id="captureSelection" class="btn">
+                    <span class="emoji">📝</span> Selection
+                </button>
+                <button id="capturePage" class="btn">
+                    <span class="emoji">📄</span> Full Page
+                </button>
+                <button id="captureArticle" class="btn advanced-feature">
+                    <span class="emoji">📰</span> Article
+                </button>
+                <button id="captureCode" class="btn advanced-feature">
+                    <span class="emoji">💻</span> Code
+                </button>
+                <button id="captureTable" class="btn advanced-feature">
+                    <span class="emoji">📊</span> Tables
+                </button>
+                <button id="captureBookmark" class="btn">
+                    <span class="emoji">🔖</span> Bookmark
+                </button>
+            </div>
+
+            <!-- Multi-selection mode -->
+            <div class="multi-select-controls" id="multiSelectControls">
+                <div class="multi-select-info">
+                    <span id="multiSelectCount">0</span> elements selected
+                </div>
+                <div class="capture-buttons">
+                    <button id="captureMultiSelect" class="btn btn-primary">
+                        <span class="emoji">📎</span> Capture Selected
+                    </button>
+                    <button id="clearMultiSelect" class="btn">
+                        <span class="emoji">✖️</span> Clear
+                    </button>
+                </div>
+            </div>
+
+            <button id="toggleMultiSelect" class="btn btn-full advanced-feature">
+                <span class="emoji">🎯</span> Multi-Select Mode
+            </button>
+        </div>
+
+        <!-- Manual Note Section -->
+        <div class="capture-section">
+            <h3><span class="emoji">✍️</span> Manual Note</h3>
+            
+            <!-- Tag suggestions -->
+            <div id="tagSuggestions" class="tag-suggestions advanced-feature"></div>
+            
+            <textarea 
+                id="manualNote" 
+                placeholder="Write your thoughts... (Ctrl+Enter to save)"
+                rows="3"></textarea>
+            <input 
+                type="text" 
+                id="manualTags" 
+                class="tag-input"
+                placeholder="Tags (comma-separated)">
+            <button id="saveManual" class="btn btn-primary btn-full">
+                <span class="emoji">💾</span> Save Note
+            </button>
+        </div>
+
+        <!-- Recent Captures -->
+        <div class="recent-section">
+            <h3><span class="emoji">🕒</span> Recent Captures</h3>
+            <div id="recentCaptures" class="recent-items">
+                <div class="loading">Loading recent captures...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="footer-links">
+            <a href="#" id="openDashboard" class="footer-link">Dashboard</a>
+            <a href="#" id="openSettings" class="footer-link">Settings</a>
+        </div>
+        <div class="footer-links">
+            <span class="kbd">Ctrl+S</span>
+            <span class="kbd">Ctrl+Enter</span>
+        </div>
+    </div>
+
+    <script src="popup-enhanced.js"></script>
+</body>
+</html>

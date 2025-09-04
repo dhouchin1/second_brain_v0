@@ -172,6 +172,7 @@
     <div>
       <h2>Quick Capture</h2>
       <form id="capture-form" method="post" action="/capture" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="text" name="note" placeholder="Write a quick note..." style="width:100%;margin-bottom:8px;"><br>
         <input type="text" name="tags" placeholder="#tags (comma separated)" style="width:100%;margin-bottom:8px;"><br>
         <label>Or record/upload audio:</label><br>

@@ -1,280 +1,3753 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Second Brain – Timeline & Capture</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="icon" href="/static/brain-logo.png" />
+{% extends 'base.html' %}
+{% block title %}Dashboard – Second Brain{% endblock %}
+{% block head_extra %}
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/dashboard-enhanced.css">
   <style>
-    body { background: #191b24; font-family: 'Inter', Arial, sans-serif;}
-    /* Optional: custom scrollbar */
-    ::-webkit-scrollbar { width: 8px; background: #23243a; }
-    ::-webkit-scrollbar-thumb { background: #36374c; border-radius: 6px; }
-  </style>
-</head>
-<body class="min-h-screen text-[#202a3a] bg-[#191b24]">
+    body { background: #0f172a; font-family: 'Inter', Arial, sans-serif; }
+    ::-webkit-scrollbar { width: 8px; background: #0b1220; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 6px; }
+    .card-surface { 
+      background: rgba(255,255,255,.04); 
+      border: 1px solid rgba(255,255,255,.08); 
+      transition: all 300ms ease-in-out;
+      animation: fadeInUp 0.6s ease-out;
+    }
+    
+    .card-surface:hover {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Staggered animation for form elements */
+    .form-element-1 { animation: fadeInUp 0.6s ease-out 0.1s both; }
+    .form-element-2 { animation: fadeInUp 0.6s ease-out 0.2s both; }
+    .form-element-3 { animation: fadeInUp 0.6s ease-out 0.3s both; }
+    .form-element-4 { animation: fadeInUp 0.6s ease-out 0.4s both; }
+    .muted { color: #a5b4fc; opacity: .8; }
+    .pill { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+    
+    /* Additional footer centering to ensure perfect alignment */
+    .footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .footer-content {
+      text-align: center;
+      width: 100%;
+      max-width: 768px;
+      margin: 0 auto;
+    }
+    .footer-description {
+      text-align: center;
+      margin: 0 auto;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    /* ========== BUTTON STANDARDIZATION SYSTEM ========== */
+    
+    /* Base button foundation - shared by all buttons */
+    .btn-base {
+      font-weight: 500;
+      transition: all 200ms ease-in-out;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      outline: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    
+    .btn-base:focus {
+      outline: 2px solid transparent;
+      outline-offset: 2px;
+      box-shadow: 0 0 0 2px rgb(15 23 42), 0 0 0 4px rgb(99 102 241);
+    }
+    
+    /* Size variants */
+    .btn-sm {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+      border-radius: 0.5rem;
+    }
+    
+    .btn-md {
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      line-height: 1.5rem;
+      border-radius: 0.5rem;
+    }
+    
+    .btn-lg {
+      padding: 1rem 1.5rem;
+      font-size: 1.125rem;
+      line-height: 1.75rem;
+      border-radius: 0.75rem;
+    }
 
-  <!-- Header / Logo / Top Bar -->
-  <header class="w-full py-7 flex flex-col items-center">
-    <div class="flex items-center gap-3">
-      <img src="/static/brain-logo.png" alt="Second Brain Logo" class="h-9 w-9">
-      <h1 class="text-3xl md:text-4xl font-extrabold text-pink-200 tracking-tight drop-shadow" style="letter-spacing:-1px;">
-        Second Brain
-      </h1>
+    .btn-compact {
+      padding: 0.625rem 1rem;
+      font-size: 0.9375rem;
+      line-height: 1.375rem;
+      border-radius: 0.5rem;
+    }
+
+    .btn-thin {
+      padding: 0.5rem 0.875rem;
+      font-size: 0.9375rem;
+      line-height: 1.375rem;
+      border-radius: 0.5rem;
+    }
+    
+    /* Primary button - main actions */
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    /* Secondary button - standard actions */
+    .btn-secondary {
+      background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+      color: white;
+      box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transform: translateY(-0.5px);
+    }
+    
+    /* Accent button - special features like templates */
+    .btn-accent {
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      color: white;
+      box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .btn-accent:hover {
+      background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transform: translateY(-0.5px);
+    }
+    
+    /* Danger button - recording, delete actions */
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      color: white;
+      box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transform: translateY(-0.5px);
+    }
+    
+    /* Ghost button - subtle actions, navigation */
+    .btn-ghost {
+      background: transparent;
+      color: #cbd5e1;
+      border: 1px solid #475569;
+    }
+    
+    .btn-ghost:hover {
+      background: #1e293b;
+      color: white;
+      border-color: #64748b;
+      transform: translateY(-0.5px);
+    }
+    
+    /* Utility classes for full width and disabled states */
+    .btn-full {
+      width: 100%;
+    }
+    
+    .btn-base:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    
+    .btn-base:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+    
+    /* Icon handling within buttons */
+    .btn-base svg {
+      width: 1em;
+      height: 1em;
+      flex-shrink: 0;
+    }
+    
+    /* ========== END BUTTON SYSTEM ========== */
+    
+    /* ========== CUSTOM BUTTON ENHANCEMENTS ========== */
+    
+    /* Sort button active state */
+    .sort-button.active {
+      background: #3b82f6 !important;
+      color: white !important;
+      border-color: #2563eb !important;
+    }
+    
+    .sort-button.active:hover {
+      background: #2563eb !important;
+      border-color: #1d4ed8 !important;
+    }
+    
+    /* File clear button hover enhancement */
+    .btn-base[onclick*="clearFileSelection"]:hover {
+      color: #f87171 !important;
+    }
+    
+    /* Edit/View log buttons in lists */
+    .recent-edit,
+    .recent-viewlog,
+    .timeline-viewlog {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      text-decoration: none;
+    }
+    
+    .recent-edit:hover,
+    .recent-viewlog:hover,
+    .timeline-viewlog:hover {
+      text-decoration: underline;
+    }
+    
+    /* Close log buttons */
+    .close-log {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+    }
+    
+    /* ========== END CUSTOM ENHANCEMENTS ========== */
+  </style>
+{% endblock %}
+{% block body_class %}min-h-screen text-slate-100 bg-slate-900{% endblock %}
+{% block content %}
+
+  <!-- Ultra-Compact Header / Logo / Top Bar -->
+  <header class="w-full py-2 flex flex-col lg:flex-row lg:justify-between lg:items-center relative max-w-7xl mx-auto px-6">
+    <!-- Page title for accessibility - brand is in global header -->
+    <h1 class="sr-only">Dashboard</h1>
+    
+    <!-- Integrated Obsidian sync in header -->
+    <div class="flex items-center gap-3 text-xs text-slate-400">
+      <span>Obsidian</span>
+      <span id="syncStatus">{% if last_sync %}Last: {{ last_sync }}{% else %}Never synced{% endif %}</span>
+      <button id="syncBtn" class="btn-base btn-secondary btn-sm">Sync</button>
+      <!-- Three-dot menu wrapped to position dropdown relative to the trigger -->
+      <span class="relative inline-block">
+        <button id="syncMore" title="More options" class="btn-base btn-ghost btn-sm">⋯</button>
+        <div id="syncMenu" class="hidden absolute right-0 top-full mt-2 z-50 bg-slate-900 border border-slate-700 rounded-lg shadow-xl text-slate-100 w-48">
+          <button data-dir="from_obsidian" class="btn-base btn-ghost btn-sm btn-full text-left">Sync from Obsidian</button>
+          <button data-dir="bidirectional" class="btn-base btn-ghost btn-sm btn-full text-left">Bidirectional sync</button>
+        </div>
+      </span>
     </div>
-    <p class="mt-2 text-blue-200 text-lg text-center font-medium">
-      Capture, transcribe, summarize & sync your thoughts anywhere.<br>
-      <span class="text-pink-300 font-semibold">Integrates with Apple Shortcuts and Obsidian.</span>
-    </p>
-    <button class="absolute right-10 top-7 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-1.5 rounded-full font-semibold text-sm shadow transition">How it works</button>
   </header>
 
-  <!-- Feature Banners Row -->
-  <section class="w-full flex justify-center mb-2">
-    <div class="flex flex-wrap gap-3 justify-center items-center">
-      <button class="flex items-center gap-2 bg-[#232c4e] hover:bg-[#283154] border border-[#2d395c] rounded-xl px-4 py-2 text-blue-100 font-semibold shadow transition text-sm">
-        📝 Quick Capture
-      </button>
-      <button class="flex items-center gap-2 bg-yellow-100/10 hover:bg-yellow-100/20 border border-yellow-400/30 rounded-xl px-4 py-2 text-yellow-300 font-semibold shadow transition text-sm">
-        🎙️ Audio-to-Text
-      </button>
-      <button class="flex items-center gap-2 bg-pink-100/10 hover:bg-pink-100/20 border border-pink-400/30 rounded-xl px-4 py-2 text-pink-300 font-semibold shadow transition text-sm">
-        🤖 AI Summaries & Titles
-      </button>
-      <button class="flex items-center gap-2 bg-green-100/10 hover:bg-green-100/20 border border-green-400/30 rounded-xl px-4 py-2 text-green-300 font-semibold shadow transition text-sm">
-        🏷️ Tags & Smart Search
-      </button>
-      <button class="flex items-center gap-2 bg-blue-100/10 hover:bg-blue-100/20 border border-blue-400/30 rounded-xl px-4 py-2 text-blue-300 font-semibold shadow transition text-sm">
-        🔄 Sync to Obsidian
-      </button>
-      <button class="flex items-center gap-2 bg-black/10 hover:bg-black/20 border border-gray-700 rounded-xl px-4 py-2 text-gray-300 font-semibold shadow transition text-sm">
-        🍏 Apple Shortcuts
-      </button>
-    </div>
-  </section>
 
-  <!-- Sync button center -->
-  <section class="flex justify-center items-center gap-4 mt-2 mb-5">
-    <button id="syncBtn" class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold px-5 py-2 rounded-xl shadow transition">
-      Sync to Obsidian
-    </button>
-    <span id="syncStatus" class="text-blue-300 text-sm">
-      {% if last_sync %}
-        Last synced: {{ last_sync }}
-      {% else %}
-        Not synced yet
-      {% endif %}
-    </span>
-  </section>
-
-  <!-- Capture Box (Quick Note, Tags, Audio Upload) -->
-  <section class="w-full flex justify-center mb-6">
-    <div class="max-w-xl w-full bg-[#212231] border border-[#333655] rounded-2xl p-6 flex flex-col gap-3 shadow-xl">
-      <form id="quickCaptureForm" method="post" action="/capture" enctype="multipart/form-data" class="flex flex-col gap-3 md:flex-row md:items-end" autocomplete="off">
-        <div class="flex flex-col flex-1 gap-2">
-          <label for="note" class="text-blue-200 text-xs font-semibold">Quick Note</label>
-          <input type="text" name="note" id="note" placeholder="Type a note or thought..." class="rounded-lg border border-[#232c4e] bg-[#232c4e] text-blue-100 px-3 py-2 placeholder:text-blue-400 focus:ring-2 focus:ring-blue-400 focus:outline-none w-full">
+  <!-- Main Content - Optimized 2-Column Layout -->
+  <section class="w-full max-w-7xl mx-auto px-6 mb-4">
+    <!-- Enhanced Unified Search Bar -->
+    <div class="mb-4 relative">
+      <!-- Search Input Container -->
+      <div class="relative">
+        <input 
+          type="text" 
+          id="unifiedSearchInput"
+          placeholder="Search notes or create new content..." 
+          value="{{ q or '' }}" 
+          class="flex-1 w-full rounded-lg border border-slate-700 bg-slate-800 text-slate-100 px-4 py-3 pr-32 focus:ring-2 focus:ring-indigo-400 focus:outline-none placeholder:text-slate-400 text-base"
+          autocomplete="off"
+        />
+        
+        <!-- Search Mode Toggle -->
+        <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+          <select id="searchModeSelect" class="bg-slate-700 border border-slate-600 text-slate-200 text-xs rounded px-2 py-1 focus:ring-1 focus:ring-indigo-400">
+            <option value="hybrid">🔍 Smart</option>
+            <option value="semantic">🧠 AI</option>
+            <option value="keyword">📝 Text</option>
+          </select>
+          
+          <button 
+            type="button" 
+            id="unifiedSearchBtn"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1 rounded text-sm transition flex items-center gap-1"
+          >
+            <span class="hidden sm:inline">Search</span>
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+            </svg>
+          </button>
         </div>
-        <div class="flex flex-col gap-2 w-40">
-          <label for="tags" class="text-blue-200 text-xs font-semibold">Tags</label>
-          <input type="text" name="tags" id="tags" placeholder="comma,separated" class="rounded-lg border border-[#232c4e] bg-[#232c4e] text-blue-100 px-3 py-2 placeholder:text-blue-400 focus:ring-2 focus:ring-blue-400 focus:outline-none w-full">
+        
+        <!-- Loading indicator -->
+        <div id="searchLoadingIndicator" class="absolute right-36 top-1/2 transform -translate-y-1/2 hidden">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-400"></div>
         </div>
-        <div class="flex flex-col gap-2">
-          <label class="text-blue-200 text-xs font-semibold">Audio</label>
-          <div class="flex items-center gap-2">
-            <input type="file" name="file" id="file" accept="audio/*" class="block text-blue-200 border border-gray-700 rounded-lg bg-[#232c4e] focus:ring-2 focus:ring-blue-400 focus:outline-none">
-            <button type="button" id="recordBtn" class="bg-pink-400 hover:bg-pink-500 text-white font-bold px-4 py-2 rounded-lg transition">🎤 Record</button>
-          </div>
+      </div>
+      
+      <!-- Search Suggestions Dropdown -->
+      <div id="searchSuggestions" class="absolute top-full left-0 right-0 bg-slate-800 border border-slate-600 rounded-lg mt-1 hidden z-40 max-h-80 overflow-y-auto shadow-xl">
+        <!-- Suggestions populated by JavaScript -->
+      </div>
+      
+      <!-- Search Results Container -->
+      <div id="unifiedSearchResults" class="hidden mt-4 bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-slate-200">Search Results</h3>
+          <button id="closeSearchResults" class="btn-base btn-ghost btn-sm">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+            </svg>
+          </button>
         </div>
-        <button id="saveBtn" type="submit" class="mt-4 md:mt-0 bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-2 rounded-lg transition">Save</button>
+        
+        <div id="searchResultsContent" class="space-y-3">
+          <!-- Results populated by JavaScript -->
+        </div>
+        
+        <div id="searchResultsFooter" class="mt-4 pt-3 border-t border-slate-600 text-sm text-slate-400">
+          <!-- Analytics and pagination -->
+        </div>
+      </div>
+      
+      <!-- Legacy form for fallback -->
+      <form method="get" class="hidden" id="legacySearchForm">
+        <input type="hidden" name="q" id="legacySearchQuery" value="{{ q or '' }}"/>
       </form>
-      <p class="text-xs text-blue-300 mt-1">
-        Tip: You can tag notes for easier searching. Upload or record audio for instant speech-to-text!
-      </p>
-    </div>
-  </section>
-
-  <!-- Search Bar -->
-  <section class="max-w-xl mx-auto mb-3">
-    <form method="get" class="flex items-center gap-3">
-      <input type="text" name="q" placeholder="Search your notes..." value="{{ q or '' }}"
-        class="flex-1 rounded-lg border border-[#232c4e] bg-[#232c4e] text-blue-100 px-4 py-2 focus:ring-2 focus:ring-blue-400 focus:outline-none placeholder:text-blue-400"/>
-      <button type="submit"
-        class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg transition">Search</button>
+      
+      <!-- Current Search Display -->
       {% if q %}
-        <a href="/" class="ml-2 text-pink-300 underline text-sm">Clear search</a>
+        <div class="mt-2 flex items-center gap-2 text-sm">
+          <span class="text-pink-300">Searching: "{{ q }}"</span>
+          <a href="/" class="text-indigo-300 underline hover:text-indigo-200">Clear</a>
+        </div>
       {% endif %}
       {% if tag %}
-        <span class="ml-2 text-green-300 text-sm">Tag: #{{ tag }}</span>
-        <a href="/" class="ml-2 text-yellow-300 underline text-sm">Clear filter</a>
-      {% endif %}
-    </form>
-  </section>
-
-  <!-- Timeline Section Header -->
-  <section class="w-full flex flex-col items-center mt-10 mb-4">
-    <div class="flex items-center gap-2">
-      <svg class="w-7 h-7 text-pink-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <rect x="3" y="4" width="18" height="18" rx="4" fill="#232c4e"/>
-        <path stroke="#fae1e9" stroke-width="2" d="M8 2v4m8-4v4M3 10h18"/>
-      </svg>
-      <h2 class="text-2xl font-bold text-pink-200 tracking-tight">Timeline</h2>
-    </div>
-    <p class="text-sm text-blue-300 mt-1">All your notes, voice memos, and Apple Shortcuts appear here instantly.</p>
-  </section>
-
-  <!-- Timeline: Grouped by Day, Notes Loop -->
-  <main class="flex justify-center">
-    <div class="w-full max-w-2xl">
-      {% for day, notes_on_day in notes_by_day.items() %}
-        <!-- Day Label -->
-        <div class="flex items-center gap-2 mt-8 mb-3">
-          <span class="w-3 h-3 rounded-full bg-yellow-200"></span>
-          <span class="font-semibold text-blue-200 tracking-wide text-lg">{{ day }}</span>
+        <div class="mt-2 flex items-center gap-2 text-sm">
+          <span class="text-green-300">Tag: #{{ tag }}</span>
+          <a href="/" class="text-yellow-300 underline hover:text-yellow-200">Clear filter</a>
         </div>
-        {% for note in notes_on_day %}
-          <!-- Note Card -->
-          <div class="bg-white/90 rounded-2xl shadow-xl border border-[#ebe5f8] mb-6 p-6 flex flex-col gap-2 hover:shadow-2xl transition cursor-pointer"
-              onclick="window.location='/detail/{{ note['id'] }}'" data-status="{{ note['status'] }}">
-            <div class="flex items-center justify-between mb-1">
-              <span class="flex items-center gap-2 font-bold text-[#456cbe] text-base uppercase">
-                {% if note['type'] == 'audio' %}
-                  <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <rect x="6" y="3" width="12" height="18" rx="2" fill="#fffbea"/>
-                    <path d="M9 7h6" stroke="#ffb300" stroke-width="1.5"/>
-                  </svg>
-                  Audio
-                {% elif note['type'] == 'apple' %}
-                  <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 2a6 6 0 00-6 6v4a6 6 0 006 6 6 6 0 006-6V8a6 6 0 00-6-6z" />
-                  </svg>
-                  Shortcut
-                {% else %}
-                  <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M5 12h14M12 5l7 7-7 7" stroke="#488cff" stroke-width="2"/>
-                  </svg>
-                  Note
-                {% endif %}
-              </span>
-              <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-400 font-mono">{{ note['timestamp'][11:16] }}</span>
-                <a href="/edit/{{ note['id'] }}" onclick="event.stopPropagation();" class="text-blue-500 text-xs hover:underline">Edit</a>
-                <form method="post" action="/delete/{{ note['id'] }}" class="inline" onclick="event.stopPropagation();" onsubmit="event.stopPropagation(); return confirm('Delete note?');">
-                  <button type="submit" class="text-red-500 text-xs">Delete</button>
-                </form>
-              </div>
-            </div>
-            <div class="font-semibold text-[#234] text-lg">
-              {{ note['title']|highlight(q) }}
-            </div>
-            {% if note['status'] != 'complete' %}
-              <div class="text-gray-500 text-sm">Processing...</div>
-            {% else %}
-              <div class="text-gray-700 text-sm leading-relaxed mt-1 whitespace-pre-line">
-                {{ note['summary']|highlight(q) }}
-              </div>
-              {% if note['actions'] %}
-                <ul class="list-disc list-inside text-gray-700 text-sm mt-1">
-                  {% for act in note['actions'].split('\n') if act.strip() %}
-                    <li>{{ act|highlight(q) }}</li>
-                  {% endfor %}
-                </ul>
-              {% endif %}
-            {% endif %}
-            {% if note['tags'] %}
-              <div class="flex flex-wrap gap-2 mt-2">
-                {% for tag_ in note['tags'].split(',') if tag_.strip() %}
-                  <span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-500 text-xs font-semibold">#{{ tag_.strip() }}</span>
-                {% endfor %}
-              </div>
-            {% endif %}
-          </div>
-        {% endfor %}
-      {% endfor %}
-      {% if not notes_by_day %}
-        <p class="mt-8 text-center text-pink-300 text-lg">No notes found. Try capturing a new thought or search for something else!</p>
       {% endif %}
     </div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 py-6">
+      <!-- Left Column: Quick Capture (8 columns) -->
+      <div class="lg:col-span-8">
+        
+        <!-- Quick Capture Form -->
+        <div class="card-surface rounded-xl p-4 shadow-xl quick-capture-form">
+          <form id="quickCaptureForm" method="post" action="/capture" enctype="multipart/form-data" class="space-y-6" autocomplete="off" role="form" aria-label="Quick note capture form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <!-- Hidden consolidated file input populated by JS -->
+            <input type="file" name="file" id="file" class="hidden" />
+            
+            <!-- Text Input Row -->
+            <div class="flex flex-col lg:flex-row gap-4 form-element-1 lg:items-stretch">
+              <div class="flex-1 lg:flex-[3] flex flex-col">
+                <label for="note" class="text-slate-300 text-sm font-semibold mb-3 block">Quick Note</label>
+                <textarea name="note" id="note" rows="8" placeholder="Write a quick thought, paste content, or use Smart Templates to structure your ideas…" class="w-full rounded-lg border border-slate-700 bg-slate-800 text-slate-100 px-4 py-3 text-base placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition-all duration-300 resize-y min-h-[200px] max-h-[500px] leading-relaxed flex-1"></textarea>
+              </div>
+              <div class="flex-1 lg:flex-[1] flex flex-col">
+                <label for="tags" class="text-slate-300 text-sm font-semibold mb-3 block">Tags & Categories</label>
+                <textarea name="tags" id="tags" rows="8" placeholder="Add tags separated by commas:&#10;&#10;work, project, meeting&#10;personal, ideas, notes&#10;urgent, draft, review" class="w-full rounded-lg border border-slate-700 bg-slate-800 text-slate-100 px-4 py-3 text-base placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition-all duration-300 resize-y min-h-[200px] max-h-[500px] leading-relaxed flex-1"></textarea>
+              </div>
+            </div>
+            
+            <!-- Primary Action Buttons -->
+            <div class="space-y-5 form-element-2">
+              <!-- Main Save Button - Prominent -->
+              <div>
+                <button id="saveTextBtn" type="submit" class="btn-base btn-primary btn-thin btn-full">
+                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                  </svg>
+                  <div class="flex flex-col items-start">
+                    <span id="saveTextSpinner" class="spinner" style="width:16px;height:16px;display:none;border-width:2px"></span>
+                    <span id="saveTextText" class="text-lg">Save Note</span>
+                    <span class="text-blue-200 text-xs opacity-80">Ctrl+S or click to save</span>
+                  </div>
+                </button>
+              </div>
+
+              <!-- Secondary Actions Row -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Smart Templates - Enhanced -->
+                <button type="button" id="templatesBtn" class="btn-base btn-accent btn-thin">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3z"/>
+                  </svg>
+                  <div class="flex flex-col items-start">
+                    <span class="font-medium">Smart Templates</span>
+                    <span class="text-purple-200 text-xs opacity-80">AI-powered structures</span>
+                  </div>
+                </button>
+
+                <!-- Audio Recording - Enhanced -->
+                <button type="button" id="recordBtn" class="btn-base btn-danger btn-thin record-btn-enhanced" aria-describedby="recordStatus">
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 1a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zM6 4a2 2 0 1 1 4 0v4a2 2 0 1 1-4 0V4z"/>
+                    <path d="M4 9a4 4 0 0 0 8 0v2a6 6 0 1 1-12 0V9a1 1 0 0 1 2 0z"/>
+                  </svg>
+                  <div class="flex flex-col items-start">
+                    <span class="record-text font-medium">Record Audio</span>
+                    <span class="text-red-200 text-xs opacity-80">Voice to text</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Multi-File Upload -->
+            <div class="space-y-2 form-element-3">
+              <label for="file" class="text-slate-300 text-xs font-semibold">Upload File</label>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                <label class="flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 hover:bg-slate-700 transition">
+                  <svg width="14" height="14" fill="currentColor" class="text-green-400" viewBox="0 0 16 16">
+                    <path d="M8 1a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zM6 4a2 2 0 1 1 4 0v4a2 2 0 1 1-4 0V4z"/>
+                    <path d="M4 9a4 4 0 0 0 8 0v2a6 6 0 1 1-12 0V9a1 1 0 0 1 2 0z"/>
+                  </svg>
+                  <span class="text-slate-200">Audio</span>
+                  <input type="file" id="audioFile" accept="audio/*" class="hidden" onchange="handleFileSelect(this, 'audio')">
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 hover:bg-slate-700 transition">
+                  <svg width="14" height="14" fill="currentColor" class="text-blue-400" viewBox="0 0 16 16">
+                    <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                    <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/>
+                  </svg>
+                  <span class="text-slate-200">Image</span>
+                  <input type="file" id="imageFile" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'image')">
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 hover:bg-slate-700 transition">
+                  <svg width="14" height="14" fill="currentColor" class="text-red-400" viewBox="0 0 16 16">
+                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                  </svg>
+                  <span class="text-slate-200">PDF</span>
+                  <input type="file" id="pdfFile" accept=".pdf,application/pdf" class="hidden" onchange="handleFileSelect(this, 'pdf')">
+                </label>
+              </div>
+              <div id="selectedFile" class="hidden bg-slate-800/50 border border-slate-600 rounded-lg p-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-xs">
+                    <span id="fileIcon"></span>
+                    <span id="fileName" class="text-slate-200"></span>
+                    <span id="fileSize" class="text-slate-400"></span>
+                  </div>
+                  <button type="button" onclick="clearFileSelection()" class="text-slate-400 hover:text-red-400 transition">
+                    <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Recording Status Indicators -->
+            <div class="audio-recording-container">
+              <span id="recordingBadge" class="text-red-400 text-xs hidden flex items-center gap-1">
+                <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>Recording...
+              </span>
+              <div id="waveformVisualizer" class="waveform-visualizer hidden">
+                <!-- Waveform bars will be created by JavaScript -->
+              </div>
+              <div id="recordingTimer" class="recording-timer hidden">00:00</div>
+              <div id="recordStatus" class="audio-status"></div>
+            </div>
+          </form>
+          
+          <!-- Compact Tips -->
+          <div class="bg-slate-800/30 rounded-lg p-2 mt-2">
+            <p class="text-xs text-slate-400"><strong>💡 Tips:</strong> Save notes with text • Record audio for transcription • Use tags for organization • Ctrl/Cmd + Enter to save</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Recent Notes (4 columns, extended) -->
+      <div class="lg:col-span-4">
+        <aside id="recent-panel" class="recent-panel-enhanced card-surface rounded-xl p-8 shadow-xl -mr-8 pr-12 min-h-[600px]">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-semibold text-slate-200">Recent Notes</h3>
+              <span id="queueIndicator" class="hidden text-[11px] px-2 py-0.5 rounded-full border border-slate-600 text-slate-300">Queue: 0</span>
+            </div>
+            <a href="/search" class="text-xs text-indigo-300 hover:underline">View all</a>
+          </div>
+          
+          <!-- Transcription Status Widget -->
+          <div id="transcriptionStatus" class="mb-3 p-3 bg-slate-800/40 rounded-lg border border-slate-700">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-xs font-medium text-slate-300">Audio Processing</h4>
+              <button id="refreshQueue" class="btn-base btn-ghost btn-sm">Refresh</button>
+            </div>
+            <div id="queueStatus" class="space-y-2">
+              <div class="text-xs text-slate-400">Loading...</div>
+            </div>
+          </div>
+          
+        <div class="recent-search-container mb-2">
+          <input 
+            type="text" 
+            id="recentSearch" 
+            class="recent-search-input" 
+            placeholder="Search recent notes..."
+            aria-label="Search recent notes"
+          >
+          <button 
+            type="button" 
+            id="recentSearchClear" 
+            class="recent-search-clear" 
+            style="display: none;"
+            aria-label="Clear search"
+          >
+            <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="recent-sort-controls mb-2">
+          <span class="text-xs text-slate-400">Sort by:</span>
+          <button type="button" class="btn-base btn-ghost btn-sm sort-button active" data-sort="date">
+            Date <span class="sort-icon">↓</span>
+          </button>
+          <button type="button" class="btn-base btn-ghost btn-sm sort-button" data-sort="title">
+            Title <span class="sort-icon">↓</span>
+          </button>
+          <button type="button" class="btn-base btn-ghost btn-sm sort-button" data-sort="type">
+            Type <span class="sort-icon">↓</span>
+          </button>
+          <button type="button" class="btn-base btn-ghost btn-sm sort-button" data-sort="pinned">
+            Pinned <span class="sort-icon">↓</span>
+          </button>
+        </div>
+        <ul class="divide-y divide-slate-700/50">
+          {% for n in recent_notes %}
+          <li class="recent-note-item py-3{% if n.tags and 'pinned' in n.tags %} pinned{% endif %}">
+            <div class="flex items-start gap-3">
+              <a href="/detail/{{ n.id }}" class="mt-0.5">
+                {% set _ft = (n.file_type or '') if n.file_type is defined else '' %}
+                {% set _mt = (n.file_mime_type or '') if n.file_mime_type is defined else '' %}
+                {% if n.type == 'audio' %}
+                  <span class="note-type-icon audio-note">🎤</span>
+                {% elif n.type == 'apple' %}
+                  <span class="note-type-icon shortcut-note">⚡</span>
+                {% elif n.type == 'image' or _ft == 'image' or _mt.startswith('image/') %}
+                  <span class="note-type-icon text-note">🖼️</span>
+                {% else %}
+                  <span class="note-type-icon text-note">📝</span>
+                {% endif %}
+              </a>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-3">
+                  <a href="/detail/{{ n.id }}" class="text-base text-slate-100 truncate hover:underline">{{ n.title or '(untitled)' }}</a>
+                  <div class="flex items-center gap-2">
+                    {% if n.type != 'audio' %}
+                    <button class="text-sm text-indigo-300 hover:underline recent-edit" data-id="{{ n.id }}" data-title="{{ n.title or '' }}" data-tags="{{ n.tags or '' }}">Edit</button>
+                    {% endif %}
+                    <button class="text-sm recent-pin" title="Pin" data-id="{{ n.id }}" data-tags="{{ n.tags or '' }}">
+                      {% if n.tags and 'pinned' in n.tags %}★{% else %}☆{% endif %}
+                    </button>
+                  </div>
+                </div>
+                {% set _ft = (n.file_type or '') if n.file_type is defined else '' %}
+                {% set _mt = (n.file_mime_type or '') if n.file_mime_type is defined else '' %}
+                {% if n.file_filename and (_ft == 'image' or _mt.startswith('image/')) %}
+                <div class="mt-1 rounded overflow-hidden border border-slate-700/60 bg-black/20">
+                  <a href="/detail/{{ n.id }}">
+                    <img src="{{ n.file_url or ('/files/' ~ n.file_filename) }}" alt="Image preview" style="max-height:120px; width:100%; object-fit:cover; display:block;">
+                  </a>
+                </div>
+                {% endif %}
+                {% if n.file_filename and (_ft == 'document' or _mt == 'application/pdf') %}
+                <div class="mt-1 rounded overflow-hidden border border-slate-700/60 bg-white">
+                  <a href="/detail/{{ n.id }}">
+                    <embed src="{{ n.file_url or ('/files/' ~ n.file_filename) }}#toolbar=0" type="application/pdf" style="width:100%; height:120px; display:block; border:none;">
+                  </a>
+                </div>
+                {% endif %}
+                <div class="text-sm text-slate-400 flex items-center gap-2">{{ n.timestamp[11:16] if n.timestamp else '' }}
+                  {% if n.get('tz_abbr') %}
+                  <span>{{ n.get('tz_abbr') }}</span>
+                  {% endif %}
+                  {% if n.type == 'audio' and n.get('audio_duration_hms') %}
+                  <span>• {{ n.get('audio_duration_hms') }}</span>
+                  {% endif %}
+                  {% if n.status != 'complete' %}
+                  <span>• processing…</span>
+                  <button type="button" class="recent-viewlog text-indigo-300 hover:underline" data-id="{{ n.id }}">View log</button>
+                  {% endif %}
+                </div>
+                <!-- Enhanced Inline editor -->
+                <div class="inline-edit-container hidden" id="recent-edit-{{ n.id }}">
+                  <input type="text" class="inline-edit-field" placeholder="Title" value="{{ n.title or '' }}" aria-label="Edit title" />
+                  <input type="text" class="inline-edit-field" placeholder="Tags (comma-separated)" value="{{ n.tags or '' }}" aria-label="Edit tags" />
+                  <div class="inline-edit-actions">
+                    <button class="btn-base btn-secondary btn-sm recent-cancel" data-id="{{ n.id }}" type="button">Cancel</button>
+                    <button class="btn-base btn-primary btn-sm recent-save" data-id="{{ n.id }}" type="button">Save</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+          {% endfor %}
+          {% if not recent_notes %}
+          <li class="py-6 text-center text-slate-400 text-sm">No recent notes</li>
+          {% endif %}
+        </ul>
+        <!-- Dynamic log panels will be injected here under their items -->
+      </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- Compact Timeline Section -->
+  <section class="w-full max-w-6xl mx-auto px-4 mb-3">
+    <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-pink-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="18" rx="4" fill="#232c4e"/>
+          <path stroke="#fae1e9" stroke-width="2" d="M8 2v4m8-4v4M3 10h18"/>
+        </svg>
+        <h2 class="text-xl font-bold text-pink-200">Timeline</h2>
+        <span class="text-xs text-blue-300 hidden sm:inline">All notes, voice memos, and shortcuts</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Processing Queue Section -->
+  <section id="processing-queue-section" class="flex justify-center mb-4" style="display: none;">
+    <div class="w-full max-w-2xl">
+      <div class="bg-blue-900/20 border border-blue-400/30 rounded-xl p-4">
+        <div id="processing-queue">
+          <!-- Queue items will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Compact Timeline: Grouped by Day -->
+  <main class="w-full max-w-6xl mx-auto px-4">
+    {% for day, notes_on_day in notes_by_day.items() %}
+      <!-- Compact Day Label -->
+      <div class="flex items-center gap-2 mt-4 mb-2 animate-fade-in">
+        <span class="w-3 h-3 rounded-full bg-gradient-to-r from-yellow-400 to-yellow-200"></span>
+        <span class="font-semibold text-blue-100 text-lg">{{ day }}</span>
+        <div class="flex-1 h-px bg-gradient-to-r from-blue-200/20 to-transparent"></div>
+      </div>
+      
+      <!-- Compact Note Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
+        {% for note in notes_on_day %}
+          <!-- Compact Note Card -->
+          <div class="card-interactive bg-white/5 rounded-lg border border-white/10 p-3 hover:shadow-lg hover:border-white/20 transition-all duration-300 cursor-pointer animate-fade-in"
+              onclick="window.location='/detail/{{ note['id'] }}'" data-status="{{ note['status'] }}" data-note-id="{{ note['id'] }}">
+            <!-- Compact Card Header -->
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-1">
+                {% set _ft = (note.get('file_type') or '') %}
+                {% set _mt = (note.get('file_mime_type') or '') %}
+                {% if note['type'] == 'audio' %}
+                  <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                  <span class="text-xs font-medium text-yellow-400">Audio</span>
+                {% elif note['type'] == 'apple' %}
+                  <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                  <span class="text-xs font-medium text-green-400">Shortcut</span>
+                {% elif note['type'] == 'image' or _ft == 'image' or _mt.startswith('image/') %}
+                  <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                  <span class="text-xs font-medium text-blue-400">Image</span>
+                {% else %}
+                  <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                  <span class="text-xs font-medium text-blue-400">Note</span>
+                {% endif %}
+              </div>
+              <div class="flex items-center gap-1 text-xs text-slate-400">
+                <span class="font-mono">{{ note['timestamp'][11:16] }}</span>
+                {% if note.get('tz_abbr') %}
+                  <span>{{ note.get('tz_abbr') }}</span>
+                {% endif %}
+                {% if note['type'] == 'audio' and note.get('audio_duration_hms') %}
+                  <span>• {{ note.get('audio_duration_hms') }}</span>
+                {% elif note.get('word_count') %}
+                  <span>• {{ note.get('word_count') }} words</span>
+                {% endif %}
+                <a href="/edit/{{ note['id'] }}" onclick="event.stopPropagation();" class="text-blue-400 hover:underline ml-2">Edit</a>
+              </div>
+            </div>
+            
+            <!-- Compact Note Content -->
+            <div class="space-y-1.5">
+              <h4 class="font-medium text-slate-100 text-sm line-clamp-2">
+                {{ note['title']|highlight(q) }}
+              </h4>
+              {% set _ft = (note.get('file_type') or '') %}
+              {% set _mt = (note.get('file_mime_type') or '') %}
+              {% if (note.get('file_url') or note.get('file_filename')) 
+                    and (note.get('type') == 'image' or _ft == 'image' or _mt.startswith('image/')) %}
+                <div class="mt-2 rounded-md overflow-hidden border border-white/10 bg-black/20">
+                  <img src="{{ note.get('file_url') or ('/files/' ~ note.get('file_filename')) }}" alt="Image preview"
+                       style="max-height:180px; width:100%; object-fit:contain; display:block;">
+                </div>
+              {% endif %}
+              {% if (note.get('file_url') or note.get('file_filename')) 
+                    and (_ft == 'document' or _mt == 'application/pdf') %}
+                <div class="mt-2 rounded-md overflow-hidden border border-white/10 bg-white">
+                  <embed src="{{ note.get('file_url') or ('/files/' ~ note.get('file_filename')) }}#toolbar=0" type="application/pdf"
+                         style="width:100%; height:180px; display:block; border:none;" />
+                </div>
+              {% endif %}
+
+              {% if note['status'] != 'complete' %}
+                <div class="flex items-center gap-2 text-xs text-blue-400">
+                  <svg class="spinner w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"></circle>
+                  </svg>
+                  <span>Processing...</span>
+                  <button type="button" class="timeline-viewlog text-indigo-300 hover:underline" data-id="{{ note['id'] }}" onclick="event.stopPropagation();">View log</button>
+                </div>
+              {% else %}
+                <div class="text-xs text-slate-300 line-clamp-3">
+                  {{ note['summary']|highlight(q) }}
+                </div>
+                {% if note['actions'] %}
+                  <div class="text-xs text-slate-400 line-clamp-2">
+                    {% for act in note['actions'].split('\n')[:2] if act.strip() %}
+                      • {{ act|highlight(q) }}{% if not loop.last %}<br>{% endif %}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              {% endif %}
+              
+              {% if note['tags'] %}
+                <div class="flex flex-wrap gap-1 mt-2">
+                  {% for tag_ in note['tags'].split(',')[:3] if tag_.strip() %}
+                    <span class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">{{ tag_.strip() }}</span>
+                  {% endfor %}
+                  {% if note['tags'].split(',')|length > 3 %}
+                    <span class="text-xs text-slate-400">+{{ note['tags'].split(',')|length - 3 }}</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+      </div>
+    {% endfor %}
+    
+    {% if not notes_by_day %}
+      <div class="text-center py-12">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24" class="mx-auto mb-4 text-slate-400">
+          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <h3 class="text-lg font-medium text-slate-300 mb-2">No notes found</h3>
+        <p class="text-slate-400">Start capturing your thoughts above, or try searching for something else!</p>
+      </div>
+    {% endif %}
   </main>
 
-  <!-- Footer / Callout -->
-  <footer class="w-full py-10 flex flex-col items-center text-xs text-blue-300 mt-10">
-    <div class="mb-2">
-      <span class="font-semibold text-pink-200">Second Brain</span> — Built with ❤️ for thinkers and tinkerers.
-    </div>
-    <div>
-      Works best with <b>Obsidian</b> & <b>Apple Shortcuts</b>. Your thoughts, forever searchable and AI-powered.
-    </div>
-    <div class="mt-2">
-      <a href="https://github.com/dhouchin1/second_brain" class="text-blue-400 hover:text-pink-400 underline">GitHub</a>
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <p class="footer-description">
+        Your thoughts - local, searchable, and AI-powered. Compatible with Obsidian & Apple Shortcuts
+      </p>
+      <div class="footer-links">
+        <a href="/search" class="footer-link">Advanced Search</a>
+      </div>
     </div>
   </footer>
 
-  <!-- Audio Recorder Script (unchanged, but feel free to style the status better!) -->
+  <!-- Enhanced Audio Recorder Script -->
   <script>
-    let mediaRecorder, audioChunks;
-    const recordBtn = document.getElementById('recordBtn');
-    const recordStatus = document.getElementById('recordStatus');
-    const fileInput = document.getElementById('file');
-    const form = document.getElementById('quickCaptureForm');
-    let recording = false;
-
-    recordBtn.onclick = async function() {
-      if (!recording) {
-        if (!navigator.mediaDevices) {
-          recordStatus.textContent = "Recording not supported!";
-          return;
-        }
-        recordStatus.textContent = "Recording...";
-        audioChunks = [];
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          mediaRecorder = new MediaRecorder(stream);
-          mediaRecorder.start();
-          recording = true;
-          recordBtn.textContent = "■ Stop";
-          mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-          mediaRecorder.onstop = (e) => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            const file = new File([audioBlob], "recording.wav", { type: "audio/wav" });
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            fileInput.files = dt.files;
-            recordStatus.textContent = "Recorded! Submitting...";
-            recordBtn.textContent = "🎤 Record";
-            recording = false;
-            setTimeout(() => {
-              form.submit();
-              recordStatus.textContent = "Uploading...";
-            }, 400);
-          };
-        } catch (err) {
-          recordStatus.textContent = "Mic permission denied.";
-        }
-      } else {
-        mediaRecorder.stop();
-        recordStatus.textContent = "Processing...";
-      }
-    };
+    // Signed token for SSE authentication (no headers required)
+    window.SSE_TOKEN = '{{ sse_token }}';
   </script>
   <script>
-    document.getElementById('syncBtn').addEventListener('click', async () => {
-      const res = await fetch('/sync/obsidian', { method: 'POST' });
-      if (res.ok) {
-        document.getElementById('syncStatus').textContent = 'Sync in progress...';
-      } else {
-        document.getElementById('syncStatus').textContent = 'Sync failed';
+    // Enhanced Recording System
+    class AudioRecorder {
+      constructor() {
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.recording = false;
+        this.recordingStartTime = null;
+        this.timerInterval = null;
+        
+        this.recordBtn = document.getElementById('recordBtn');
+        this.recordStatus = document.getElementById('recordStatus');
+        this.recordingBadge = document.getElementById('recordingBadge');
+        this.recordingTimer = document.getElementById('recordingTimer');
+        this.waveformVisualizer = document.getElementById('waveformVisualizer');
+        
+        this.fileInput = document.getElementById('file');
+        this.form = document.getElementById('quickCaptureForm');
+        this.noteInput = document.getElementById('note');
+        this.tagsInput = document.getElementById('tags');
+        this.csrfInput = document.querySelector('input[name="csrf_token"]');
+        
+        this.saveTextBtn = document.getElementById('saveTextBtn');
+        
+        this.init();
+      }
+      
+      init() {
+        this.bindEvents();
+        this.createWaveformBars();
+      }
+      
+      bindEvents() {
+        // Text-only save button
+        if (this.saveTextBtn) {
+          this.saveTextBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (this.recording) {
+              this.showToast('Stop recording before saving text note', 'warning');
+              return;
+            }
+            // Clear any saved draft before submitting
+            localStorage.removeItem('second_brain_draft');
+            await this.submitTextNote();
+          });
+        }
+        
+        // Form submission handler - only handle if no file input value
+        if (this.form) {
+          this.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (this.recording) {
+              this.showToast('Stop recording before submitting', 'warning');
+              return;
+            }
+            let file = (this.fileInput && this.fileInput.files && this.fileInput.files[0]) ? this.fileInput.files[0] : null;
+            if (!file) {
+              const altIds = ['imageFile','pdfFile','audioFile'];
+              for (const id of altIds) {
+                const el = document.getElementById(id);
+                if (el && el.files && el.files[0]) { file = el.files[0]; break; }
+              }
+            }
+            // Clear any saved draft before submitting
+            localStorage.removeItem('second_brain_draft');
+            await this.submitCapture(file);
+          });
+        }
+        
+        // Recording button
+        if (this.recordBtn) {
+          this.recordBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!this.recording) {
+              await this.startRecording();
+            } else {
+              await this.stopRecording();
+            }
+          });
+        }
+      }
+      
+      createWaveformBars() {
+        if (!this.waveformVisualizer) return;
+        
+        this.waveformVisualizer.innerHTML = '';
+        for (let i = 0; i < 20; i++) {
+          const bar = document.createElement('div');
+          bar.className = 'waveform-bar';
+          bar.style.height = '8px';
+          this.waveformVisualizer.appendChild(bar);
+        }
+      }
+      
+      async startRecording() {
+        if (!navigator.mediaDevices || !window.MediaRecorder) {
+          this.setStatus('Recording not supported in this browser', 'error');
+          return;
+        }
+        
+        try {
+          this.setStatus('Preparing recording session...', 'processing');
+          
+          // Extend session for recording BEFORE starting
+          await this.extendSessionForRecording();
+          
+          this.setStatus('Starting recording...', 'processing');
+          
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          
+          // Choose the best supported audio format
+          let mimeType = '';
+          const supportedTypes = [
+            'audio/webm;codecs=opus',
+            'audio/ogg;codecs=opus',
+            'audio/webm',
+            'audio/mp4'
+          ];
+          
+          for (const type of supportedTypes) {
+            if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
+              mimeType = type;
+              break;
+            }
+          }
+          
+          this.audioChunks = [];
+          this.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+          
+          this.mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              this.audioChunks.push(event.data);
+            }
+          };
+          
+          this.mediaRecorder.onstop = async () => {
+            await this.handleRecordingStop();
+          };
+          
+          this.mediaRecorder.onerror = (event) => {
+            console.error('MediaRecorder error:', event.error);
+            this.setStatus('Recording error occurred', 'error');
+            this.setRecordingState(false);
+          };
+          
+          this.mediaRecorder.start();
+          this.setRecordingState(true);
+          this.setStatus('Recording... Click stop when finished', 'processing');
+          
+        } catch (error) {
+          console.error('Error starting recording:', error);
+          this.setStatus('Microphone access denied', 'error');
+          this.setRecordingState(false);
+        }
+      }
+      
+      async stopRecording() {
+        if (!this.mediaRecorder || !this.recording) return;
+        
+        try {
+          this.setStatus('Stopping recording...', 'processing');
+          this.mediaRecorder.stop();
+          
+          // Stop all tracks to release microphone
+          if (this.mediaRecorder.stream) {
+            this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+          }
+        } catch (error) {
+          console.error('Error stopping recording:', error);
+          this.setStatus('Error stopping recording', 'error');
+          this.setRecordingState(false);
+        }
+      }
+      
+      async handleRecordingStop() {
+        try {
+          this.setStatus('Processing recording...', 'processing');
+          
+          if (this.audioChunks.length === 0) {
+            this.setStatus('No audio data recorded', 'error');
+            this.setRecordingState(false);
+            return;
+          }
+          
+          const mimeType = this.mediaRecorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+          
+          // Generate appropriate filename
+          const ext = mimeType.includes('ogg') ? 'ogg' : 
+                     mimeType.includes('mp4') ? 'm4a' : 'webm';
+          const filename = `recording-${Date.now()}.${ext}`;
+          
+          const audioFile = new File([audioBlob], filename, { type: mimeType });
+          
+          this.setStatus('Uploading audio...', 'processing');
+          await this.submitCapture(audioFile);
+          
+        } catch (error) {
+          console.error('Error processing recording:', error);
+          this.setStatus('Failed to process recording', 'error');
+        } finally {
+          this.setRecordingState(false);
+        }
+      }
+      
+      setRecordingState(isRecording) {
+        this.recording = isRecording;
+        
+        if (isRecording) {
+          this.recordingStartTime = Date.now();
+          this.startTimer();
+          this.startWaveformAnimation();
+          
+          // Update UI for recording state
+          if (this.recordBtn) {
+            this.recordBtn.classList.add('recording');
+            const recordText = this.recordBtn.querySelector('.record-text');
+            if (recordText) recordText.textContent = 'Stop Recording';
+          }
+          
+          if (this.recordingBadge) this.recordingBadge.classList.remove('hidden');
+          if (this.recordingTimer) this.recordingTimer.classList.remove('hidden');
+          if (this.waveformVisualizer) this.waveformVisualizer.classList.remove('hidden');
+          if (this.fileInput) this.fileInput.disabled = true;
+          if (this.saveTextBtn) this.saveTextBtn.disabled = true;
+          
+        } else {
+          this.stopTimer();
+          this.stopWaveformAnimation();
+          
+          // Update UI for stopped state
+          if (this.recordBtn) {
+            this.recordBtn.classList.remove('recording');
+            const recordText = this.recordBtn.querySelector('.record-text');
+            if (recordText) recordText.textContent = 'Record Audio';
+          }
+          
+          if (this.recordingBadge) this.recordingBadge.classList.add('hidden');
+          if (this.recordingTimer) {
+            this.recordingTimer.classList.add('hidden');
+            this.recordingTimer.textContent = '00:00';
+          }
+          if (this.waveformVisualizer) this.waveformVisualizer.classList.add('hidden');
+          if (this.fileInput) this.fileInput.disabled = false;
+          if (this.saveTextBtn) this.saveTextBtn.disabled = false;
+        }
+      }
+      
+      startTimer() {
+        this.timerInterval = setInterval(() => {
+          if (this.recordingStartTime && this.recordingTimer) {
+            const elapsed = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            this.recordingTimer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          }
+        }, 1000);
+      }
+      
+      stopTimer() {
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
+          this.timerInterval = null;
+        }
+      }
+      
+      startWaveformAnimation() {
+        if (!this.waveformVisualizer) return;
+        
+        const bars = this.waveformVisualizer.querySelectorAll('.waveform-bar');
+        
+        const animate = () => {
+          if (!this.recording) return;
+          
+          bars.forEach(bar => {
+            const height = Math.random() * 32 + 8;
+            bar.style.height = `${height}px`;
+          });
+          
+          setTimeout(() => requestAnimationFrame(animate), 100);
+        };
+        
+        animate();
+      }
+      
+      stopWaveformAnimation() {
+        if (!this.waveformVisualizer) return;
+        
+        const bars = this.waveformVisualizer.querySelectorAll('.waveform-bar');
+        bars.forEach(bar => {
+          bar.style.height = '8px';
+        });
+      }
+      
+      async submitTextNote() {
+        const noteText = this.noteInput?.value?.trim() || '';
+        const tagsText = this.tagsInput?.value?.trim() || '';
+        
+        if (!noteText) {
+          this.showToast('Please enter some text before saving', 'warning');
+          this.noteInput?.focus();
+          return;
+        }
+        
+        await this.submitCapture(null);
+      }
+      
+      async submitCapture(file) {
+        try {
+          this.setSavingState(true);
+          
+          // Enhanced debugging for form submission
+          console.log('=== FRONTEND FORM SUBMISSION DEBUG ===');
+          console.log('Current URL:', window.location.href);
+          console.log('CSRF Input Element:', this.csrfInput);
+          console.log('CSRF Token Value:', this.csrfInput?.value || 'NOT FOUND');
+          console.log('Note Content:', (this.noteInput?.value || '').trim());
+          console.log('Tags Content:', (this.tagsInput?.value || '').trim());
+          console.log('File Upload:', file ? `${file.name} (${file.type}, ${file.size} bytes)` : 'None');
+          
+          const formData = new FormData();
+          if (this.csrfInput) formData.append('csrf_token', this.csrfInput.value || '');
+          formData.append('note', (this.noteInput?.value || '').trim());
+          formData.append('tags', (this.tagsInput?.value || '').trim());
+          if (file) formData.append('file', file);
+          
+          // Debug FormData contents
+          console.log('FormData contents:');
+          for (let [key, value] of formData.entries()) {
+            if (key === 'csrf_token') {
+              console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 10) + '...' : value}`);
+            } else if (key === 'file') {
+              console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
+            } else {
+              console.log(`  ${key}: ${value}`);
+            }
+          }
+          
+          console.log('Making fetch request to /capture');
+          
+          // Don't set custom headers when sending FormData - let browser handle it
+          const response = await fetch('/capture', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          
+          console.log('Response status:', response.status);
+          console.log('Response headers:', [...response.headers.entries()]);
+
+          // Handle redirects (e.g., auth required) gracefully
+          if (response.redirected || (response.status === 302 || response.status === 401)) {
+            const loc = response.url || '/login';
+            this.showToast('Session expired. Redirecting to login…', 'warning');
+            setTimeout(() => { window.location.href = loc; }, 500);
+            return;
+          }
+
+          if (!response.ok) {
+            const responseText = await response.text();
+            console.log('Error response body:', responseText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const contentType = response.headers.get('content-type') || '';
+          if (!contentType.includes('application/json')) {
+            // If server returned HTML (e.g., login page), redirect
+            this.showToast('Redirecting…', 'info');
+            try { const text = await response.text(); console.log('Non-JSON body preview:', text.slice(0,200)); } catch {}
+            if (response.url) { window.location.href = response.url; return; }
+            throw new Error('Unexpected response format');
+          }
+          
+          const result = await response.json();
+          console.log('Success response:', result);
+          console.log('=== FRONTEND FORM SUBMISSION DEBUG END ===');
+          
+          this.showToast(file ? 'Uploaded successfully!' : 'Note saved successfully!', 'success');
+          this.setStatus('', '');
+          
+          // Clear the form
+          if (this.noteInput) this.noteInput.value = '';
+          if (this.tagsInput) this.tagsInput.value = '';
+          if (this.fileInput) this.fileInput.value = '';
+          
+          // Clear any saved draft
+          localStorage.removeItem('second_brain_draft');
+          
+          // Clear form inputs
+          if (this.noteInput) this.noteInput.value = '';
+          if (this.tagsInput) this.tagsInput.value = '';
+          if (this.fileInput) this.fileInput.value = '';
+          
+          // Reload page after short delay to show new note
+          setTimeout(() => window.location.reload(), 1000);
+          
+        } catch (error) {
+          console.error('=== FRONTEND FORM SUBMISSION ERROR ===');
+          console.error('Error type:', error.constructor.name);
+          console.error('Error message:', error.message);
+          console.error('Full error:', error);
+          console.error('=== FRONTEND FORM SUBMISSION ERROR END ===');
+          this.showToast('Failed to save. Please try again.', 'error');
+          this.setStatus('Upload failed - please try again', 'error');
+        } finally {
+          this.setSavingState(false);
+        }
+      }
+      
+      setSavingState(saving) {
+        if (this.saveTextBtn) {
+          const spinner = document.getElementById('saveTextSpinner');
+          const text = document.getElementById('saveTextText');
+          
+          this.saveTextBtn.disabled = saving;
+          if (spinner) spinner.style.display = saving ? 'inline-block' : 'none';
+          if (text) text.textContent = saving ? 'Saving...' : 'Save Note';
+        }
+      }
+      
+      setStatus(message, type = '') {
+        if (!this.recordStatus) return;
+        
+        this.recordStatus.textContent = message;
+        this.recordStatus.className = `audio-status ${type}`;
+      }
+      
+      // Session extension for recording
+      async extendSessionForRecording() {
+        try {
+          const response = await fetch('/api/auth/recording-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include'  // Include cookies
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Session extended for recording:', data.message);
+            this.showToast('Recording session extended (75 min)', 'success');
+          } else {
+            console.warn('⚠️ Failed to extend session:', response.status);
+            this.showToast('Session extension failed - recording may timeout', 'warning');
+          }
+        } catch (error) {
+          console.error('Session extension error:', error);
+          // Don't show error toast to user as recording can still proceed
+        }
+      }
+      
+      showToast(message, type = 'info') {
+        if (window.showToast) {
+          window.showToast(message, type);
+        } else {
+          // Fallback notification
+          console.log(`${type.toUpperCase()}: ${message}`);
+        }
+      }
+    }
+    
+    // Initialize when DOM is ready
+    let audioRecorder;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        audioRecorder = new AudioRecorder();
+      });
+    } else {
+      audioRecorder = new AudioRecorder();
+    }
+    
+    // Make available globally for debugging
+    window.audioRecorder = audioRecorder;
+    
+    // Simple Toast Notification System (fallback if not available)
+    if (!window.showToast) {
+      window.showToast = function(message, type = 'info', duration = 4000) {
+        // Remove existing toasts
+        const existingToasts = document.querySelectorAll('.toast-notification');
+        existingToasts.forEach(toast => toast.remove());
+        
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+        toast.innerHTML = `
+          <div class="toast-content">
+            <div class="toast-icon">
+              ${type === 'success' ? '✓' : 
+                type === 'error' ? '✗' : 
+                type === 'warning' ? '⚠' : 'ℹ'}
+            </div>
+            <div class="toast-message">${message}</div>
+            <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+          </div>
+        `;
+        
+        // Add styles
+        toast.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          z-index: 9999;
+          max-width: 400px;
+          background: ${type === 'success' ? '#10b981' : 
+                       type === 'error' ? '#ef4444' : 
+                       type === 'warning' ? '#f59e0b' : '#3b82f6'};
+          color: white;
+          border-radius: 8px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+          transform: translateX(100%);
+          transition: transform 0.3s ease;
+        `;
+        
+        const content = toast.querySelector('.toast-content');
+        content.style.cssText = `
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+        `;
+        
+        const icon = toast.querySelector('.toast-icon');
+        icon.style.cssText = `
+          font-size: 20px;
+          font-weight: bold;
+        `;
+        
+        const messageEl = toast.querySelector('.toast-message');
+        messageEl.style.cssText = `
+          flex: 1;
+          font-size: 14px;
+          line-height: 1.4;
+        `;
+        
+        const closeBtn = toast.querySelector('.toast-close');
+        closeBtn.style.cssText = `
+          background: none;
+          border: none;
+          color: white;
+          font-size: 20px;
+          cursor: pointer;
+          padding: 0;
+          margin-left: 8px;
+          opacity: 0.7;
+          transition: opacity 0.2s;
+        `;
+        
+        closeBtn.addEventListener('mouseover', () => closeBtn.style.opacity = '1');
+        closeBtn.addEventListener('mouseout', () => closeBtn.style.opacity = '0.7');
+        
+        document.body.appendChild(toast);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+          toast.style.transform = 'translateX(0)';
+        });
+        
+        // Auto remove
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+              if (toast.parentNode) {
+                toast.remove();
+              }
+            }, 300);
+          }
+        }, duration);
+        
+        return toast;
+      };
+    }
+  </script>
+  <script>
+    // Inline edit for recent notes (title/tags)
+    const csrfToken = '{{ csrf_token }}';
+    document.querySelectorAll('.recent-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const panel = document.getElementById(`recent-edit-${id}`);
+        if (panel) panel.classList.toggle('hidden');
+      });
+    });
+    document.querySelectorAll('.recent-cancel').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const panel = document.getElementById(`recent-edit-${id}`);
+        if (panel) panel.classList.add('hidden');
+      });
+    });
+    document.querySelectorAll('.recent-save').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const panel = document.getElementById(`recent-edit-${id}`);
+        if (!panel) return;
+        const [titleInput, tagsInput] = panel.querySelectorAll('input');
+        const payload = { title: titleInput.value, tags: tagsInput.value };
+        try {
+          const res = await fetch(`/api/notes/${id}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Save failed');
+          // Update UI
+          const link = panel.parentElement.querySelector('a.text-sm');
+          if (link) link.textContent = payload.title || link.textContent;
+          panel.classList.add('hidden');
+          if (window.showToast) showToast('Note updated', 'success');
+        } catch (e) {
+          if (window.showToast) showToast('Could not save changes', 'error');
+        }
+      });
+    });
+
+    // Pin/Unpin by toggling 'pinned' tag
+    document.querySelectorAll('.recent-pin').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        let tags = (btn.dataset.tags || '').split(',').map(t=>t.trim()).filter(Boolean);
+        const hasPinned = tags.includes('pinned');
+        if (hasPinned) tags = tags.filter(t => t !== 'pinned'); else tags.push('pinned');
+        try {
+          const res = await fetch(`/api/notes/${id}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ tags: tags.join(',') })
+          });
+          if (!res.ok) throw new Error('Failed');
+          // Update button and dataset
+          btn.dataset.tags = tags.join(',');
+          btn.textContent = tags.includes('pinned') ? '★' : '☆';
+          if (window.showToast) showToast(tags.includes('pinned') ? 'Pinned' : 'Unpinned', 'info');
+        } catch (e) {
+          if (window.showToast) showToast('Pin toggle failed', 'error');
+        }
+      });
+    });
+
+    // View log via SSE for processing notes
+    const openStreams = {};
+    function renderLogPanel(id) {
+      let panel = document.getElementById('recent-log-' + id);
+      if (panel) return panel;
+      // Insert after the item's container
+      const li = document.querySelector(`.recent-note-item .recent-viewlog[data-id="${id}"]`)?.closest('li');
+      if (!li) return null;
+      panel = document.createElement('div');
+      panel.id = 'recent-log-' + id;
+      panel.className = 'mt-2 p-2 rounded-md border border-slate-700 bg-slate-800/60';
+      panel.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-slate-300">Processing log</div>
+          <button type="button" class="text-xs text-slate-300 hover:underline close-log" data-id="${id}">Hide</button>
+        </div>
+        <div class="w-full h-2 bg-slate-700 rounded mt-2"><div class="h-2 bg-indigo-500 rounded" style="width:0%" id="log-progress-${id}"></div></div>
+        <ul class="mt-2 space-y-1 text-xs text-slate-300" id="log-messages-${id}"></ul>
+      `;
+      li.appendChild(panel);
+      panel.querySelector('.close-log').addEventListener('click', ()=>{
+        if (openStreams[id]) { openStreams[id].close(); delete openStreams[id]; }
+        panel.remove();
+      });
+      return panel;
+    }
+    function appendMessage(id, text){
+      const ul = document.getElementById('log-messages-' + id);
+      if (!ul) return;
+      const li = document.createElement('li');
+      li.textContent = text;
+      ul.appendChild(li);
+    }
+    function setProgress(id, pct){
+      const bar = document.getElementById('log-progress-' + id);
+      if (bar) bar.style.width = Math.min(100, Math.max(0, pct)) + '%';
+    }
+    document.querySelectorAll('.recent-viewlog').forEach(btn => {
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.id;
+        const panel = renderLogPanel(id);
+        if (!panel) return;
+        if (openStreams[id]) return; // already open
+
+        let attempts = 0;
+        async function connect(){
+          const tok = (window.SSE_TOKEN && typeof window.SSE_TOKEN === 'string') ? ('?token=' + encodeURIComponent(window.SSE_TOKEN)) : '';
+          const es = new EventSource('/api/status/stream/' + id + tok);
+          openStreams[id] = es;
+          es.onmessage = (evt)=>{
+            try {
+              const data = JSON.parse(evt.data);
+              if (data.keepalive) return;
+              if (data.error) { appendMessage(id, 'Error: ' + data.error); return; }
+              if (data.message) appendMessage(id, data.message);
+              if (typeof data.progress === 'number') setProgress(id, data.progress);
+              if (data.completed || data.stage === 'complete') {
+                appendMessage(id, 'Done');
+                setProgress(id, 100);
+                es.close(); delete openStreams[id];
+                setTimeout(()=> window.location.reload(), 800);
+              }
+            } catch (e) {}
+          };
+          es.onerror = async ()=>{
+            try { es.close(); } catch{}
+            attempts += 1;
+            const delay = attempts === 1 ? 1000 : attempts === 2 ? 2000 : attempts === 3 ? 5000 : 10000;
+            // Try to refresh SSE token before reconnecting
+            try {
+              const r = await fetch('/api/sse-token', { credentials: 'same-origin' });
+              if (r.ok) {
+                const d = await r.json();
+                if (d && d.token) window.SSE_TOKEN = d.token;
+              }
+            } catch {}
+            setTimeout(()=>{
+              if (document.getElementById('recent-log-' + id)) connect();
+            }, delay);
+          };
+        }
+        connect();
+      });
+    });
+
+    // Queue indicator polling
+    async function updateQueueIndicator(){
+      try {
+        const res = await fetch('/api/queue/status', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const ind = document.getElementById('queueIndicator');
+        if (!ind) return;
+        const total = (data.pending || 0) + (data.processing || 0);
+        if (total > 0) {
+          ind.textContent = `Queue: ${data.pending || 0} • Proc: ${data.processing || 0}`;
+          ind.classList.remove('hidden');
+        } else {
+          ind.classList.add('hidden');
+        }
+      } catch {}
+    }
+    updateQueueIndicator();
+    setInterval(updateQueueIndicator, 3000);
+  </script>
+  <script>
+    const syncBtn = document.getElementById('syncBtn');
+    const syncStatus = document.getElementById('syncStatus');
+    const syncMore = document.getElementById('syncMore');
+    const syncMenu = document.getElementById('syncMenu');
+
+    function closeMenu() { if (syncMenu) syncMenu.classList.add('hidden'); }
+    function openMenu() { if (syncMenu) syncMenu.classList.remove('hidden'); }
+    document.addEventListener('click', (e) => {
+      if (syncMenu && !syncMenu.contains(e.target) && e.target !== syncMore) closeMenu();
+    });
+    if (syncMore) {
+      syncMore.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (syncMenu.classList.contains('hidden')) openMenu(); else closeMenu();
+      });
+    }
+
+    async function performSync(dir) {
+      syncStatus.textContent = 'Starting sync…';
+      try {
+        const res = await fetch(`/api/obsidian/sync?direction=${encodeURIComponent(dir)}`, { method: 'POST', credentials: 'same-origin' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (data.status === 'sync_started' || data.status === 'completed') {
+          syncStatus.textContent = 'Sync started. Checking status…';
+          setTimeout(async () => {
+            try {
+              const st = await fetch('/api/obsidian/status');
+              if (st.ok) {
+                const s = await st.json();
+                syncStatus.textContent = `Last: ${s.last_sync || 'n/a'}`;
+                if (window.showToast) {
+                  const msg = dir === 'from_obsidian' ? 'Synced from Obsidian' : (dir === 'bidirectional' ? 'Bidirectional sync complete' : 'Synced to Obsidian');
+                  showToast(msg, 'success');
+                }
+              }
+            } catch {}
+          }, 1500);
+        } else {
+          syncStatus.textContent = 'Sync request acknowledged';
+          if (window.showToast) showToast('Sync requested', 'info');
+        }
+      } catch (e) {
+        syncStatus.textContent = 'Sync failed';
+        if (window.showToast) showToast('Sync failed', 'error');
+      }
+    }
+    if (syncBtn) syncBtn.addEventListener('click', () => performSync('to_obsidian'));
+    if (syncMenu) syncMenu.querySelectorAll('button[data-dir]').forEach(btn => {
+      btn.addEventListener('click', () => { closeMenu(); performSync(btn.dataset.dir); });
+    });
+  </script>
+
+  <!-- Real-time Status Updates -->
+  <script src="/static/js/realtime-status.js"></script>
+  <script>
+    // Initialize real-time status for any pending notes
+    document.addEventListener('DOMContentLoaded', function() {
+      // Monitor pending notes automatically
+      const pendingElements = document.querySelectorAll('[data-status="pending"]');
+      
+      // Show processing queue section if there are pending notes
+      if (pendingElements.length > 0) {
+        document.getElementById('processing-queue-section').style.display = 'flex';
+      }
+      
+      pendingElements.forEach(element => {
+        const noteId = element.dataset.noteId;
+        if (noteId) {
+          console.log('Starting real-time monitoring for note', noteId);
+          
+          // Add progress container to the note card
+          const progressContainer = document.createElement('div');
+          progressContainer.id = `progress-container-${noteId}`;
+          progressContainer.className = 'mt-2';
+          element.appendChild(progressContainer);
+          
+          realtimeStatus.monitorNote(parseInt(noteId), {
+            progressContainer: progressContainer,
+            onComplete: (data) => {
+              console.log('Note processing complete:', data);
+              // Refresh page after completion
+              setTimeout(() => window.location.reload(), 2000);
+            },
+            onError: (error) => {
+              console.error('Processing error for note', noteId, error);
+              // Fall back to page refresh
+              setTimeout(() => window.location.reload(), 3000);
+            }
+          });
+        }
+      });
+      
+      // Initialize queue monitoring
+      realtimeStatus.setupQueueMonitor();
+    });
+  </script>
+  <script>
+    // After redirect with flash, surface a toast and scroll to Recent
+    document.addEventListener('DOMContentLoaded', function(){
+      const flashEl = document.getElementById('flash-container');
+      if (!flashEl) return;
+      const msg = flashEl.textContent.trim();
+      if (msg && /Note queued/i.test(msg)) {
+        if (window.showToast) showToast(msg, 'success');
+        const recent = document.getElementById('recent-panel');
+        if (recent && recent.scrollIntoView) setTimeout(()=>recent.scrollIntoView({behavior:'smooth', block:'start'}), 250);
       }
     });
   </script>
 
+  <!-- Enhanced Dashboard JavaScript -->
+  <script src="/static/js/dashboard-enhanced.js"></script>
+  
   <script>
-    if (document.querySelector('[data-status="pending"]')) {
-      setTimeout(() => location.reload(), 5000);
+    // File handling for multi-file upload
+    let selectedFileInput = null;
+    
+    function handleFileSelect(input, type) {
+      const file = input.files[0];
+      if (!file) return;
+      
+      // Clear other file inputs
+      ['audioFile', 'imageFile', 'pdfFile'].forEach(id => {
+        if (id !== input.id) {
+          document.getElementById(id).value = '';
+        }
+      });
+      
+      // Set the main form file input
+      const mainFileInput = document.getElementById('file');
+      if (mainFileInput) {
+        // Create a new FileList with our selected file
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        mainFileInput.files = dt.files;
+      }
+      
+      // Store reference
+      selectedFileInput = input;
+      
+      // Show file info
+      showSelectedFile(file, type);
+
+      // Auto-submit for audio, image, and PDF attachments
+      if (type === 'audio' || type === 'image' || type === 'pdf') {
+        try {
+          // Prefer JSON flow via AudioRecorder helper if available
+          if (window.audioRecorder && typeof window.audioRecorder.submitCapture === 'function') {
+            // Slight delay to allow UI to update
+            setTimeout(() => window.audioRecorder.submitCapture(file), 50);
+          } else {
+            // Fallback: submit the form normally (will redirect)
+            const form = document.getElementById('quickCaptureForm');
+            if (form) form.submit();
+          }
+        } catch (e) {
+          console.error('Auto-submit (file) failed:', e);
+        }
+      }
+    }
+    
+    function showSelectedFile(file, type) {
+      const container = document.getElementById('selectedFile');
+      const icon = document.getElementById('fileIcon');
+      const name = document.getElementById('fileName');
+      const size = document.getElementById('fileSize');
+      
+      // Set icon based on type
+      const icons = {
+        audio: '🎵',
+        image: '🖼️',
+        pdf: '📄'
+      };
+      
+      icon.textContent = icons[type] || '📎';
+      name.textContent = file.name;
+      size.textContent = formatFileSize(file.size);
+      
+      container.classList.remove('hidden');
+    }
+    
+    function clearFileSelection() {
+      // Clear all file inputs
+      ['audioFile', 'imageFile', 'pdfFile', 'file'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.value = '';
+      });
+      
+      // Hide file info
+      document.getElementById('selectedFile').classList.add('hidden');
+      selectedFileInput = null;
+    }
+    
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+    
+    // Update form submission to handle different file types
+    const originalSubmit = document.getElementById('quickCaptureForm').onsubmit;
+    document.getElementById('quickCaptureForm').addEventListener('submit', function(e) {
+      // Add file type info if available
+      if (selectedFileInput) {
+        const fileType = selectedFileInput.id.replace('File', '');
+        console.log('Submitting with file type:', fileType);
+      }
+    });
+    
+    // Transcription Queue Status
+    async function updateTranscriptionStatus() {
+      try {
+        const [queueResponse, batchResponse] = await Promise.all([
+          fetch('/api/audio-queue/status'),
+          fetch('/api/batch/status')
+        ]);
+        
+        // If not authenticated, show login message and stop polling
+        if (queueResponse.status === 401) {
+          const statusContainer = document.getElementById('queueStatus');
+          if (statusContainer) {
+            statusContainer.innerHTML = '<div class="text-xs text-slate-400"><a href="/login" class="text-indigo-300 hover:underline">Login</a> to see queue status</div>';
+          }
+          // Stop the polling interval to prevent 401 spam
+          if (window.transcriptionStatusInterval) {
+            clearInterval(window.transcriptionStatusInterval);
+            window.transcriptionStatusInterval = null;
+          }
+          return;
+        }
+        
+        if (!queueResponse.ok) return;
+        
+        const data = await queueResponse.json();
+        const batchData = batchResponse.ok ? await batchResponse.json() : null;
+        
+        const statusContainer = document.getElementById('queueStatus');
+        if (!statusContainer) return;
+        
+        const queueData = data.queue_status;
+        const recentAudio = data.recent_audio;
+        
+        let html = '';
+        
+        // Queue summary
+        const queued = queueData.status_counts?.queued || 0;
+        const processing = queueData.status_counts?.processing || 0;
+        const failed = queueData.status_counts?.failed || 0;
+        
+        if (queued === 0 && processing === 0) {
+          html += '<div class="text-xs text-slate-400">No audio files in queue</div>';
+        } else {
+          html += `<div class="text-xs text-slate-300 mb-2">`;
+          if (queued > 0) html += `<span class="text-yellow-300">${queued} queued</span>`;
+          if (processing > 0) {
+            if (queued > 0) html += ' • ';
+            html += `<span class="text-blue-300">${processing} processing</span>`;
+          }
+          if (failed > 0) {
+            if (queued > 0 || processing > 0) html += ' • ';
+            html += `<span class="text-red-300">${failed} failed</span>`;
+          }
+          html += `</div>`;
+          
+          // Batch processing status
+          if (batchData) {
+            html += '<div class="text-xs text-slate-400 mb-2">';
+            if (batchData.batch_mode_enabled) {
+              html += '<span class="text-green-300">Batch mode enabled</span>';
+              if (batchData.should_process_batch) {
+                html += ' • <span class="text-orange-300">Ready to batch</span>';
+              }
+              if (batchData.timer_active) {
+                html += ' • <span class="text-blue-300">Timer active</span>';
+              }
+              html += ` (threshold: ${batchData.batch_threshold})`;
+            } else {
+              html += '<span class="text-slate-500">Batch mode disabled</span>';
+            }
+            html += '</div>';
+          }
+        }
+        
+        // Recent audio files with progress
+        if (recentAudio && recentAudio.length > 0) {
+          const processingFiles = recentAudio.filter(f => f.status !== 'complete');
+          if (processingFiles.length > 0) {
+            html += '<div class="space-y-1">';
+            processingFiles.slice(0, 3).forEach(file => {
+              const statusText = file.status.split(':')[0];
+              const progress = file.progress_percent || 0;
+              html += `
+                <div class="text-xs">
+                  <div class="flex justify-between items-center mb-1">
+                    <span class="text-slate-300 truncate">${file.title}</span>
+                    <span class="text-slate-400">${progress}%</span>
+                  </div>
+                  <div class="w-full bg-slate-700 rounded-full h-1">
+                    <div class="bg-indigo-500 h-1 rounded-full transition-all" style="width: ${progress}%"></div>
+                  </div>
+                  <div class="text-slate-400 mt-1">${statusText.replace('_', ' ')}</div>
+                </div>
+              `;
+            });
+            html += '</div>';
+          }
+        }
+        
+        statusContainer.innerHTML = html;
+        
+      } catch (error) {
+        console.warn('Failed to update transcription status:', error);
+      }
+    }
+    
+    // Update transcription status on load and every 3 seconds
+    updateTranscriptionStatus();
+    window.transcriptionStatusInterval = setInterval(updateTranscriptionStatus, 3000);
+    
+    // Refresh button
+    const refreshBtn = document.getElementById('refreshQueue');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', updateTranscriptionStatus);
     }
   </script>
 
-</body>
-</html>
+  <!-- Smart Templates Modal -->
+  <div id="templatesModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 rounded-xl p-6 max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-white">📝 Smart Templates</h2>
+        <div class="flex gap-2">
+          <button id="createTemplateBtn" class="btn-base btn-primary btn-sm">
+            ➕ Create Template
+          </button>
+          <button id="closeTemplatesModal" class="btn-base btn-ghost btn-sm">
+            <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <div class="mb-4 flex-shrink-0">
+        <input type="text" id="templateSearch" placeholder="Search templates..." class="w-full rounded-lg border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+      </div>
+      
+      <div id="templateSuggestions" class="flex-1 overflow-y-auto space-y-3 pr-2" style="max-height: calc(85vh - 180px);">
+        <!-- Dynamic template suggestions will be loaded here -->
+        <div class="text-center py-8 text-slate-400">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p>Loading smart templates...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template Creation Wizard Modal -->
+  <div id="createTemplateModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-slate-800 rounded-xl p-6 max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold text-white">🎨 Create Smart Template</h2>
+        <button id="closeCreateTemplateModal" class="btn-base btn-ghost btn-sm">
+          <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Step Progress -->
+      <div class="mb-6">
+        <div class="flex items-center justify-between text-sm text-slate-400 mb-2">
+          <span id="step1-label" class="step-label active">1. Basic Info</span>
+          <span id="step2-label" class="step-label">2. Content Structure</span>
+          <span id="step3-label" class="step-label">3. Variables & Preview</span>
+          <span id="step4-label" class="step-label">4. Save Template</span>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-2">
+          <div id="progressBar" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 25%"></div>
+        </div>
+      </div>
+
+      <!-- Step Content Container -->
+      <div id="wizardContent">
+        <!-- Steps will be dynamically loaded here -->
+      </div>
+
+      <!-- Navigation Buttons -->
+      <div class="flex justify-between mt-6">
+        <button id="prevStepBtn" class="bg-slate-600 hover:bg-slate-500 text-white px-6 py-2 rounded-lg font-medium transition hidden">
+          ← Previous
+        </button>
+        <div class="flex gap-3">
+          <button id="cancelTemplateBtn" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium transition">
+            Cancel
+          </button>
+          <button id="nextStepBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium transition">
+            Next →
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .step-label.active {
+      color: #10b981 !important;
+      font-weight: 600;
+    }
+    .variable-tag {
+      display: inline-block;
+      background: #374151;
+      color: #f3f4f6;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      font-size: 0.75rem;
+      margin: 0.125rem;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+    .variable-tag:hover {
+      border-color: #10b981;
+    }
+    .variable-tag.selected {
+      background: #10b981;
+      border-color: #059669;
+    }
+    .template-preview {
+      font-family: 'SF Mono', Monaco, 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+  </style>
+
+  <script>
+    // Smart Templates functionality
+    const templatesBtn = document.getElementById('templatesBtn');
+    const templatesModal = document.getElementById('templatesModal');
+    const closeTemplatesModal = document.getElementById('closeTemplatesModal');
+    const templateSuggestions = document.getElementById('templateSuggestions');
+    const templateSearch = document.getElementById('templateSearch');
+    const noteTextarea = document.getElementById('note');
+
+    // Template Creation Wizard Elements
+    const createTemplateBtn = document.getElementById('createTemplateBtn');
+    const createTemplateModal = document.getElementById('createTemplateModal');
+    const closeCreateTemplateModal = document.getElementById('closeCreateTemplateModal');
+    const wizardContent = document.getElementById('wizardContent');
+    const nextStepBtn = document.getElementById('nextStepBtn');
+    const prevStepBtn = document.getElementById('prevStepBtn');
+    const cancelTemplateBtn = document.getElementById('cancelTemplateBtn');
+    const progressBar = document.getElementById('progressBar');
+
+    // Template Creation State
+    let currentStep = 1;
+    let templateData = {
+      name: '',
+      description: '',
+      category: '',
+      emoji: '',
+      content: '',
+      variables: [],
+      keywords: []
+    };
+
+    // Open templates modal
+    templatesBtn.addEventListener('click', async () => {
+      templatesModal.classList.remove('hidden');
+      await loadTemplates();
+    });
+
+    // Close modal
+    closeTemplatesModal.addEventListener('click', () => {
+      templatesModal.classList.add('hidden');
+    });
+
+    // Close modal on background click
+    templatesModal.addEventListener('click', (e) => {
+      if (e.target === templatesModal) {
+        templatesModal.classList.add('hidden');
+      }
+    });
+
+    // === Template Creation Wizard ===
+
+    // Open template creation wizard
+    createTemplateBtn.addEventListener('click', () => {
+      templatesModal.classList.add('hidden');
+      createTemplateModal.classList.remove('hidden');
+      resetWizard();
+      renderWizardStep(1);
+    });
+
+    // Close template creation wizard
+    closeCreateTemplateModal.addEventListener('click', () => {
+      createTemplateModal.classList.add('hidden');
+    });
+
+    cancelTemplateBtn.addEventListener('click', () => {
+      createTemplateModal.classList.add('hidden');
+    });
+
+    // Navigation handlers
+    nextStepBtn.addEventListener('click', () => {
+      if (validateCurrentStep()) {
+        if (currentStep < 4) {
+          currentStep++;
+          renderWizardStep(currentStep);
+        } else {
+          saveTemplate();
+        }
+      }
+    });
+
+    prevStepBtn.addEventListener('click', () => {
+      if (currentStep > 1) {
+        currentStep--;
+        renderWizardStep(currentStep);
+      }
+    });
+
+    // Reset wizard to initial state
+    function resetWizard() {
+      currentStep = 1;
+      templateData = {
+        name: '',
+        description: '',
+        category: '',
+        emoji: '',
+        content: '',
+        variables: [],
+        keywords: []
+      };
+      
+      // Analyze current note content for suggestions
+      if (noteTextarea.value.trim()) {
+        templateData.content = noteTextarea.value;
+        templateData.variables = extractVariablesFromContent(noteTextarea.value);
+        templateData.keywords = extractKeywordsFromContent(noteTextarea.value);
+      }
+    }
+
+    // Render specific wizard step
+    function renderWizardStep(step) {
+      updateProgress(step);
+      updateStepLabels(step);
+      
+      switch(step) {
+        case 1:
+          renderStep1BasicInfo();
+          break;
+        case 2:
+          renderStep2ContentStructure();
+          break;
+        case 3:
+          renderStep3VariablesPreview();
+          break;
+        case 4:
+          renderStep4SaveTemplate();
+          break;
+      }
+      
+      // Update navigation buttons
+      prevStepBtn.classList.toggle('hidden', step === 1);
+      nextStepBtn.textContent = step === 4 ? 'Save Template' : 'Next →';
+    }
+
+    // Update progress bar
+    function updateProgress(step) {
+      const progress = (step / 4) * 100;
+      progressBar.style.width = progress + '%';
+    }
+
+    // Update step labels
+    function updateStepLabels(activeStep) {
+      for (let i = 1; i <= 4; i++) {
+        const label = document.getElementById(`step${i}-label`);
+        label.classList.toggle('active', i === activeStep);
+      }
+    }
+
+    // Step 1: Basic Info
+    function renderStep1BasicInfo() {
+      const suggestedName = generateSuggestedName();
+      const suggestedEmoji = generateSuggestedEmoji();
+      const suggestedCategory = generateSuggestedCategory();
+      
+      wizardContent.innerHTML = `
+        <div class="space-y-6">
+          <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-blue-400">💡</span>
+              <span class="text-blue-300 font-medium">Smart Suggestions</span>
+            </div>
+            <p class="text-blue-200 text-sm">We analyzed your current note content and generated suggestions below.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-slate-300 font-medium mb-2">Template Name</label>
+              <input type="text" id="templateName" value="${templateData.name || suggestedName}" 
+                     class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent" 
+                     placeholder="e.g., Daily Standup, Project Plan">
+              <p class="text-slate-400 text-xs mt-1">Choose a descriptive name for your template</p>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-medium mb-2">Category & Emoji</label>
+              <div class="flex gap-2">
+                <input type="text" id="templateEmoji" value="${templateData.emoji || suggestedEmoji}" 
+                       class="w-16 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-center text-lg focus:ring-2 focus:ring-green-400" 
+                       placeholder="📝" maxlength="2">
+                <select id="templateCategory" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-400">
+                  <option value="">Select category...</option>
+                  <option value="meeting" ${suggestedCategory === 'meeting' ? 'selected' : ''}>Meeting Notes</option>
+                  <option value="project" ${suggestedCategory === 'project' ? 'selected' : ''}>Project Planning</option>
+                  <option value="learning" ${suggestedCategory === 'learning' ? 'selected' : ''}>Learning & Study</option>
+                  <option value="idea" ${suggestedCategory === 'idea' ? 'selected' : ''}>Ideas & Brainstorming</option>
+                  <option value="review" ${suggestedCategory === 'review' ? 'selected' : ''}>Reviews & Retrospectives</option>
+                  <option value="personal" ${suggestedCategory === 'personal' ? 'selected' : ''}>Personal & Life</option>
+                  <option value="work" ${suggestedCategory === 'work' ? 'selected' : ''}>Work & Professional</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <p class="text-slate-400 text-xs mt-1">Help users find your template easily</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-slate-300 font-medium mb-2">Description</label>
+            <textarea id="templateDescription" rows="3" 
+                      class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent" 
+                      placeholder="Describe what this template is for and when to use it...">${templateData.description}</textarea>
+            <p class="text-slate-400 text-xs mt-1">Explain the purpose and use cases for this template</p>
+          </div>
+
+          ${templateData.keywords.length > 0 ? `
+            <div>
+              <label class="block text-slate-300 font-medium mb-2">Suggested Keywords</label>
+              <div class="flex flex-wrap gap-2 mb-2">
+                ${templateData.keywords.map(keyword => `
+                  <span class="variable-tag" onclick="toggleKeyword('${keyword}')">${keyword}</span>
+                `).join('')}
+              </div>
+              <p class="text-slate-400 text-xs">Keywords help the AI suggest your template at the right time</p>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Step 2: Content Structure  
+    function renderStep2ContentStructure() {
+      wizardContent.innerHTML = `
+        <div class="space-y-6">
+          <div class="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-green-400">✏️</span>
+              <span class="text-green-300 font-medium">Template Content</span>
+            </div>
+            <p class="text-green-200 text-sm">Build your template structure. Use {curly_braces} for dynamic variables.</p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-slate-300 font-medium mb-2">Template Content</label>
+              <textarea id="templateContentEditor" rows="20" 
+                        class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent font-mono text-sm" 
+                        placeholder="# {title}
+
+## 📅 Date: {date}
+## 👤 Author: {author}
+
+## 📝 Content
+{content}
+
+## ✅ Next Actions
+- [ ] {action_1}
+- [ ] {action_2}
+
+---
+*Created: {timestamp}*">${templateData.content}</textarea>
+              <p class="text-slate-400 text-xs mt-1">Use {variable_name} for dynamic content that changes each time</p>
+            </div>
+
+            <div>
+              <label class="block text-slate-300 font-medium mb-2">Live Preview</label>
+              <div class="bg-slate-900 border border-slate-600 rounded-lg p-4 h-96 overflow-y-auto">
+                <div id="templatePreview" class="template-preview text-slate-200 text-sm">
+                  <!-- Live preview will update here -->
+                </div>
+              </div>
+              <p class="text-slate-400 text-xs mt-1">Preview how your template will look</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-slate-300 font-medium mb-2">Quick Insert</label>
+              <div class="flex flex-wrap gap-2 mb-3">
+                <button type="button" onclick="insertTemplate('## 📝 {section_title}\\n\\n')" class="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-sm">Section</button>
+                <button type="button" onclick="insertTemplate('- [ ] {task}\\n')" class="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-sm">Checkbox</button>
+                <button type="button" onclick="insertTemplate('**{label}:** {value}\\n')" class="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-sm">Field</button>
+                <button type="button" onclick="insertTemplate('\\n---\\n*{footer_note}*\\n')" class="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-sm">Footer</button>
+              </div>
+              <div class="border-t border-slate-600 pt-3">
+                <button type="button" onclick="resetTemplateContent()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-colors">
+                  <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                  </svg>
+                  Reset Content
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-slate-300 font-medium mb-2">Common Variables</label>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="insertTemplate('{date}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm">{date}</button>
+                <button type="button" onclick="insertTemplate('{time}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm">{time}</button>
+                <button type="button" onclick="insertTemplate('{title}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm">{title}</button>
+                <button type="button" onclick="insertTemplate('{author}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm">{author}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Update live preview when content changes
+      const editor = document.getElementById('templateContentEditor');
+      const preview = document.getElementById('templatePreview');
+      
+      const updatePreview = () => {
+        let content = editor.value;
+        // Replace variables with sample values for preview
+        content = content.replace(/\{date\}/g, new Date().toISOString().split('T')[0]);
+        content = content.replace(/\{time\}/g, new Date().toLocaleTimeString());
+        content = content.replace(/\{title\}/g, 'Sample Title');
+        content = content.replace(/\{author\}/g, 'John Doe');
+        content = content.replace(/\{(\w+)\}/g, '[$1]');
+        
+        // Convert markdown-like formatting to HTML
+        content = content.replace(/^# (.*$)/gm, '<h1 class="text-xl font-bold mb-2">$1</h1>');
+        content = content.replace(/^## (.*$)/gm, '<h2 class="text-lg font-semibold mb-2">$1</h2>');
+        content = content.replace(/^\*\*(.*?)\*\*/gm, '<strong>$1</strong>');
+        content = content.replace(/^- \[ \] (.*$)/gm, '<div class="flex items-center gap-2"><input type="checkbox" disabled> $1</div>');
+        content = content.replace(/^- (.*$)/gm, '<div>• $1</div>');
+        content = content.replace(/\n/g, '<br>');
+        
+        preview.innerHTML = content;
+      };
+
+      editor.addEventListener('input', updatePreview);
+      updatePreview();
+    }
+
+    // Step 3: Variables & Preview
+    function renderStep3VariablesPreview() {
+      const variables = extractVariablesFromContent(templateData.content);
+      
+      wizardContent.innerHTML = `
+        <div class="space-y-6">
+          <div class="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-purple-400">🔧</span>
+              <span class="text-purple-300 font-medium">Template Variables</span>
+            </div>
+            <p class="text-purple-200 text-sm">Configure how variables should behave and provide default values.</p>
+          </div>
+
+          ${variables.length > 0 ? `
+            <div>
+              <h3 class="text-slate-300 font-medium mb-4">Detected Variables</h3>
+              <div class="space-y-4">
+                ${variables.map(variable => `
+                  <div class="bg-slate-700 rounded-lg p-4">
+                    <div class="flex items-center gap-3 mb-2">
+                      <span class="bg-purple-500 text-white px-2 py-1 rounded text-sm font-mono">{${variable}}</span>
+                      <input type="text" placeholder="Default value or description" 
+                             class="flex-1 bg-slate-600 border border-slate-500 rounded px-3 py-1 text-white text-sm">
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : `
+            <div class="text-center py-8 text-slate-400">
+              <p>No variables detected. Your template will use static content.</p>
+              <p class="text-sm mt-2">Tip: Use {variable_name} in your content to create dynamic templates!</p>
+            </div>
+          `}
+
+          <div>
+            <h3 class="text-slate-300 font-medium mb-4">Final Preview</h3>
+            <div class="bg-slate-900 border border-slate-600 rounded-lg p-4 max-h-96 overflow-y-auto">
+              <div class="template-preview text-slate-200 text-sm" id="finalPreview">
+                ${templateData.content.replace(/\n/g, '<br>')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Step 4: Save Template
+    function renderStep4SaveTemplate() {
+      wizardContent.innerHTML = `
+        <div class="space-y-6">
+          <div class="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-green-400">✅</span>
+              <span class="text-green-300 font-medium">Ready to Save</span>
+            </div>
+            <p class="text-green-200 text-sm">Review your template details before saving.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+              <div>
+                <h3 class="text-slate-300 font-medium mb-2">Template Details</h3>
+                <div class="bg-slate-700 rounded-lg p-4 space-y-2">
+                  <div><strong>Name:</strong> ${templateData.emoji} ${templateData.name}</div>
+                  <div><strong>Category:</strong> ${templateData.category}</div>
+                  <div><strong>Description:</strong> ${templateData.description}</div>
+                  <div><strong>Variables:</strong> ${templateData.variables.length} detected</div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="text-slate-300 font-medium mb-2">Template Usage</h3>
+                <div class="bg-slate-700 rounded-lg p-4 space-y-2 text-sm">
+                  <div>• Your template will appear in the Smart Templates list</div>
+                  <div>• Users can search for it using keywords and category</div>
+                  <div>• Variables will be replaced with current values when used</div>
+                  <div>• Template will be saved locally in this browser session</div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-slate-300 font-medium mb-2">Template Preview</h3>
+              <div class="bg-slate-900 border border-slate-600 rounded-lg p-4 max-h-96 overflow-y-auto">
+                <div class="template-preview text-slate-200 text-sm">
+                  ${templateData.content.substring(0, 500).replace(/\n/g, '<br>')}${templateData.content.length > 500 ? '<br><em>... (truncated)</em>' : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Helper function to insert text at cursor position
+    function insertTemplate(text) {
+      const editor = document.getElementById('templateContentEditor');
+      if (editor) {
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        const value = editor.value;
+        
+        editor.value = value.substring(0, start) + text + value.substring(end);
+        editor.focus();
+        editor.setSelectionRange(start + text.length, start + text.length);
+        
+        // Trigger preview update
+        editor.dispatchEvent(new Event('input'));
+      }
+    }
+
+    // Reset template content to default starter template
+    function resetTemplateContent() {
+      const editor = document.getElementById('templateContentEditor');
+      if (editor) {
+        // Show confirmation dialog
+        if (confirm('Are you sure you want to reset the template content? This will clear all your current work.')) {
+          // Reset to default starter template
+          const defaultTemplate = `# {title}
+
+## 📅 Date: {date}
+## 👤 Author: {author}
+
+## 📝 Content
+{content}
+
+## ✅ Next Actions
+- [ ] {action_1}
+- [ ] {action_2}
+
+---
+*Created: {timestamp}*`;
+          
+          editor.value = defaultTemplate;
+          editor.focus();
+          
+          // Trigger preview update
+          editor.dispatchEvent(new Event('input'));
+          
+          // Update template data
+          templateData.content = defaultTemplate;
+          
+          // Show success feedback
+          const resetBtn = event.target.closest('button');
+          const originalText = resetBtn.innerHTML;
+          resetBtn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/></svg> Reset Complete!';
+          resetBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+          resetBtn.classList.add('bg-green-600');
+          
+          setTimeout(() => {
+            resetBtn.innerHTML = originalText;
+            resetBtn.classList.remove('bg-green-600');
+            resetBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+          }, 2000);
+        }
+      }
+    }
+
+    // Load templates based on current note content
+    async function loadTemplates() {
+      try {
+        templateSuggestions.innerHTML = '<div class="text-center py-8"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-400 mb-2"></div><p class="text-slate-400">Loading smart templates...</p></div>';
+        
+        // Always show enhanced templates - they work reliably
+        showEnhancedTemplates();
+        
+        // Optional: Try API for additional suggestions if user has content
+        const content = noteTextarea.value?.trim() || '';
+        if (content.length > 15) {
+          try {
+            const context = {
+              has_calendar_event: false,
+              current_time: new Date().getHours(),
+              content_length: content.length,
+              has_keywords: /meeting|project|idea|plan|review/i.test(content)
+            };
+
+            const response = await fetch('/api/templates/suggestions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+              },
+              body: JSON.stringify({ content, context })
+            });
+
+            if (response.ok) {
+              const suggestions = await response.json();
+              if (suggestions.suggestions && suggestions.suggestions.length > 0) {
+                // Show API suggestions if available
+                renderTemplates(suggestions.suggestions);
+                return;
+              }
+            }
+          } catch (apiError) {
+            console.log('API templates unavailable, using built-in templates');
+          }
+        }
+        
+        // Always fall back to enhanced built-in templates
+        showEnhancedTemplates();
+        
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+        showEnhancedTemplates();
+      }
+    }
+
+    // Render template suggestions
+    function renderTemplates(templates) {
+      if (!templates || templates.length === 0) {
+        templateSuggestions.innerHTML = '<div class="text-center text-slate-400">No templates found. Try typing something first!</div>';
+        return;
+      }
+
+      const html = templates.map(template => `
+        <div class="template-item bg-slate-700 rounded-lg p-4 cursor-pointer hover:bg-slate-600 hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] border border-transparent hover:border-purple-400/50" data-template-id="${template.template_id}">
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="text-white font-medium">${template.name}</h3>
+            <span class="text-xs px-2 py-1 rounded bg-purple-500 text-white">${Math.round(template.relevance_score * 100)}% match</span>
+          </div>
+          <p class="text-slate-300 text-sm mb-3">${template.description}</p>
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-400 font-medium uppercase tracking-wide">${template.type}</span>
+            <div class="text-xs text-purple-300 font-medium flex items-center gap-1">
+              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+              </svg>
+              Click to apply
+            </div>
+          </div>
+        </div>
+      `).join('');
+      
+      templateSuggestions.innerHTML = html;
+
+      // Add click handlers - entire card is clickable
+      document.querySelectorAll('.template-item').forEach(item => {
+        item.addEventListener('click', async (e) => {
+          const templateId = item.dataset.templateId;
+          
+          // Add visual feedback for click
+          item.classList.add('transform', 'scale-95');
+          setTimeout(() => {
+            item.classList.remove('transform', 'scale-95');
+          }, 150);
+          
+          await applyTemplate(templateId);
+        });
+        
+        // Add keyboard support for accessibility
+        item.addEventListener('keydown', async (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const templateId = item.dataset.templateId;
+            await applyTemplate(templateId);
+          }
+        });
+        
+        // Make focusable for keyboard navigation
+        item.setAttribute('tabindex', '0');
+        item.setAttribute('role', 'button');
+        item.setAttribute('aria-label', `Apply template: ${item.querySelector('h3').textContent}`);
+      });
+    }
+
+    // Render template library (fallback)
+    function renderTemplateLibrary(templates) {
+      const templateArray = Object.entries(templates).map(([id, template]) => ({
+        template_id: id,
+        name: template.name,
+        description: template.description,
+        type: template.type,
+        relevance_score: 0.5
+      }));
+      
+      renderTemplates(templateArray);
+    }
+
+    // Apply selected template
+    async function applyTemplate(templateId) {
+      try {
+        // Find the template in our current display
+        const templateElement = document.querySelector(`[data-template-id="${templateId}"]`);
+        let templateContent = '';
+        
+        // First try to get from demo templates
+        const currentTemplates = window.currentBasicTemplates || [];
+        const template = currentTemplates.find(t => t.template_id === templateId);
+        
+        if (template && template.sample_content) {
+          templateContent = template.sample_content;
+        } else {
+          // Fallback: try API
+          const response = await fetch(`/api/templates/${templateId}`, {
+            method: 'GET',
+            headers: {
+              'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+            }
+          });
+
+          if (response.ok) {
+            const apiTemplate = await response.json();
+            templateContent = apiTemplate.content;
+          } else {
+            throw new Error('Template not found');
+          }
+        }
+
+        if (templateContent) {
+          // Close modal first
+          templatesModal.classList.add('hidden');
+          
+          // Apply content to textarea
+          noteTextarea.value = templateContent;
+          
+          // Enhanced textarea expansion for template content
+          noteTextarea.style.height = 'auto';
+          const newHeight = Math.min(Math.max(noteTextarea.scrollHeight + 10, 200), 600);
+          noteTextarea.style.height = newHeight + 'px';
+          
+          // Focus and position cursor at the end
+          noteTextarea.focus();
+          noteTextarea.setSelectionRange(templateContent.length, templateContent.length);
+          
+          // Scroll textarea into view
+          noteTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Show success message with template name
+          const btn = templatesBtn;
+          const originalText = btn.querySelector('.font-medium').textContent;
+          btn.querySelector('.font-medium').textContent = '✅ Applied!';
+          btn.classList.remove('from-purple-600', 'to-purple-700', 'hover:from-purple-700', 'hover:to-purple-800');
+          btn.classList.add('from-green-600', 'to-green-700');
+          
+          setTimeout(() => {
+            btn.querySelector('.font-medium').textContent = originalText;
+            btn.classList.remove('from-green-600', 'to-green-700');
+            btn.classList.add('from-purple-600', 'to-purple-700', 'hover:from-purple-700', 'hover:to-purple-800');
+          }, 2500);
+        }
+      } catch (error) {
+        console.error('Error applying template:', error);
+        // Show error in UI
+        const btn = templatesBtn;
+        const originalText = btn.querySelector('span').textContent;
+        btn.querySelector('span').textContent = '❌ Error';
+        btn.classList.add('bg-red-500');
+        btn.classList.remove('bg-purple-500');
+        
+        setTimeout(() => {
+          btn.querySelector('span').textContent = originalText;
+          btn.classList.remove('bg-red-500');
+          btn.classList.add('bg-purple-500');
+        }, 2000);
+      }
+    }
+
+    // Template search functionality
+    templateSearch.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      const templateItems = document.querySelectorAll('.template-item');
+      
+      templateItems.forEach(item => {
+        const name = item.querySelector('h3').textContent.toLowerCase();
+        const description = item.querySelector('p').textContent.toLowerCase();
+        const templateId = item.dataset.templateId;
+        
+        // Also search in template content if available
+        const currentTemplates = window.currentBasicTemplates || [];
+        const template = currentTemplates.find(t => t.template_id === templateId);
+        const content = template && template.sample_content ? template.sample_content.toLowerCase() : '';
+        
+        if (name.includes(query) || description.includes(query) || content.includes(query)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    });
+
+    // Helper functions for template creation wizard
+    function generateSuggestedName() {
+      const content = templateData.content.toLowerCase();
+      if (content.includes('meeting') || content.includes('standup')) return 'Meeting Notes';
+      if (content.includes('project') || content.includes('plan')) return 'Project Plan';
+      if (content.includes('idea') || content.includes('brainstorm')) return 'Idea Template';
+      if (content.includes('review') || content.includes('retrospective')) return 'Review Template';
+      if (content.includes('learn') || content.includes('study')) return 'Learning Notes';
+      return 'Custom Template';
+    }
+
+    function generateSuggestedEmoji() {
+      const content = templateData.content.toLowerCase();
+      if (content.includes('meeting')) return '📅';
+      if (content.includes('project')) return '🎯';
+      if (content.includes('idea')) return '💡';
+      if (content.includes('learn')) return '📚';
+      if (content.includes('review')) return '📊';
+      return '📝';
+    }
+
+    function generateSuggestedCategory() {
+      const content = templateData.content.toLowerCase();
+      if (content.includes('meeting') || content.includes('standup')) return 'meeting';
+      if (content.includes('project') || content.includes('plan')) return 'project';
+      if (content.includes('idea') || content.includes('brainstorm')) return 'idea';
+      if (content.includes('review') || content.includes('retrospective')) return 'review';
+      if (content.includes('learn') || content.includes('study')) return 'learning';
+      return 'other';
+    }
+
+    function extractVariablesFromContent(content) {
+      // Extract potential variables from content
+      const variables = [];
+      const lines = content.split('\n');
+      
+      lines.forEach(line => {
+        // Look for patterns that could be variables
+        if (line.includes(':') && !line.trim().startsWith('#')) {
+          const parts = line.split(':');
+          if (parts.length === 2 && parts[1].trim().length < 50) {
+            const key = parts[0].trim().replace(/[\*\#]/g, '');
+            if (key.length > 0 && key.length < 30) {
+              variables.push(key.toLowerCase().replace(/\s+/g, '_'));
+            }
+          }
+        }
+      });
+      
+      return [...new Set(variables)].slice(0, 10);
+    }
+
+    function extractKeywordsFromContent(content) {
+      const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should']);
+      const words = content.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/);
+      const wordCount = {};
+      
+      words.forEach(word => {
+        if (word.length > 3 && !commonWords.has(word)) {
+          wordCount[word] = (wordCount[word] || 0) + 1;
+        }
+      });
+      
+      return Object.entries(wordCount)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([word]) => word);
+    }
+
+    function validateCurrentStep() {
+      switch(currentStep) {
+        case 1:
+          const name = document.getElementById('templateName')?.value.trim();
+          const category = document.getElementById('templateCategory')?.value;
+          const description = document.getElementById('templateDescription')?.value.trim();
+          
+          if (!name) {
+            alert('Please enter a template name');
+            return false;
+          }
+          if (!category) {
+            alert('Please select a category');
+            return false;
+          }
+          if (!description) {
+            alert('Please enter a description');
+            return false;
+          }
+          
+          // Save step 1 data
+          templateData.name = name;
+          templateData.category = category;
+          templateData.description = description;
+          templateData.emoji = document.getElementById('templateEmoji')?.value || '📝';
+          return true;
+          
+        case 2:
+          const content = document.getElementById('templateContentEditor')?.value.trim();
+          if (!content) {
+            alert('Please enter template content');
+            return false;
+          }
+          templateData.content = content;
+          templateData.variables = extractVariablesFromContent(content);
+          return true;
+          
+        case 3:
+          return true; // Variables step is optional
+          
+        default:
+          return true;
+      }
+    }
+
+    function saveTemplate() {
+      // Add to local templates
+      const customTemplateId = `custom_${Date.now()}`;
+      const customTemplate = {
+        template_id: customTemplateId,
+        name: `${templateData.emoji} ${templateData.name}`,
+        description: templateData.description,
+        type: templateData.category,
+        relevance_score: 1.0,
+        sample_content: templateData.content
+      };
+      
+      // Add to current templates
+      if (!window.currentBasicTemplates) {
+        window.currentBasicTemplates = [];
+      }
+      window.currentBasicTemplates.unshift(customTemplate);
+      
+      // Close wizard and show success
+      createTemplateModal.classList.add('hidden');
+      templatesModal.classList.remove('hidden');
+      renderTemplates(window.currentBasicTemplates);
+      
+      // Show success message
+      setTimeout(() => {
+        alert(`✅ Template "${templateData.name}" created successfully!`);
+      }, 300);
+    }
+
+    // Show basic templates as fallback with realistic demo content
+    // Auto-resize textarea based on content - Enhanced to handle multiple textareas
+    function autoResizeTextarea(textarea) {
+      if (!textarea) return;
+      
+      // Get min/max heights from element styles or data attributes
+      const computedStyle = window.getComputedStyle(textarea);
+      const minHeight = parseInt(textarea.style.minHeight) || 200; // Default to 200px
+      const maxHeight = textarea.id === 'tags' ? 400 : 600; // Tags has lower max height
+      
+      // Reset height to auto to get accurate scrollHeight
+      textarea.style.height = 'auto';
+      
+      // Calculate new height with buffer and constraints
+      const newHeight = Math.min(Math.max(textarea.scrollHeight + 5, minHeight), maxHeight);
+      textarea.style.height = newHeight + 'px';
+    }
+    
+    // Add auto-resize listeners to both textareas
+    ['note', 'tags'].forEach(id => {
+      const textarea = document.getElementById(id);
+      if (textarea) {
+        // Handle input events
+        textarea.addEventListener('input', () => autoResizeTextarea(textarea));
+        
+        // Handle paste events with slight delay to allow content to render
+        textarea.addEventListener('paste', () => {
+          setTimeout(() => autoResizeTextarea(textarea), 10);
+        });
+        
+        // Initialize proper height on page load
+        autoResizeTextarea(textarea);
+      }
+    });
+    
+    function showBasicTemplates() {
+      showEnhancedTemplates();
+    }
+    
+    function showEnhancedTemplates() {
+      const now = new Date();
+      const todayDate = now.toISOString().split('T')[0];
+      const timeStr = now.toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute: '2-digit'});
+      
+      const basicTemplates = [
+        {
+          template_id: "meeting_general",
+          name: "📅 Team Standup Meeting",
+          description: "Daily team standup with progress tracking and blockers",
+          type: "meeting",
+          relevance_score: 0.9,
+          sample_content: `# Team Standup - ${todayDate}
+
+## 👥 Attendees
+- Sarah (Product Manager)
+- Mike (Frontend Dev) 
+- Alex (Backend Dev)
+- Jordan (Designer)
+
+## 🎯 Agenda
+1. Yesterday's progress review
+2. Today's priorities 
+3. Blockers and challenges
+4. Sprint goal check-in
+
+## 📝 Discussion Notes
+**Sprint Progress:** 65% complete, on track for Friday delivery
+**Key Updates:**
+- User authentication flow is complete ✅
+- Mobile responsive design in progress 🔄
+- API optimization showing 40% speed improvement 🚀
+
+## ✅ Action Items
+- [ ] Mike: Fix mobile navbar bug - Due: Tomorrow
+- [ ] Alex: Deploy staging environment - Due: Wed
+- [ ] Sarah: Review user testing feedback - Due: Thu
+
+## 🚧 Blockers
+- Waiting on design assets for checkout flow
+- Production deployment needs DevOps approval
+
+## 📋 Next Steps
+Tomorrow: Code review session at 2 PM
+
+---
+*Meeting Duration: 15 minutes*
+*Next Standup: Tomorrow ${timeStr}*`
+        },
+        {
+          template_id: "project_planning", 
+          name: "🎯 Project Kickoff Plan",
+          description: "Comprehensive project planning with timeline and resources",
+          type: "project_planning",
+          relevance_score: 0.85,
+          sample_content: `# New E-commerce Feature - Project Plan
+
+## 📊 Project Overview
+**Goal:** Implement one-click checkout to increase conversion rates
+**Timeline:** 3 weeks (${todayDate} - ${new Date(Date.now() + 21*24*60*60*1000).toISOString().split('T')[0]})
+**Budget:** $25,000
+**Success Metric:** 15% improvement in checkout completion rate
+
+## 🔧 Technical Requirements
+- Payment gateway integration (Stripe)
+- Address autocomplete functionality  
+- Mobile-first responsive design
+- A/B testing framework setup
+
+## 👥 Team & Resources
+**Project Lead:** Sarah Chen
+**Developers:** 2 full-stack developers
+**Designer:** 1 UI/UX designer
+**QA:** 1 testing specialist
+
+## 📅 Timeline & Milestones
+**Week 1:** Research & wireframes
+- [ ] User flow mapping
+- [ ] Technical architecture design
+- [ ] UI mockups and prototypes
+
+**Week 2:** Development & Integration  
+- [ ] Payment gateway setup
+- [ ] Frontend components
+- [ ] Backend API endpoints
+- [ ] Database schema updates
+
+**Week 3:** Testing & Launch
+- [ ] QA testing & bug fixes
+- [ ] A/B test configuration
+- [ ] Soft launch to 10% of users
+- [ ] Full rollout
+
+## ⚠️ Risks & Mitigation
+**Risk:** Payment processing delays
+**Mitigation:** Have backup payment provider ready
+
+**Risk:** Mobile performance issues
+**Mitigation:** Performance testing on low-end devices
+
+## 📈 Success Metrics
+- Checkout completion rate: +15%
+- Average session duration: +20%  
+- Customer satisfaction score: >4.5/5
+
+---
+*Status: Planning Phase*
+*Next Review: Weekly on Mondays*`
+        },
+        {
+          template_id: "learning_notes",
+          name: "📚 React Hooks Deep Dive", 
+          description: "Learning notes with examples and practical applications",
+          type: "learning_notes",
+          relevance_score: 0.8,
+          sample_content: `# React Hooks - Advanced Patterns
+
+## 🎯 Learning Objectives
+- Master useEffect dependency arrays
+- Understand custom hook creation
+- Learn performance optimization patterns
+- Apply hooks in real-world scenarios
+
+## 📖 Key Concepts
+
+### useEffect Dependencies
+**Rule:** Always include dependencies that change over time
+\`\`\`javascript
+// ❌ Missing dependency
+useEffect(() => {
+  fetchUserData(userId);
+}, []); 
+
+// ✅ Correct dependency array  
+useEffect(() => {
+  fetchUserData(userId);
+}, [userId]);
+\`\`\`
+
+### Custom Hooks Pattern
+\`\`\`javascript
+function useLocalStorage(key, initialValue) {
+  const [value, setValue] = useState(() => {
+    const item = window.localStorage.getItem(key);
+    return item ? JSON.parse(item) : initialValue;
+  });
+
+  const setStoredValue = (newValue) => {
+    setValue(newValue);
+    window.localStorage.setItem(key, JSON.stringify(newValue));
+  };
+
+  return [value, setStoredValue];
+}
+\`\`\`
+
+## 💡 Key Insights
+- Custom hooks are just functions that use other hooks
+- useCallback and useMemo prevent unnecessary re-renders  
+- useRef persists values between renders without triggering updates
+- Dependency arrays in useEffect control when effects run
+
+## 🔧 Practical Applications
+**Data Fetching Hook:**
+- Created reusable \`useApi\` hook for API calls
+- Handles loading states and error management
+- Reduces component complexity by 60%
+
+**Form Validation:**
+- Built \`useFormValidation\` for real-time validation
+- Supports async validation rules  
+- Provides clean error state management
+
+## ❓ Questions & Follow-ups
+- [ ] How do hooks work with React DevTools?
+- [ ] Performance impact of many custom hooks?
+- [ ] Best practices for hook testing?
+
+## 📚 Resources
+- [React Hooks Documentation](https://reactjs.org/docs/hooks-intro.html)
+- [useHooks.com - Hook recipes](https://usehooks.com/)
+- [React Hooks Testing Library](https://react-hooks-testing-library.com/)
+
+## 📝 Summary
+Hooks revolutionize React by enabling state and lifecycle features in functional components. Custom hooks promote reusability and separation of concerns. Key is understanding dependency arrays and avoiding infinite re-render loops.
+
+**Next:** Explore Concurrent React features and Suspense patterns.
+
+---
+*Study Session: 2 hours*
+*Confidence Level: 8/10*`
+        },
+        {
+          template_id: "idea_capture",
+          name: "💡 AI-Powered Code Review Tool",
+          description: "Startup idea with market analysis and technical feasibility",
+          type: "idea_capture", 
+          relevance_score: 0.75,
+          sample_content: `# AI Code Review Assistant - Startup Idea
+
+## 🚀 Core Concept
+An AI-powered tool that provides instant, intelligent code reviews with context-aware suggestions, security vulnerability detection, and performance optimization recommendations.
+
+## 🎯 Problem Statement
+- Manual code reviews are time-consuming (avg 2-4 hours per PR)
+- Inconsistent review quality across team members  
+- Junior developers need more guidance than seniors can provide
+- Security vulnerabilities often missed in reviews
+- Performance issues discovered late in development cycle
+
+## 💰 Market Opportunity
+**Target Market:** Software development teams (5-500 developers)
+**Market Size:** $2.8B developer tools market, growing 20% annually
+**Potential Revenue:** $50-500/month per team (10-100 developers)
+**Competitive Advantage:** Context-aware AI that learns team coding standards
+
+## 🔧 Technical Feasibility
+**AI Models:**
+- GPT-4 for code understanding and suggestions
+- Specialized models for security (CodeQL, Semgrep)
+- Performance analysis using AST parsing
+
+**Architecture:**
+- GitHub/GitLab integration via webhooks
+- Real-time analysis pipeline (< 30 seconds)
+- Cloud-based processing with on-premise option
+- VS Code extension for inline suggestions
+
+**MVP Features:**
+- Automated PR analysis and scoring
+- Security vulnerability detection  
+- Code quality metrics and suggestions
+- Learning from approved/rejected suggestions
+
+## 🎨 User Experience
+1. Developer creates PR → AI analyzes immediately
+2. Contextual comments appear in PR interface  
+3. Severity-based color coding (red/yellow/green)
+4. One-click to apply suggested fixes
+5. Learning dashboard showing improvement metrics
+
+## 📊 Business Model
+**Freemium SaaS:**
+- Free: 5 reviews/month, basic analysis
+- Pro: $50/month per team, advanced AI features
+- Enterprise: $500/month, custom models, on-premise
+
+**Revenue Projections (Year 1):**
+- Month 1-3: MVP development
+- Month 4-6: Beta with 50 teams  
+- Month 7-12: 200 paying teams = $120k ARR
+
+## 🚧 Challenges & Risks
+**Technical:**
+- AI model accuracy and false positives
+- Integration complexity with various Git platforms
+- Processing speed for large codebases
+
+**Business:**  
+- Competition from GitHub Copilot and existing tools
+- Developer resistance to AI code review
+- Data privacy concerns with code analysis
+
+**Mitigation:**
+- Start with narrow use case (security only)
+- Focus on enhancing human reviewers, not replacing
+- Strong data encryption and privacy policies
+
+## 📝 Next Steps
+**Week 1-2: Market Research**
+- [ ] Survey 100 developers about pain points
+- [ ] Analyze competitor features and pricing
+- [ ] Interview 20 engineering managers
+
+**Week 3-4: Technical Prototype**
+- [ ] Build basic GitHub integration
+- [ ] Implement simple rule-based analysis
+- [ ] Create demo for 3 different code examples
+
+**Week 5-6: Validation**
+- [ ] Test with 5 friendly development teams
+- [ ] Gather feedback on accuracy and usefulness
+- [ ] Refine AI prompts based on real scenarios
+
+## 🔗 Related Ideas & Extensions
+- Code documentation auto-generation
+- Automated test case suggestions  
+- Integration with project management tools
+- AI pair programming assistant
+
+---
+*Idea Category: Developer Tools/SaaS*
+*Confidence Level: 7/10*
+*Market Potential: High*
+*Technical Risk: Medium*
+*Time to MVP: 2-3 months*`
+        },
+        {
+          template_id: "weekly_review",
+          name: "📊 Weekly Reflection & Planning",
+          description: "Personal productivity review with goals and insights",
+          type: "weekly_review",
+          relevance_score: 0.7,
+          sample_content: `# Week of ${new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0]} - ${todayDate}
+
+## 🎯 Goals Review
+
+### ✅ Accomplished
+- **Launched new user dashboard** - 2 weeks ahead of schedule!
+- **Completed React hooks training** - 8 hours of focused learning
+- **Fixed 12 critical bugs** - Improved app stability significantly  
+- **Conducted 3 user interviews** - Great insights for next sprint
+- **Published blog post on API design** - 500+ views in first day
+
+### 🚧 In Progress  
+- **Mobile app prototype** - 60% complete, on track
+- **Database performance optimization** - Running benchmarks
+- **Team onboarding documentation** - First draft done
+- **Side project: Personal finance tracker** - MVP taking shape
+
+### ❌ Missed/Delayed
+- **Code review guidelines document** - Pushed to next week
+- **Conference talk preparation** - Need to dedicate more time
+- **Exercise routine** - Only 2/5 planned workouts completed
+
+## 📈 Key Metrics & Achievements
+
+**Work Performance:**
+- **Productivity Score:** 8.5/10 (highest this month!)
+- **Energy Level:** 7/10 (good sustainable pace)
+- **Code Quality:** 95% test coverage maintained
+- **User Satisfaction:** NPS increased from 7.2 to 8.1
+
+**Personal Growth:**
+- **Learning Hours:** 12 hours (target: 10)
+- **Books Read:** 0.5 (finished "Clean Architecture")
+- **Network Expansion:** 3 new meaningful connections
+- **Health Score:** 6/10 (need better sleep schedule)
+
+## 💡 Key Insights & Learnings
+
+**Professional:**
+- User interviews reveal features we thought were important actually aren't
+- Async/await patterns significantly improved our API response times
+- Pair programming sessions are 40% more productive than solo coding
+- Documentation quality directly correlates with team velocity
+
+**Personal:**
+- Morning coding sessions (6-8 AM) are my most productive
+- Taking breaks every 90 minutes prevents afternoon energy crashes
+- Weekend project work helps maintain enthusiasm for weekday tasks
+- Reading technical books before bed improves retention
+
+## 🔄 What's Working Well
+- **Time blocking for deep work** - 3-hour focused coding blocks
+- **Daily standups with personal projects** - keeps side projects moving
+- **Weekly learning budget** - $50/week for courses/books pays off
+- **Friday afternoon planning** - Sets up successful weekends
+
+## 🛠️ What Needs Improvement  
+- **Email management** - Still checking too frequently (every 15 min)
+- **Meeting preparation** - Need 10 min prep for each meeting
+- **Code documentation** - Writing docs while coding, not after
+- **Work-life boundaries** - Stop coding after 8 PM weekdays
+
+## 📅 Next Week's Focus Areas
+
+**Top 3 Priorities:**
+1. **Complete mobile prototype** - Ready for user testing
+2. **Finish conference talk outline** - Submit by Wednesday  
+3. **Implement automated testing pipeline** - Reduce manual QA time
+
+**Learning Goals:**
+- [ ] Complete "Advanced TypeScript" course (4 hours remaining)
+- [ ] Read 3 chapters of "Designing Data-Intensive Applications"
+- [ ] Attend React meetup on Thursday evening
+
+**Personal Targets:**  
+- [ ] 4/5 planned workouts (Monday/Wednesday/Friday gym + weekend hike)
+- [ ] 7+ hours sleep per night (use sleep tracking app)
+- [ ] Cook 3 healthy meals instead of ordering takeout
+- [ ] Call parents and check in with family
+
+**Experiments to Try:**
+- **No-phone mornings** - Keep phone in other room until 9 AM
+- **Walking meetings** - Try 2 calls while walking outside
+- **Pomodoro technique** - 25min focused work + 5min breaks
+
+## 🎉 Wins & Celebrations
+- **Biggest Win:** User feedback was overwhelmingly positive on new dashboard
+- **Personal Achievement:** Completed first technical blog post with great reception
+- **Team Success:** Zero production bugs this week (first time in 2 months!)
+- **Growth Moment:** Led architecture discussion confidently with senior engineers
+
+## 📊 Habit Tracking
+- **Daily journaling:** 6/7 days ✅
+- **Exercise:** 2/5 sessions ⚠️  
+- **Reading:** 4/7 days ✅
+- **Meditation:** 3/7 days ⚠️
+- **Healthy breakfast:** 7/7 days ✅
+
+---
+*Overall Week Rating: 8/10*  
+*Energy Trend: Increasing*
+*Mood: Optimistic and motivated*
+*Key Theme: Quality over quantity*
+
+**Quote of the Week:** "The best code is written when you're not trying to be clever." - Anonymous`
+        }
+      ];
+      
+      // Store templates globally for apply function
+      window.currentBasicTemplates = basicTemplates;
+      renderTemplates(basicTemplates);
+    }
+  </script>
+
+  <!-- Unified Search JavaScript -->
+  <script>
+    // Unified Search System
+    class UnifiedSearchSystem {
+      constructor() {
+        this.searchInput = document.getElementById('unifiedSearchInput');
+        this.searchBtn = document.getElementById('unifiedSearchBtn');
+        this.modeSelect = document.getElementById('searchModeSelect');
+        this.suggestionsContainer = document.getElementById('searchSuggestions');
+        this.resultsContainer = document.getElementById('unifiedSearchResults');
+        this.resultsContent = document.getElementById('searchResultsContent');
+        this.resultsFooter = document.getElementById('searchResultsFooter');
+        this.loadingIndicator = document.getElementById('searchLoadingIndicator');
+        this.closeResultsBtn = document.getElementById('closeSearchResults');
+        
+        this.debounceTimer = null;
+        this.currentQuery = '';
+        this.isSearching = false;
+        
+        this.init();
+      }
+      
+      init() {
+        // Event listeners
+        this.searchInput?.addEventListener('input', (e) => {
+          this.handleInputChange(e.target.value);
+        });
+        
+        this.searchInput?.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.performSearch();
+          } else if (e.key === 'Escape') {
+            this.hideSuggestions();
+            this.hideResults();
+          }
+        });
+        
+        this.searchInput?.addEventListener('focus', () => {
+          if (this.searchInput.value.length >= 2) {
+            this.showSuggestions();
+          }
+        });
+        
+        this.searchBtn?.addEventListener('click', () => {
+          this.performSearch();
+        });
+        
+        this.closeResultsBtn?.addEventListener('click', () => {
+          this.hideResults();
+        });
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!this.searchInput?.contains(e.target) && !this.suggestionsContainer?.contains(e.target)) {
+            this.hideSuggestions();
+          }
+        });
+      }
+      
+      handleInputChange(value) {
+        this.currentQuery = value.trim();
+        
+        // Clear previous timer
+        if (this.debounceTimer) {
+          clearTimeout(this.debounceTimer);
+        }
+        
+        // Hide suggestions if query too short
+        if (this.currentQuery.length < 2) {
+          this.hideSuggestions();
+          return;
+        }
+        
+        // Debounced suggestions
+        this.debounceTimer = setTimeout(() => {
+          this.loadSuggestions();
+        }, 300);
+      }
+      
+      async loadSuggestions() {
+        if (this.currentQuery.length < 2 || this.isSearching) return;
+        
+        try {
+          const response = await fetch(`/api/search/unified/suggestions?q=${encodeURIComponent(this.currentQuery)}`);
+          const data = await response.json();
+          
+          if (data.suggestions && data.suggestions.length > 0) {
+            this.renderSuggestions(data.suggestions);
+            this.showSuggestions();
+          } else {
+            this.hideSuggestions();
+          }
+        } catch (error) {
+          console.error('Error loading suggestions:', error);
+          this.hideSuggestions();
+        }
+      }
+      
+      renderSuggestions(suggestions) {
+        if (!this.suggestionsContainer) return;
+        
+        const html = suggestions.map(suggestion => `
+          <div class="suggestion-item px-4 py-3 hover:bg-slate-700 cursor-pointer border-b border-slate-600 last:border-b-0 flex items-center gap-3" 
+               data-suggestion="${suggestion.text}" 
+               data-type="${suggestion.type}">
+            <span class="text-lg">${suggestion.icon}</span>
+            <div class="flex-1">
+              <div class="text-slate-200 text-sm">${this.highlightQuery(suggestion.text)}</div>
+              ${suggestion.description ? `<div class="text-slate-400 text-xs mt-1">${suggestion.description}</div>` : ''}
+            </div>
+            <div class="text-xs text-slate-500 capitalize">${suggestion.type}</div>
+          </div>
+        `).join('');
+        
+        this.suggestionsContainer.innerHTML = html;
+        
+        // Add click handlers to suggestions
+        this.suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const suggestionText = item.dataset.suggestion;
+            const suggestionType = item.dataset.type;
+            
+            if (suggestionType === 'template') {
+              // Handle template suggestions specially
+              this.handleTemplateSuggestion(item);
+            } else {
+              this.searchInput.value = suggestionText;
+              this.currentQuery = suggestionText;
+              this.hideSuggestions();
+              this.performSearch();
+            }
+          });
+        });
+      }
+      
+      highlightQuery(text) {
+        if (!this.currentQuery) return text;
+        const regex = new RegExp(`(${this.currentQuery})`, 'gi');
+        return text.replace(regex, '<mark class="bg-yellow-400 text-black px-1 rounded">$1</mark>');
+      }
+      
+      handleTemplateSuggestion(suggestionElement) {
+        // Extract template info and trigger template application
+        const templateText = suggestionElement.dataset.suggestion;
+        this.hideSuggestions();
+        
+        // Show a quick template preview or application
+        this.showTemplatePreview(templateText);
+      }
+      
+      showTemplatePreview(templateText) {
+        // Simple template preview implementation
+        const previewHtml = `
+          <div class="bg-purple-600/20 border border-purple-400 rounded-lg p-4 mb-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-purple-300 text-sm">✨ Smart Template</span>
+            </div>
+            <p class="text-slate-200">${templateText}</p>
+            <div class="flex gap-2 mt-3">
+              <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm" onclick="window.templatesBtn?.click()">
+                Open Templates
+              </button>
+              <button class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded text-sm" onclick="this.parentElement.parentElement.remove()">
+                Dismiss
+              </button>
+            </div>
+          </div>
+        `;
+        
+        // Insert preview above search results
+        const container = document.createElement('div');
+        container.innerHTML = previewHtml;
+        this.resultsContainer.parentNode.insertBefore(container.firstElementChild, this.resultsContainer);
+      }
+      
+      async performSearch() {
+        if (!this.currentQuery || this.isSearching) return;
+        
+        this.isSearching = true;
+        this.showLoading();
+        this.hideSuggestions();
+        
+        try {
+          const searchMode = this.modeSelect?.value || 'hybrid';
+          
+          const response = await fetch('/api/search/unified', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: this.currentQuery,
+              limit: 20,
+              filters: {
+                mode: searchMode,
+                include_templates: true
+              }
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            this.renderResults(data);
+            this.showResults();
+          } else {
+            this.showError(data.error || 'Search failed');
+          }
+        } catch (error) {
+          console.error('Search error:', error);
+          this.showError('Network error occurred');
+        } finally {
+          this.isSearching = false;
+          this.hideLoading();
+        }
+      }
+      
+      renderResults(data) {
+        if (!data.results || data.results.length === 0) {
+          this.renderNoResults();
+          return;
+        }
+        
+        const html = data.results.map(result => this.renderResultItem(result)).join('');
+        this.resultsContent.innerHTML = html;
+        
+        // Render analytics
+        if (data.analytics) {
+          this.renderAnalytics(data.analytics, data.results.length);
+        }
+        
+        // Add click handlers for quick actions
+        this.attachResultHandlers();
+      }
+      
+      renderResultItem(result) {
+        const typeIcons = {
+          note: '📄',
+          template: '✨',
+          quick_action: '⚡',
+          suggestion: '💡'
+        };
+        
+        const typeColors = {
+          note: 'bg-blue-600/20 border-blue-400',
+          template: 'bg-purple-600/20 border-purple-400', 
+          quick_action: 'bg-green-600/20 border-green-400',
+          suggestion: 'bg-yellow-600/20 border-yellow-400'
+        };
+        
+        const icon = typeIcons[result.type] || '📄';
+        const colorClass = typeColors[result.type] || 'bg-slate-600/20 border-slate-400';
+        
+        return `
+          <div class="search-result-item ${colorClass} border rounded-lg p-4 hover:bg-opacity-30 transition cursor-pointer" 
+               data-result-id="${result.id}" 
+               data-result-type="${result.type}">
+            <div class="flex items-start gap-3">
+              <div class="text-2xl">${icon}</div>
+              <div class="flex-1 min-w-0">
+                <h4 class="text-slate-200 font-medium text-sm mb-1 truncate">${result.title}</h4>
+                <p class="text-slate-400 text-xs mb-2 line-clamp-2">${result.description}</p>
+                
+                ${result.quick_actions && result.quick_actions.length > 0 ? `
+                  <div class="flex gap-2 flex-wrap">
+                    ${result.quick_actions.map(action => `
+                      <button class="action-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1 rounded transition"
+                              data-action="${action.action}"
+                              data-result-id="${result.id}">
+                        ${action.icon} ${action.label}
+                      </button>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+              
+              <div class="text-right">
+                <div class="text-xs text-slate-500 mb-1">${result.source}</div>
+                <div class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">
+                  ${Math.round(result.relevance_score * 100)}%
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      renderNoResults() {
+        this.resultsContent.innerHTML = `
+          <div class="text-center py-8">
+            <div class="text-4xl mb-4">🔍</div>
+            <h4 class="text-slate-300 font-medium mb-2">No results found</h4>
+            <p class="text-slate-400 text-sm mb-4">Try adjusting your search terms or creating new content</p>
+            <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm" 
+                    onclick="document.getElementById('note').focus()">
+              Create New Note
+            </button>
+          </div>
+        `;
+      }
+      
+      renderAnalytics(analytics, resultCount) {
+        const searchTime = analytics.search_time ? `${(analytics.search_time * 1000).toFixed(0)}ms` : 'N/A';
+        
+        this.resultsFooter.innerHTML = `
+          <div class="flex justify-between items-center text-xs">
+            <div class="flex gap-4">
+              <span>${resultCount} results</span>
+              <span>Search time: ${searchTime}</span>
+              <span>Intent: ${analytics.search_intent || 'unknown'}</span>
+            </div>
+            <div class="flex gap-2">
+              <span class="bg-blue-600/20 text-blue-300 px-2 py-1 rounded">${analytics.notes_found || 0} notes</span>
+              <span class="bg-purple-600/20 text-purple-300 px-2 py-1 rounded">${analytics.templates_suggested || 0} templates</span>
+            </div>
+          </div>
+        `;
+      }
+      
+      attachResultHandlers() {
+        // Handle result item clicks
+        this.resultsContent.querySelectorAll('.search-result-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            if (e.target.classList.contains('action-btn')) return; // Skip if action button clicked
+            
+            const resultType = item.dataset.resultType;
+            const resultId = item.dataset.resultId;
+            
+            this.handleResultClick(resultType, resultId);
+          });
+        });
+        
+        // Handle action button clicks
+        this.resultsContent.querySelectorAll('.action-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = btn.dataset.action;
+            const resultId = btn.dataset.resultId;
+            
+            this.handleActionClick(action, resultId);
+          });
+        });
+      }
+      
+      handleResultClick(type, id) {
+        switch (type) {
+          case 'note':
+            // Open note - use existing note opening logic if available
+            const noteId = id.replace('note_', '');
+            window.open(`/note/${noteId}`, '_blank');
+            break;
+          case 'template':
+            // Open templates modal and apply template
+            if (window.templatesBtn) {
+              window.templatesBtn.click();
+            }
+            break;
+          case 'quick_action':
+            // Handle quick action
+            this.handleQuickAction(id);
+            break;
+        }
+      }
+      
+      handleActionClick(action, resultId) {
+        switch (action) {
+          case 'open':
+            const noteId = resultId.replace('note_', '');
+            window.open(`/note/${noteId}`, '_blank');
+            break;
+          case 'apply_template':
+            if (window.templatesBtn) {
+              window.templatesBtn.click();
+            }
+            break;
+          case 'create_note':
+            document.getElementById('note').focus();
+            document.getElementById('note').value = this.currentQuery;
+            this.hideResults();
+            break;
+          case 'web_search':
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(this.currentQuery)}`, '_blank');
+            break;
+          default:
+            console.log(`Action ${action} not implemented yet`);
+        }
+      }
+      
+      handleQuickAction(actionId) {
+        switch (actionId) {
+          case 'action_create_note':
+            document.getElementById('note').focus();
+            document.getElementById('note').value = this.currentQuery;
+            this.hideResults();
+            break;
+          case 'action_web_search':
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(this.currentQuery)}`, '_blank');
+            break;
+          case 'action_ai_assist':
+            // Placeholder for AI assistance
+            alert('AI assistance coming soon!');
+            break;
+        }
+      }
+      
+      showSuggestions() {
+        this.suggestionsContainer?.classList.remove('hidden');
+      }
+      
+      hideSuggestions() {
+        this.suggestionsContainer?.classList.add('hidden');
+      }
+      
+      showResults() {
+        this.resultsContainer?.classList.remove('hidden');
+      }
+      
+      hideResults() {
+        this.resultsContainer?.classList.add('hidden');
+      }
+      
+      showLoading() {
+        this.loadingIndicator?.classList.remove('hidden');
+      }
+      
+      hideLoading() {
+        this.loadingIndicator?.classList.add('hidden');
+      }
+      
+      showError(message) {
+        this.resultsContent.innerHTML = `
+          <div class="text-center py-8">
+            <div class="text-4xl mb-4">⚠️</div>
+            <h4 class="text-red-400 font-medium mb-2">Search Error</h4>
+            <p class="text-slate-400 text-sm">${message}</p>
+          </div>
+        `;
+        this.showResults();
+      }
+    }
+    
+    // Initialize unified search when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      window.unifiedSearch = new UnifiedSearchSystem();
+    });
+  </script>
+
+  <!-- Footer -->
+  <footer class="footer w-full mt-12 py-8 border-t border-slate-700/50 bg-slate-900/50">
+    <div class="footer-content max-w-4xl mx-auto px-6">
+      <p class="footer-description text-center text-slate-300 text-sm">
+        <span class="font-semibold text-blue-100">Second Brain</span> - Your thoughts - local, searchable, and AI-powered. Compatible with Obsidian &amp; Apple Shortcuts
+      </p>
+    </div>
+  </footer>
+
+{% endblock %}

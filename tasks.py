@@ -6,6 +6,13 @@ from typing import Optional
 from llm_utils import ollama_summarize, ollama_generate_title
 from config import settings
 from audio_utils import transcribe_audio
+from services.audio_queue import audio_queue
+try:
+    # Optional realtime status broadcasting
+    from realtime_status import status_manager  # type: ignore
+    _REALTIME = True
+except Exception:
+    _REALTIME = False
 
 
 def get_conn():
@@ -29,7 +36,37 @@ def process_note(note_id: int):
 
     if note_type == "audio" and audio_filename:
         audio_path = settings.audio_dir / audio_filename
-        transcript, converted_name = transcribe_audio(audio_path)
+        # Mark start of transcription
+        try:
+            c.execute("UPDATE notes SET status=? WHERE id=?", ("transcribing:0", note_id))
+            conn.commit()
+            if _REALTIME:
+                # Best-effort broadcast; ignore errors
+                try:
+                    import asyncio
+                    asyncio.run(status_manager.emit_progress(note_id, "transcribing", 10, "Starting transcription"))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        def _on_progress(done: int, total: int):
+            pct = 10 + int((done / max(total, 1)) * 70)
+            try:
+                c2 = get_conn().cursor()
+                c2.execute("UPDATE notes SET status=? WHERE id=?", (f"transcribing:{pct}", note_id))
+                c2.connection.commit()
+                c2.connection.close()
+                if _REALTIME:
+                    try:
+                        import asyncio
+                        asyncio.run(status_manager.emit_progress(note_id, "transcribing", pct, f"Segment {done}/{total}"))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        transcript, converted_name = transcribe_audio(audio_path, progress_cb=_on_progress)
         if transcript:
             content = transcript
             audio_filename = converted_name
@@ -59,18 +96,78 @@ def process_note(note_id: int):
     )
     conn.commit()
     conn.close()
+    
+    # Mark as completed in FIFO queue
+    audio_queue.mark_completed(note_id, success=True)
+
+    # Update Obsidian export with finalized content
+    try:
+        from obsidian_sync import ObsidianSync
+        ObsidianSync().export_note_to_obsidian(note_id)
+    except Exception:
+        pass
 
 
 def run_worker(poll_interval: int = 5):
+    """Worker that processes notes from FIFO queue with batch processing support"""
     while True:
-        conn = get_conn()
-        c = conn.cursor()
-        row = c.execute("SELECT id FROM notes WHERE status='pending' ORDER BY id LIMIT 1").fetchone()
-        conn.close()
-        if row:
-            process_note(row[0])
+        # Check if batch processing should be enabled
+        if audio_queue.should_enable_batch_processing():
+            # Process batch mode
+            process_batch()
         else:
-            time.sleep(poll_interval)
+            # Process single item from FIFO queue
+            next_item = audio_queue.get_next_for_processing()
+            if next_item:
+                note_id, user_id = next_item
+                try:
+                    process_note(note_id)
+                except Exception as e:
+                    print(f"Error processing note {note_id}: {e}")
+                    # Mark as failed in queue
+                    audio_queue.mark_completed(note_id, success=False)
+            else:
+                # No items in queue, sleep
+                time.sleep(poll_interval)
+
+
+def process_batch():
+    """Process all queued items in batch mode"""
+    conn = get_conn()
+    cursor = conn.cursor()
+    
+    # Get all queued items in FIFO order
+    cursor.execute("""
+        SELECT q.note_id, q.user_id 
+        FROM audio_processing_queue q
+        JOIN notes n ON q.note_id = n.id
+        WHERE q.status = 'queued'
+        ORDER BY q.priority DESC, n.timestamp ASC
+    """)
+    
+    queued_items = cursor.fetchall()
+    conn.close()
+    
+    if not queued_items:
+        return
+    
+    print(f"Starting batch processing of {len(queued_items)} items")
+    
+    for note_id, user_id in queued_items:
+        # Mark as processing (this will be handled by get_next_for_processing)
+        next_item = audio_queue.get_next_for_processing()
+        if next_item and next_item[0] == note_id:
+            try:
+                process_note(note_id)
+                print(f"Batch processed note {note_id}")
+            except Exception as e:
+                print(f"Error in batch processing note {note_id}: {e}")
+                audio_queue.mark_completed(note_id, success=False)
+        
+        # Small delay between batch items to prevent system overload
+        time.sleep(1)
+    
+    print(f"Completed batch processing of {len(queued_items)} items")
 
 
 if __name__ == "__main__":

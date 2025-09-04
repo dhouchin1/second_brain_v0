@@ -1,0 +1,13 @@
+<header class="w-full bg-gray-900/60 backdrop-blur border-b border-gray-800 text-blue-100">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2 font-semibold">
+      <img src="/static/brain-logo.svg" alt="Second Brain" class="h-6 w-6"/>
+      <span>Second Brain</span>
+    </a>
+    <nav class="flex items-center gap-4 text-sm">
+      {% set path = request.url.path %}
+      <a href="/" class="hover:underline {% if path == '/' %}underline font-semibold text-pink-200{% endif %}">Dashboard</a>
+      <a href="/search" class="hover:underline {% if path.startswith('/search') %}underline font-semibold text-pink-200{% endif %}">Advanced Search</a>
+    </nav>
+  </div>
+</header>

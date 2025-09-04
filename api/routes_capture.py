@@ -64,29 +64,67 @@ def _transcribe(wav_path: Path) -> str | None:
         return txt.read_text(encoding='utf-8') if txt.exists() else None
 
 @router.post('/capture/audio')
-def capture_audio(file: UploadFile = File(...), title: str | None = Form(None), tags: str | None = Form('')):
+def capture_audio(
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
+    tags: str | None = Form(''),
+    skip_transcription: bool = Form(default=False),
+    defer_convert: bool = Form(default=False),
+):
     # Save upload
     ts = int(time.time())
     raw_path = AUDIO_DIR / f"rec_{ts}_{file.filename or 'audio'}"
-    with raw_path.open('wb') as f:
-        f.write(file.file.read())
-    # Convert to wav
-    wav_path = raw_path.with_suffix('.wav')
+    # Stream to disk in chunks to avoid large memory spikes
     try:
-        _to_wav(raw_path, wav_path)
+        with raw_path.open('wb') as out:
+            while True:
+                chunk = file.file.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Audio convert failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Audio save failed: {e}")
+
+    # Honor global disable flag if set
+    env_disable = os.getenv('DISABLE_TRANSCRIPTION', '0') == '1'
+    effective_skip = bool(skip_transcription or env_disable)
+
+    wav_path = raw_path.with_suffix('.wav')
+    if not defer_convert:
+        try:
+            _to_wav(raw_path, wav_path)
+        except Exception as e:
+            # If conversion fails but caller asked to defer, allow raw storage
+            if effective_skip:
+                wav_path = None  # indicate not available
+            else:
+                raise HTTPException(status_code=400, detail=f"Audio convert failed: {e}")
+    else:
+        wav_path = None
+
     # Try to transcribe (optional)
     transcript = None
-    try:
-        transcript = _transcribe(wav_path)
-    except Exception:
-        transcript = None
+    if not effective_skip and wav_path is not None:
+        try:
+            transcript = _transcribe(wav_path)
+        except Exception:
+            transcript = None
     # Build note body
-    body_lines = [f"[Audio] {raw_path.name}", f"WAV: {wav_path.name}"]
+    body_lines = [f"[Audio] {raw_path.name}"]
+    if wav_path is not None:
+        body_lines.append(f"WAV: {wav_path.name}")
+    if effective_skip:
+        body_lines.append("")
+        body_lines.append("Transcript: [deferred]")
     if transcript:
         body_lines += ["", "Transcript:", transcript]
     body = "\n".join(body_lines)
     note_title = title or (transcript[:80] + '…' if transcript else f"Voice Capture {ts}")
     note_id = svc.upsert_note(None, note_title, body, tags or '')
-    return {"ok": True, "id": note_id, "transcribed": bool(transcript)}
+    return {
+        "ok": True,
+        "id": note_id,
+        "transcribed": bool(transcript),
+        "skipped": bool(effective_skip),
+        "converted": bool(wav_path is not None),
+    }

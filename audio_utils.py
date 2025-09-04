@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 import time
 from config import settings
+from typing import Callable, Optional
 
 # Optional Vosk (lightweight, offline ASR)
 try:
@@ -31,24 +32,22 @@ def _convert_to_wav_16k_mono(audio_path: Path) -> Path | None:
         return None
 
 
-def _transcribe_with_whisper(wav_path: Path) -> str:
+def _transcribe_with_whisper(wav_path: Path, timeout_seconds: int = 180) -> str:
     out_txt_path = wav_path.with_suffix(wav_path.suffix + '.txt')
     
-    # Use tiny model for much faster transcription (586KB vs 147MB)
-    tiny_model_path = settings.whisper_model_path.parent / "for-tests-ggml-tiny.en.bin"
-    model_to_use = tiny_model_path if tiny_model_path.exists() else settings.whisper_model_path
+    # Use the configured model
+    model_to_use = settings.whisper_model_path
     
     print(f"Using model: {model_to_use} (size: {model_to_use.stat().st_size // 1024}KB)")
     
     # Multi-layer CPU throttling to prevent machine slowdown
     whisper_cmd = [
-        "nice", "-n", "19",  # Maximum niceness (lowest CPU priority)
-        "timeout", "120s",   # Hard timeout at 2 minutes
+        "nice", "-n", "19",  # Lower CPU priority
         str(settings.whisper_cpp_path),
         "-m", str(model_to_use),
         "-f", str(wav_path),
         "-otxt",
-        "-t", "1",      # Force single thread 
+        "-t", "1",      # Force single thread
         "-ng",          # Disable GPU
         "--no-prints",  # Reduce output overhead
     ]
@@ -66,7 +65,7 @@ def _transcribe_with_whisper(wav_path: Path) -> str:
         )
         
         # Wait with timeout
-        stdout, stderr = process.communicate(timeout=180)
+        stdout, stderr = process.communicate(timeout=timeout_seconds)
         
         if process.returncode != 0:
             print(f"Whisper failed with return code {process.returncode}: {stderr}")
@@ -84,6 +83,47 @@ def _transcribe_with_whisper(wav_path: Path) -> str:
     if out_txt_path.exists() and out_txt_path.stat().st_size > 0:
         return out_txt_path.read_text().strip()
     return ""
+
+
+def _get_wav_duration_seconds(wav_path: Path) -> float:
+    try:
+        import wave
+        with wave.open(str(wav_path), 'rb') as wf:
+            frames = wf.getnframes()
+            rate = wf.getframerate() or 16000
+            return frames / float(rate) if rate else 0.0
+    except Exception:
+        return 0.0
+
+
+def _split_wav_by_duration(wav_path: Path, segment_seconds: int = 600) -> list[Path]:
+    """Split a PCM WAV into segments by duration using Python wave I/O.
+
+    Creates files alongside the original with suffix .partN.wav and returns their paths.
+    """
+    import wave
+    parts: list[Path] = []
+    try:
+        with wave.open(str(wav_path), 'rb') as wf:
+            params = wf.getparams()
+            rate = wf.getframerate() or 16000
+            chunk_frames = int(segment_seconds * rate)
+            total_frames = wf.getnframes()
+            idx = 0
+            while wf.tell() < total_frames:
+                frames = wf.readframes(chunk_frames)
+                if not frames:
+                    break
+                out_path = wav_path.with_suffix(f".part{idx}.wav")
+                with wave.open(str(out_path), 'wb') as out:
+                    out.setparams(params)
+                    out.writeframes(frames)
+                parts.append(out_path)
+                idx += 1
+    except Exception as e:
+        print(f"WAV split failed, processing as single file: {e}")
+        return []
+    return parts
 
 
 def _transcribe_with_vosk(wav_path: Path) -> str:
@@ -124,7 +164,7 @@ def _transcribe_with_vosk(wav_path: Path) -> str:
         return ""
 
 
-def transcribe_audio(audio_path: Path):
+def transcribe_audio(audio_path: Path, progress_cb: Optional[Callable[[int, int], None]] = None):
     """Convert audio to WAV and transcribe using configured backend.
 
     Returns (transcript_text, converted_wav_filename)
@@ -146,8 +186,34 @@ def transcribe_audio(audio_path: Path):
         text = _transcribe_with_vosk(wav_path)
         if not text:
             # Fallback to whisper if available
+            backend = 'whisper'
+    if backend == 'whisper':
+        # For long files, split into segments to avoid timeouts and memory spikes
+        max_seg = int(getattr(settings, 'transcription_segment_seconds', 600) or 600)
+        duration = _get_wav_duration_seconds(wav_path)
+        if duration > max_seg + 30:
+            parts = _split_wav_by_duration(wav_path, max_seg)
+            if parts:
+                seg_texts = []
+                for i, part in enumerate(parts):
+                    # Allow longer timeout per segment if needed
+                    timeout = 600 if max_seg >= 600 else 300
+                    seg_txt = _transcribe_with_whisper(part, timeout_seconds=timeout)
+                    seg_texts.append(seg_txt)
+                    if progress_cb:
+                        try:
+                            progress_cb(i + 1, len(parts))
+                        except Exception:
+                            pass
+                    try:
+                        part.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                text = "\n\n".join(t for t in seg_texts if t)
+            else:
+                # Fallback single-run with extended timeout
+                text = _transcribe_with_whisper(wav_path, timeout_seconds=600)
+        else:
             text = _transcribe_with_whisper(wav_path)
-    else:
-        text = _transcribe_with_whisper(wav_path)
 
     return text, wav_path.name

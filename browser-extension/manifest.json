@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Second Brain",
+  "version": "1.0.0",
+  "description": "Capture web content to your Second Brain with AI processing",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage",
+    "scripting",
+    "notifications",
+    "offscreen",
+    "alarms",
+    "favicon"
+  ],
+  "host_permissions": [
+    "http://localhost:8082/*",
+    "http://localhost:8084/*",
+    "https://*.secondbrain.ai/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Second Brain Capture"
+  },
+  "commands": {
+    "quick-capture": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Quick capture selection"
+    },
+    "capture-page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "Capture full page"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*", "content.css"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "options_page": "options.html"
+}
