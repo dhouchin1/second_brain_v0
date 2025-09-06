@@ -4535,6 +4535,275 @@ async def get_system_status():
         "timestamp": datetime.now().isoformat()
     }
 
+# ===== AI ASSISTANT API ENDPOINTS =====
+
+@app.post("/api/suggest-tags")
+async def api_suggest_tags(
+    request_data: dict = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Generate tag suggestions for note content using AI"""
+    content = request_data.get('content', '')
+    if not content:
+        raise HTTPException(status_code=400, detail="Content is required")
+    
+    try:
+        # Use Ollama to generate tag suggestions
+        prompt = f"""Analyze the following text and suggest 3-5 relevant tags that would help categorize this note. 
+        Return only the tags as a comma-separated list, no explanations:
+
+        {content[:1000]}"""  # Limit content to avoid token limits
+        
+        # Try to get AI suggestions
+        try:
+            from llm_utils import ollama_generate
+            ai_response = ollama_generate(prompt)
+            if ai_response and ai_response.strip():
+                tags = [tag.strip() for tag in ai_response.split(',') if tag.strip()]
+                tags = tags[:5]  # Limit to 5 tags max
+            else:
+                raise Exception("Empty AI response")
+        except Exception as ai_error:
+            # Fallback to rule-based tag generation
+            tags = generate_fallback_tags(content)
+        
+        return {"tags": tags}
+    except Exception as e:
+        # Return fallback tags even on error
+        fallback_tags = generate_fallback_tags(content)
+        return {"tags": fallback_tags}
+
+def generate_fallback_tags(content):
+    """Generate tags using simple keyword matching"""
+    tags = []
+    content_lower = content.lower()
+    
+    # Common tag patterns
+    if any(word in content_lower for word in ['meeting', 'call', 'discussion', 'conference']):
+        tags.append('meeting')
+    if any(word in content_lower for word in ['project', 'task', 'todo', 'deadline']):
+        tags.append('project')
+    if any(word in content_lower for word in ['idea', 'brainstorm', 'concept', 'thought']):
+        tags.append('idea')
+    if any(word in content_lower for word in ['research', 'study', 'analysis', 'findings']):
+        tags.append('research')
+    if any(word in content_lower for word in ['code', 'programming', 'development', 'software']):
+        tags.append('development')
+    if any(word in content_lower for word in ['note', 'memo', 'reminder']):
+        tags.append('notes')
+    if any(word in content_lower for word in ['important', 'urgent', 'priority']):
+        tags.append('important')
+    
+    # Default tags if none found
+    if not tags:
+        tags = ['general', 'personal']
+    
+    return tags[:5]  # Limit to 5 tags
+
+@app.post("/api/generate-summary")
+async def api_generate_summary(
+    request_data: dict = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Generate a summary for note content using AI"""
+    content = request_data.get('content', '')
+    if not content:
+        raise HTTPException(status_code=400, detail="Content is required")
+    
+    try:
+        # Use existing Ollama summarization
+        summary = ollama_summarize(content)
+        
+        if not summary or summary.strip() == "":
+            # Fallback to simple summary
+            summary = generate_simple_summary(content)
+        
+        return {"summary": summary}
+    except Exception as e:
+        # Fallback summary generation
+        summary = generate_simple_summary(content)
+        return {"summary": summary}
+
+def generate_simple_summary(content):
+    """Generate a simple extractive summary"""
+    sentences = [s.strip() for s in re.split(r'[.!?]+', content) if s.strip() and len(s.strip()) > 20]
+    
+    if len(sentences) <= 3:
+        return content[:200] + ('...' if len(content) > 200 else '')
+    
+    # Take first 2-3 sentences as summary
+    summary_sentences = sentences[:3]
+    summary = '. '.join(summary_sentences) + '.'
+    
+    # Ensure reasonable length
+    if len(summary) > 300:
+        summary = summary[:300] + '...'
+    
+    return summary
+
+@app.post("/api/semantic-search")
+async def api_semantic_search(
+    request_data: dict = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Perform semantic search using vector similarities"""
+    query = request_data.get('query', '')
+    limit = request_data.get('limit', 10)
+    
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required")
+    
+    try:
+        # Try to use the advanced search service
+        from services.search_adapter import get_search_service
+        search_service = get_search_service()
+        
+        # Use vector search mode if available
+        results = search_service.search(
+            query=query,
+            user_id=current_user.id,
+            limit=limit,
+            mode="vector"
+        )
+        
+        return results.get("results", [])
+    except Exception as e:
+        # Fallback to regular text search
+        conn = get_conn()
+        c = conn.cursor()
+        
+        try:
+            search_query = f"%{query}%"
+            rows = c.execute("""
+                SELECT id, title, content, summary, tags, type, timestamp, created_at, updated_at
+                FROM notes 
+                WHERE user_id = ? AND (
+                    title LIKE ? OR 
+                    content LIKE ? OR 
+                    summary LIKE ? OR 
+                    tags LIKE ?
+                )
+                ORDER BY COALESCE(timestamp, created_at, updated_at) DESC 
+                LIMIT ?
+            """, (current_user.id, search_query, search_query, search_query, search_query, limit)).fetchall()
+            
+            results = []
+            for row in rows:
+                note_dict = dict(zip([col[0] for col in c.description], row))
+                created_at = note_dict.get('created_at') or note_dict.get('timestamp') or note_dict.get('updated_at')
+                
+                results.append({
+                    "id": note_dict['id'],
+                    "title": note_dict.get('title', 'Untitled'),
+                    "content": note_dict.get('content', ''),
+                    "summary": note_dict.get('summary', ''),
+                    "tags": note_dict.get('tags', ''),
+                    "created_at": created_at,
+                    "type": note_dict.get('type', 'text')
+                })
+            
+            return results
+        except Exception as db_error:
+            raise HTTPException(status_code=500, detail=f"Search failed: {str(db_error)}")
+        finally:
+            conn.close()
+
+@app.get("/api/user/activity")
+async def api_user_activity(
+    days: int = Query(7, ge=1, le=365),
+    current_user: User = Depends(get_current_user)
+):
+    """Get user activity statistics for analytics"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        # Get notes created in the last N days
+        cutoff_date = datetime.now() - timedelta(days=days)
+        rows = c.execute("""
+            SELECT 
+                DATE(COALESCE(created_at, timestamp)) as date,
+                COUNT(*) as count,
+                COUNT(CASE WHEN type = 'audio' THEN 1 END) as audio_notes,
+                COUNT(CASE WHEN type = 'text' THEN 1 END) as text_notes,
+                AVG(LENGTH(content)) as avg_length
+            FROM notes 
+            WHERE user_id = ? AND COALESCE(created_at, timestamp) >= ?
+            GROUP BY DATE(COALESCE(created_at, timestamp))
+            ORDER BY date DESC
+        """, (current_user.id, cutoff_date.strftime("%Y-%m-%d"))).fetchall()
+        
+        activity_data = []
+        for row in rows:
+            activity_data.append({
+                "date": row[0],
+                "count": row[1],
+                "audio_notes": row[2],
+                "text_notes": row[3],
+                "avg_length": round(row[4] or 0, 2)
+            })
+        
+        # Get total statistics
+        total_row = c.execute("""
+            SELECT 
+                COUNT(*) as total_notes,
+                COUNT(CASE WHEN type = 'audio' THEN 1 END) as total_audio,
+                COUNT(CASE WHEN type = 'text' THEN 1 END) as total_text,
+                AVG(LENGTH(content)) as avg_content_length
+            FROM notes 
+            WHERE user_id = ?
+        """, (current_user.id,)).fetchone()
+        
+        return {
+            "activity": activity_data,
+            "totals": {
+                "total_notes": total_row[0],
+                "total_audio": total_row[1],
+                "total_text": total_row[2],
+                "avg_content_length": round(total_row[3] or 0, 2)
+            },
+            "period_days": days
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get activity data: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/user/preferences")
+async def api_get_user_preferences(current_user: User = Depends(get_current_user)):
+    """Get user preferences for the frontend"""
+    # For now, return default preferences - in the future this could be stored in DB
+    return {
+        "theme": "light",
+        "notifications": True,
+        "auto_save": True,
+        "ai_suggestions": True,
+        "advanced_search": True,
+        "collaborative_editing": False,
+        "analytics_tracking": True
+    }
+
+@app.post("/api/user/preferences")
+async def api_update_user_preferences(
+    preferences: dict = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Update user preferences (stored in localStorage for now)"""
+    # For now, just validate and return the preferences
+    # In the future, these could be stored in the database
+    allowed_preferences = {
+        'theme', 'notifications', 'auto_save', 'ai_suggestions', 
+        'advanced_search', 'collaborative_editing', 'analytics_tracking'
+    }
+    
+    filtered_preferences = {k: v for k, v in preferences.items() if k in allowed_preferences}
+    
+    return {
+        "status": "updated",
+        "preferences": filtered_preferences,
+        "message": "Preferences updated successfully"
+    }
+
 # Route to serve the new dashboard
 @app.get("/dashboard/v2")
 def dashboard_v2(request: Request):

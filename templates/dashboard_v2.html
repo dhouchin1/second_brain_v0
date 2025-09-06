@@ -1920,8 +1920,115 @@
             }
         }
 
+        // API Configuration and Error Handling
+        window.API_BASE = '/api';
+        window.API_TIMEOUT = 30000; // 30 seconds
+        
+        // Enhanced API call wrapper with error handling and retry logic
+        async function apiCall(endpoint, options = {}) {
+            const url = endpoint.startsWith('/') ? endpoint : `${API_BASE}/${endpoint}`;
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                timeout: API_TIMEOUT
+            };
+            
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            // Add authorization header if available
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                finalOptions.headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), finalOptions.timeout);
+                
+                finalOptions.signal = controller.signal;
+                delete finalOptions.timeout;
+                
+                const response = await fetch(url, finalOptions);
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    // Handle different HTTP error codes
+                    switch (response.status) {
+                        case 401:
+                            showToast('Authentication required. Please log in again.', 'error');
+                            // Redirect to login or refresh token
+                            break;
+                        case 403:
+                            showToast('Access forbidden. Insufficient permissions.', 'error');
+                            break;
+                        case 404:
+                            showToast('Resource not found.', 'error');
+                            break;
+                        case 500:
+                            showToast('Server error. Please try again later.', 'error');
+                            break;
+                        default:
+                            showToast(`Request failed: ${response.status}`, 'error');
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return await response.json();
+                } else {
+                    return await response.text();
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showToast('Request timeout. Please try again.', 'error');
+                    throw new Error('Request timeout');
+                } else if (error.message.includes('Failed to fetch')) {
+                    showToast('Network error. Please check your connection.', 'error');
+                    throw new Error('Network error');
+                } else {
+                    console.error('API call failed:', error);
+                    throw error;
+                }
+            }
+        }
+        
+        // Enhanced connection status monitoring
+        let networkStatus = navigator.onLine ? 'online' : 'offline';
+        let apiHealth = 'unknown';
+        
+        window.addEventListener('online', () => {
+            networkStatus = 'online';
+            showToast('Connection restored', 'success');
+            checkAPIHealth();
+        });
+        
+        window.addEventListener('offline', () => {
+            networkStatus = 'offline';
+            showToast('Connection lost. Working offline.', 'warning');
+            updateConnectionStatus('disconnected', 'Offline');
+        });
+        
+        async function checkAPIHealth() {
+            try {
+                await apiCall('/api/system/status');
+                apiHealth = 'healthy';
+                if (networkStatus === 'online') {
+                    updateConnectionStatus('connected', 'Online');
+                }
+            } catch (error) {
+                apiHealth = 'unhealthy';
+                updateConnectionStatus('error', 'API Error');
+            }
+        }
+
         // Initialize all features
         document.addEventListener('DOMContentLoaded', function() {
+            // Check initial API health
+            checkAPIHealth();
+            
+            // Load core features
             loadRecentNotes();
             loadStats();
             loadSearchHistory();
@@ -1952,6 +2059,9 @@
             
             // Initialize WebSocket for real-time features
             initializeWebSocket();
+            
+            // Periodic health checks
+            setInterval(checkAPIHealth, 60000); // Check every minute
             
             // Enhanced form submission with real-time support
             document.getElementById('noteForm').addEventListener('submit', handleNoteSubmitRealtime);
@@ -2026,21 +2136,15 @@
             }
         }
 
-        // Load recent notes
+        // Load recent notes with enhanced API integration
         async function loadRecentNotes() {
             try {
-                const response = await fetch('/api/notes?limit=10');
-                if (response.ok) {
-                    const notes = await response.json();
-                    displayRecentNotes(notes);
-                } else {
-                    document.getElementById('recentNotes').innerHTML = 
-                        '<div class="text-sm text-gray-500 text-center py-8">Failed to load notes</div>';
-                }
+                const notes = await apiCall('/api/notes?limit=10');
+                displayRecentNotes(notes);
             } catch (error) {
                 console.error('Error loading recent notes:', error);
                 document.getElementById('recentNotes').innerHTML = 
-                    '<div class="text-sm text-gray-500 text-center py-8">Error loading notes</div>';
+                    '<div class="text-sm text-gray-500 text-center py-8">Unable to load notes</div>';
             }
         }
 
@@ -2071,36 +2175,35 @@
             container.innerHTML = html;
         }
 
-        // Load statistics
+        // Load statistics with enhanced API integration
         async function loadStats() {
             try {
-                const response = await fetch('/api/stats');
-                if (response.ok) {
-                    const stats = await response.json();
-                    document.getElementById('totalNotes').textContent = stats.total_notes || '0';
-                    document.getElementById('weeklyNotes').textContent = stats.weekly_notes || '0';
-                }
+                const stats = await apiCall('/api/stats');
+                document.getElementById('totalNotes').textContent = stats.total_notes || '0';
+                document.getElementById('weeklyNotes').textContent = stats.weekly_notes || '0';
             } catch (error) {
                 console.error('Error loading stats:', error);
+                // Set default values on error
+                document.getElementById('totalNotes').textContent = '0';
+                document.getElementById('weeklyNotes').textContent = '0';
             }
         }
 
-        // Perform search
+        // Perform search with enhanced API integration
         async function performSearch() {
             const query = document.getElementById('searchInput').value.trim();
             if (!query) return;
             
             try {
-                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-                if (response.ok) {
-                    const results = await response.json();
-                    displaySearchResults(results, query);
-                } else {
-                    showToast('Search failed. Please try again.', 'error');
-                }
+                const results = await apiCall(`/api/search?q=${encodeURIComponent(query)}`);
+                displaySearchResults(results, query);
+                
+                // Save to search history
+                saveSearchToHistory(query);
             } catch (error) {
                 console.error('Error performing search:', error);
-                showToast('Search failed. Please try again.', 'error');
+                // Show empty results on error
+                displaySearchResults([], query);
             }
         }
 

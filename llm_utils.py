@@ -132,3 +132,35 @@ def ollama_generate_title(text):
     except Exception as e:
         print("Ollama title exception:", e)
         return "Untitled Note"
+
+
+def ollama_generate(prompt):
+    """General purpose text generation using local Ollama."""
+    if not _check_ai_processing_allowed():
+        logger.warning("AI processing not allowed, returning empty response")
+        return ""
+        
+    if not prompt or not prompt.strip():
+        return ""
+        
+    try:
+        resp = requests.post(
+            settings.ollama_api_url,
+            json={
+                "model": settings.ollama_model,
+                "prompt": prompt,
+                "stream": True,
+                "options": _ollama_options_dict() or None,
+            },
+            timeout=30,
+        )
+        response = ""
+        for line in resp.iter_lines():
+            if line:
+                obj = json.loads(line.decode("utf-8"))
+                if "response" in obj:
+                    response += obj["response"]
+        return response.strip()
+    except Exception as e:
+        logger.error(f"Ollama generate exception: {e}")
+        return ""
