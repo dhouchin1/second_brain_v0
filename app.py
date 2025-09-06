@@ -3984,6 +3984,308 @@ async def api_get_stats(current_user: User = Depends(get_current_user)):
     finally:
         conn.close()
 
+# Additional API endpoints for enhanced frontend
+
+@app.get("/api/notes/{note_id}")
+async def api_get_note(note_id: int, current_user: User = Depends(get_current_user)):
+    """Get a specific note by ID"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        row = c.execute("""
+            SELECT id, title, content, body, summary, tags, type, status, timestamp, created_at, updated_at
+            FROM notes 
+            WHERE id = ? AND user_id = ?
+        """, (note_id, current_user.id)).fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="Note not found")
+        
+        note_dict = dict(zip([col[0] for col in c.description], row))
+        # Ensure we have a display date
+        created_at = note_dict.get('created_at') or note_dict.get('timestamp') or note_dict.get('updated_at')
+        note_dict['created_at'] = created_at
+        
+        return note_dict
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch note: {str(e)}")
+    finally:
+        conn.close()
+
+@app.put("/api/notes/{note_id}")
+async def api_update_note(
+    note_id: int,
+    note_data: dict = Body(...),
+    background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a specific note"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        # Verify note exists and belongs to user
+        existing = c.execute(
+            "SELECT id FROM notes WHERE id = ? AND user_id = ?",
+            (note_id, current_user.id)
+        ).fetchone()
+        
+        if not existing:
+            raise HTTPException(status_code=404, detail="Note not found")
+        
+        title = note_data.get('title', '').strip()
+        content = note_data.get('content', '').strip()
+        tags = note_data.get('tags', '').strip()
+        
+        if not content:
+            raise HTTPException(status_code=400, detail="Content is required")
+        
+        # Update note
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("""
+            UPDATE notes 
+            SET title = ?, content = ?, body = ?, tags = ?, updated_at = ?
+            WHERE id = ? AND user_id = ?
+        """, (title, content, content, tags, now, note_id, current_user.id))
+        
+        conn.commit()
+        
+        # Queue for AI processing if available
+        if background_tasks:
+            background_tasks.add_task(process_note, note_id)
+        
+        return {
+            "id": note_id,
+            "title": title,
+            "content": content,
+            "tags": tags,
+            "updated_at": now,
+            "status": "updated"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update note: {str(e)}")
+    finally:
+        conn.close()
+
+@app.delete("/api/notes/{note_id}")
+async def api_delete_note(note_id: int, current_user: User = Depends(get_current_user)):
+    """Delete a specific note"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        # Verify note exists and belongs to user
+        existing = c.execute(
+            "SELECT id FROM notes WHERE id = ? AND user_id = ?",
+            (note_id, current_user.id)
+        ).fetchone()
+        
+        if not existing:
+            raise HTTPException(status_code=404, detail="Note not found")
+        
+        # Soft delete by updating status
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("""
+            UPDATE notes 
+            SET status = 'deleted', updated_at = ?
+            WHERE id = ? AND user_id = ?
+        """, (now, note_id, current_user.id))
+        
+        conn.commit()
+        
+        return {"status": "deleted", "id": note_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete note: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/notes/random")
+async def api_get_random_note(current_user: User = Depends(get_current_user)):
+    """Get a random note"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        row = c.execute("""
+            SELECT id, title, content, summary, tags, type, status, timestamp, created_at, updated_at
+            FROM notes 
+            WHERE user_id = ? AND status != 'deleted' 
+            ORDER BY RANDOM() 
+            LIMIT 1
+        """, (current_user.id,)).fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail="No notes found")
+        
+        note_dict = dict(zip([col[0] for col in c.description], row))
+        created_at = note_dict.get('created_at') or note_dict.get('timestamp') or note_dict.get('updated_at')
+        note_dict['created_at'] = created_at
+        
+        return note_dict
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch random note: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/search/advanced")
+async def api_advanced_search(
+    q: str = Query("", description="Search query"),
+    date_range: str = Query("", description="Date range filter"),
+    type: str = Query("", description="Note type filter"), 
+    tags: str = Query("", description="Tags filter"),
+    limit: int = Query(20, le=100),
+    current_user: User = Depends(get_current_user)
+):
+    """Advanced search with filters"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        # Build query conditions
+        conditions = ["user_id = ?", "status != 'deleted'"]
+        params = [current_user.id]
+        
+        # Text search
+        if q:
+            conditions.append("(title LIKE ? OR content LIKE ? OR summary LIKE ?)")
+            search_term = f"%{q}%"
+            params.extend([search_term, search_term, search_term])
+        
+        # Date range filter
+        if date_range:
+            now = datetime.now()
+            if date_range == "today":
+                start_date = now.strftime("%Y-%m-%d 00:00:00")
+                conditions.append("COALESCE(timestamp, created_at, updated_at) >= ?")
+                params.append(start_date)
+            elif date_range == "week":
+                start_date = (now - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+                conditions.append("COALESCE(timestamp, created_at, updated_at) >= ?")
+                params.append(start_date)
+            elif date_range == "month":
+                start_date = (now - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+                conditions.append("COALESCE(timestamp, created_at, updated_at) >= ?")
+                params.append(start_date)
+            elif date_range == "year":
+                start_date = (now - timedelta(days=365)).strftime("%Y-%m-%d %H:%M:%S")
+                conditions.append("COALESCE(timestamp, created_at, updated_at) >= ?")
+                params.append(start_date)
+        
+        # Type filter
+        if type:
+            conditions.append("type = ?")
+            params.append(type)
+        
+        # Tags filter
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            tag_conditions = []
+            for tag in tag_list:
+                tag_conditions.append("tags LIKE ?")
+                params.append(f"%{tag}%")
+            if tag_conditions:
+                conditions.append(f"({' OR '.join(tag_conditions)})")
+        
+        # Execute query
+        where_clause = " AND ".join(conditions)
+        query = f"""
+            SELECT id, title, content, summary, tags, type, timestamp, created_at, updated_at
+            FROM notes 
+            WHERE {where_clause}
+            ORDER BY COALESCE(timestamp, created_at, updated_at) DESC 
+            LIMIT ?
+        """
+        params.append(limit)
+        
+        rows = c.execute(query, params).fetchall()
+        
+        results = []
+        for row in rows:
+            note_dict = dict(zip([col[0] for col in c.description], row))
+            created_at = note_dict.get('created_at') or note_dict.get('timestamp') or note_dict.get('updated_at')
+            note_dict['created_at'] = created_at
+            results.append(note_dict)
+        
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Advanced search failed: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/export/{format}")
+async def api_export_notes(
+    format: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Export notes in various formats"""
+    if format not in ["json", "csv", "markdown"]:
+        raise HTTPException(status_code=400, detail="Unsupported export format")
+    
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        rows = c.execute("""
+            SELECT id, title, content, summary, tags, type, timestamp, created_at, updated_at
+            FROM notes 
+            WHERE user_id = ? AND status != 'deleted'
+            ORDER BY COALESCE(timestamp, created_at, updated_at) DESC
+        """, (current_user.id,)).fetchall()
+        
+        notes = []
+        for row in rows:
+            note_dict = dict(zip([col[0] for col in c.description], row))
+            created_at = note_dict.get('created_at') or note_dict.get('timestamp') or note_dict.get('updated_at')
+            note_dict['created_at'] = created_at
+            notes.append(note_dict)
+        
+        if format == "json":
+            content = json.dumps(notes, indent=2, default=str)
+            media_type = "application/json"
+        elif format == "csv":
+            import csv
+            import io
+            output = io.StringIO()
+            if notes:
+                fieldnames = notes[0].keys()
+                writer = csv.DictWriter(output, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(notes)
+            content = output.getvalue()
+            media_type = "text/csv"
+        elif format == "markdown":
+            content = "# Second Brain Export\n\n"
+            for note in notes:
+                content += f"## {note.get('title', 'Untitled')}\n\n"
+                if note.get('tags'):
+                    content += f"**Tags:** {note['tags']}\n\n"
+                content += f"{note.get('content', '')}\n\n"
+                content += f"*Created: {note.get('created_at', 'Unknown')}*\n\n"
+                content += "---\n\n"
+            media_type = "text/markdown"
+        
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename=second-brain-export.{format}"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+    finally:
+        conn.close()
+
 # Route to serve the new dashboard
 @app.get("/dashboard/v2")
 def dashboard_v2(request: Request):
