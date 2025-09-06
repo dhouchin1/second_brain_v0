@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Second Brain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">🧠</span>
+                    </div>
+                    <h1 class="text-xl font-semibold text-gray-900">Second Brain</h1>
+                </div>
+                
+                <!-- User Info -->
+                <div class="flex items-center space-x-4">
+                    {% if current_user %}
+                    <span class="text-sm text-gray-600">Hello, {{ current_user.username }}</span>
+                    <a href="/logout" class="text-sm text-primary-600 hover:text-primary-700">Logout</a>
+                    {% else %}
+                    <a href="/login" class="text-sm text-primary-600 hover:text-primary-700">Login</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column - Note Input -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Quick Note Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Quick Note</h2>
+                    <form id="noteForm" class="space-y-4">
+                        <div>
+                            <label for="note_title" class="block text-sm font-medium text-gray-700 mb-1">
+                                Title (optional)
+                            </label>
+                            <input type="text" 
+                                   id="note_title" 
+                                   name="title" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                   placeholder="Enter a title...">
+                        </div>
+                        <div>
+                            <label for="note_content" class="block text-sm font-medium text-gray-700 mb-1">
+                                Content
+                            </label>
+                            <textarea id="note_content" 
+                                      name="content" 
+                                      rows="6"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y"
+                                      placeholder="Start typing your note..."></textarea>
+                        </div>
+                        <div>
+                            <label for="note_tags" class="block text-sm font-medium text-gray-700 mb-1">
+                                Tags (optional)
+                            </label>
+                            <input type="text" 
+                                   id="note_tags" 
+                                   name="tags" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                   placeholder="Enter tags separated by commas...">
+                        </div>
+                        <div class="flex space-x-3">
+                            <button type="submit" 
+                                    class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors">
+                                Save Note
+                            </button>
+                            <button type="button" 
+                                    onclick="clearForm()"
+                                    class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
+                                Clear
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Search Section -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Search Notes</h2>
+                    <div class="flex space-x-3">
+                        <input type="text" 
+                               id="searchInput" 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                               placeholder="Search your notes...">
+                        <button onclick="performSearch()" 
+                                class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors">
+                            Search
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div id="searchResults" class="hidden bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Search Results</h3>
+                    <div id="searchResultsList" class="space-y-4">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Recent Notes & Stats -->
+            <div class="space-y-6">
+                <!-- Stats Card -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Stats</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">Total Notes</span>
+                            <span id="totalNotes" class="text-sm font-medium text-gray-900">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-600">This Week</span>
+                            <span id="weeklyNotes" class="text-sm font-medium text-gray-900">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Notes -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Notes</h3>
+                    <div id="recentNotes" class="space-y-3">
+                        <div class="text-sm text-gray-500 text-center py-8">
+                            Loading recent notes...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2">
+        <!-- Toasts will be added here -->
+    </div>
+
+    <script>
+        // Global state
+        let notes = [];
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRecentNotes();
+            loadStats();
+            
+            // Add form submission handler
+            document.getElementById('noteForm').addEventListener('submit', handleNoteSubmit);
+            
+            // Add search on enter
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+        });
+
+        // Handle note form submission
+        async function handleNoteSubmit(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const noteData = {
+                title: formData.get('title') || '',
+                content: formData.get('content'),
+                tags: formData.get('tags') || ''
+            };
+            
+            if (!noteData.content.trim()) {
+                showToast('Please enter some content for your note', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(noteData)
+                });
+                
+                if (response.ok) {
+                    showToast('Note saved successfully!', 'success');
+                    clearForm();
+                    loadRecentNotes();
+                    loadStats();
+                } else {
+                    throw new Error('Failed to save note');
+                }
+            } catch (error) {
+                console.error('Error saving note:', error);
+                showToast('Failed to save note. Please try again.', 'error');
+            }
+        }
+
+        // Load recent notes
+        async function loadRecentNotes() {
+            try {
+                const response = await fetch('/api/notes?limit=10');
+                if (response.ok) {
+                    const notes = await response.json();
+                    displayRecentNotes(notes);
+                } else {
+                    document.getElementById('recentNotes').innerHTML = 
+                        '<div class="text-sm text-gray-500 text-center py-8">Failed to load notes</div>';
+                }
+            } catch (error) {
+                console.error('Error loading recent notes:', error);
+                document.getElementById('recentNotes').innerHTML = 
+                    '<div class="text-sm text-gray-500 text-center py-8">Error loading notes</div>';
+            }
+        }
+
+        // Display recent notes
+        function displayRecentNotes(notes) {
+            const container = document.getElementById('recentNotes');
+            
+            if (notes.length === 0) {
+                container.innerHTML = '<div class="text-sm text-gray-500 text-center py-8">No notes yet</div>';
+                return;
+            }
+            
+            const html = notes.map(note => `
+                <div class="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" 
+                     onclick="viewNote('${note.id}')">
+                    <div class="font-medium text-sm text-gray-900 mb-1">
+                        ${note.title || 'Untitled'}
+                    </div>
+                    <div class="text-xs text-gray-600 mb-2">
+                        ${new Date(note.created_at).toLocaleDateString()}
+                    </div>
+                    <div class="text-sm text-gray-700 line-clamp-2">
+                        ${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('totalNotes').textContent = stats.total_notes || '0';
+                    document.getElementById('weeklyNotes').textContent = stats.weekly_notes || '0';
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Perform search
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+            
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                if (response.ok) {
+                    const results = await response.json();
+                    displaySearchResults(results, query);
+                } else {
+                    showToast('Search failed. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Error performing search:', error);
+                showToast('Search failed. Please try again.', 'error');
+            }
+        }
+
+        // Display search results
+        function displaySearchResults(results, query) {
+            const container = document.getElementById('searchResults');
+            const resultsList = document.getElementById('searchResultsList');
+            
+            if (results.length === 0) {
+                resultsList.innerHTML = `
+                    <div class="text-sm text-gray-500 text-center py-8">
+                        No results found for "${query}"
+                    </div>
+                `;
+            } else {
+                const html = results.map(note => `
+                    <div class="p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors" 
+                         onclick="viewNote('${note.id}')">
+                        <div class="font-medium text-sm text-gray-900 mb-1">
+                            ${note.title || 'Untitled'}
+                        </div>
+                        <div class="text-xs text-gray-600 mb-2">
+                            ${new Date(note.created_at).toLocaleDateString()}
+                        </div>
+                        <div class="text-sm text-gray-700">
+                            ${note.content.substring(0, 200)}${note.content.length > 200 ? '...' : ''}
+                        </div>
+                        ${note.tags ? `
+                            <div class="mt-2 flex flex-wrap gap-1">
+                                ${note.tags.split(',').map(tag => `
+                                    <span class="inline-block bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded-full">
+                                        ${tag.trim()}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+                
+                resultsList.innerHTML = html;
+            }
+            
+            container.classList.remove('hidden');
+        }
+
+        // View individual note
+        function viewNote(noteId) {
+            // For now, just log - we'll implement proper note viewing later
+            console.log('View note:', noteId);
+            showToast('Note viewing coming soon!', 'info');
+        }
+
+        // Clear form
+        function clearForm() {
+            document.getElementById('noteForm').reset();
+        }
+
+        // Toast notification system
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColor = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500',
+                warning: 'bg-yellow-500'
+            }[type] || 'bg-blue-500';
+            
+            toast.className = `${bgColor} text-white px-4 py-2 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300`;
+            toast.textContent = message;
+            
+            container.appendChild(toast);
+            
+            // Show toast
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Hide and remove toast
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.parentElement.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

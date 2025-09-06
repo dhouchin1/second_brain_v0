@@ -3809,3 +3809,190 @@ def verify_webhook_token_local(credentials: HTTPAuthorizationCredentials = Depen
     # Delegate to auth service imported function
     from services.auth_service import verify_webhook_token
     return verify_webhook_token(credentials)
+
+# ============================================================================
+# Frontend API Endpoints for Dashboard v2
+# ============================================================================
+
+@app.get("/api/notes")
+async def api_get_notes(
+    limit: int = Query(10, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user)
+):
+    """Get recent notes for the current user"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        rows = c.execute("""
+            SELECT id, title, content, summary, tags, type, status, timestamp, created_at, updated_at
+            FROM notes 
+            WHERE user_id = ? 
+            ORDER BY COALESCE(timestamp, created_at, updated_at) DESC 
+            LIMIT ? OFFSET ?
+        """, (current_user.id, limit, offset)).fetchall()
+        
+        notes = []
+        for row in rows:
+            note_dict = dict(zip([col[0] for col in c.description], row))
+            # Ensure we have a display date
+            created_at = note_dict.get('created_at') or note_dict.get('timestamp') or note_dict.get('updated_at')
+            note_dict['created_at'] = created_at
+            notes.append(note_dict)
+        
+        return notes
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch notes: {str(e)}")
+    finally:
+        conn.close()
+
+@app.post("/api/notes")
+async def api_create_note(
+    note_data: dict = Body(...),
+    background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new note"""
+    title = note_data.get('title', '').strip()
+    content = note_data.get('content', '').strip()
+    tags = note_data.get('tags', '').strip()
+    
+    if not content:
+        raise HTTPException(status_code=400, detail="Content is required")
+    
+    # Generate title if not provided
+    if not title:
+        try:
+            title = ollama_generate_title(content)
+            if not title or title.strip() == "":
+                title = content[:50] + ("..." if len(content) > 50 else "")
+        except:
+            title = content[:50] + ("..." if len(content) > 50 else "")
+    
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("""
+            INSERT INTO notes (title, body, content, tags, type, timestamp, user_id, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (title, content, content, tags, 'text', now, current_user.id, 'active'))
+        
+        note_id = c.lastrowid
+        conn.commit()
+        
+        # Queue for AI processing if available
+        if background_tasks:
+            background_tasks.add_task(process_note, note_id)
+        
+        return {
+            "id": note_id,
+            "title": title,
+            "content": content,
+            "tags": tags,
+            "created_at": now,
+            "status": "created"
+        }
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create note: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/search")
+async def api_search_notes(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(20, le=100),
+    current_user: User = Depends(get_current_user)
+):
+    """Search notes using the unified search service"""
+    try:
+        from services.search_adapter import get_search_service
+        search_service = get_search_service()
+        
+        # Use the unified search service
+        results = search_service.search(
+            query=q,
+            user_id=current_user.id,
+            limit=limit,
+            mode="hybrid"  # Use hybrid search by default
+        )
+        
+        return results.get("results", [])
+    except Exception as e:
+        # Fallback to basic SQL search if unified search fails
+        conn = get_conn()
+        c = conn.cursor()
+        
+        try:
+            search_query = f"%{q}%"
+            rows = c.execute("""
+                SELECT id, title, content, summary, tags, type, timestamp, created_at, updated_at
+                FROM notes 
+                WHERE user_id = ? AND (
+                    title LIKE ? OR 
+                    content LIKE ? OR 
+                    summary LIKE ? OR 
+                    tags LIKE ?
+                )
+                ORDER BY COALESCE(timestamp, created_at, updated_at) DESC 
+                LIMIT ?
+            """, (current_user.id, search_query, search_query, search_query, search_query, limit)).fetchall()
+            
+            results = []
+            for row in rows:
+                note_dict = dict(zip([col[0] for col in c.description], row))
+                created_at = note_dict.get('created_at') or note_dict.get('timestamp') or note_dict.get('updated_at')
+                note_dict['created_at'] = created_at
+                results.append(note_dict)
+            
+            return results
+        except Exception as fallback_error:
+            raise HTTPException(status_code=500, detail=f"Search failed: {str(fallback_error)}")
+        finally:
+            conn.close()
+
+@app.get("/api/stats")
+async def api_get_stats(current_user: User = Depends(get_current_user)):
+    """Get user statistics"""
+    conn = get_conn()
+    c = conn.cursor()
+    
+    try:
+        # Total notes
+        total_notes = c.execute(
+            "SELECT COUNT(*) FROM notes WHERE user_id = ? AND status != 'deleted'",
+            (current_user.id,)
+        ).fetchone()[0]
+        
+        # Notes from this week
+        week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        weekly_notes = c.execute("""
+            SELECT COUNT(*) FROM notes 
+            WHERE user_id = ? AND status != 'deleted' 
+            AND COALESCE(timestamp, created_at, updated_at) >= ?
+        """, (current_user.id, week_ago)).fetchone()[0]
+        
+        return {
+            "total_notes": total_notes,
+            "weekly_notes": weekly_notes
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch stats: {str(e)}")
+    finally:
+        conn.close()
+
+# Route to serve the new dashboard
+@app.get("/dashboard/v2")
+def dashboard_v2(request: Request):
+    """Serve the new modern dashboard"""
+    current_user = get_current_user_silent(request)
+    if not current_user:
+        return RedirectResponse("/login", status_code=302)
+    
+    return templates.TemplateResponse("dashboard_v2.html", {
+        "request": request,
+        "current_user": current_user
+    })

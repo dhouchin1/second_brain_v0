@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## GitHub Repository
+- **Repository**: [dhouchin1/second_brain](https://github.com/dhouchin1/second_brain)
+- **Primary Branch**: `main`
+- **Development Model**: Feature branches with PR-based workflow
+- **Recent Activity**: Active development with automated PR integration (#18)
+
 ## Project Overview
 Second Brain is a comprehensive knowledge management system combining multi-modal input capture, AI-powered processing, and intelligent retrieval. It integrates tightly with Obsidian vaults, Discord bots, and Apple Shortcuts for seamless cross-platform note-taking and search.
 
@@ -161,3 +167,118 @@ SQLITE_VEC_PATH=/path/to/sqlite-vec0.dylib  # Vector similarity search
 - Integration tests for end-to-end flows
 - Performance testing for search and processing pipelines
 - Manual testing utilities in root directory (`test_*.py`)
+
+## Frontend Development Roadmap
+
+### Current Status (2025-09-06)
+✅ **Foundation Complete**: Modern dashboard v2 created with TailwindCSS and vanilla JavaScript
+✅ **Core API Endpoints**: RESTful API for notes CRUD, search, and statistics
+✅ **Basic Dashboard**: Clean interface with note creation, search, recent notes, and stats
+✅ **PWA Support**: Service worker, manifest, offline capabilities via existing base.html
+
+### Phase 1: Core Functionality (Current - Week 1)
+**Status: ✅ COMPLETED**
+- [x] Modern dashboard UI with TailwindCSS
+- [x] Note creation and display
+- [x] Basic search functionality
+- [x] Statistics dashboard
+- [x] RESTful API endpoints (`/api/notes`, `/api/search`, `/api/stats`)
+- [x] Responsive design foundation
+
+**Access:** Visit `/dashboard/v2` for the new interface
+
+### Phase 2: Enhanced UX (Week 2-3)
+**Priority: HIGH**
+- [ ] **Real-time Updates**: WebSocket integration for live note updates
+- [ ] **Advanced Search UI**: 
+  - Search filters (date, type, tags)
+  - Search suggestions and autocomplete
+  - Saved searches
+- [ ] **Note Management**:
+  - Individual note viewing modal
+  - Inline editing
+  - Note deletion and archiving
+  - Bulk operations
+- [ ] **Improved Mobile UX**:
+  - Mobile-first responsive improvements
+  - Touch-friendly interactions
+  - Mobile capture shortcuts
+
+### Phase 3: Advanced Features (Week 4-5)
+**Priority: MEDIUM**
+- [ ] **Rich Text Editor**: Markdown support with preview
+- [ ] **File Upload Integration**: Drag-and-drop file uploads
+- [ ] **Audio Recording**: Browser-based voice note capture
+- [ ] **Tagging System**: 
+  - Tag autocomplete
+  - Tag-based filtering
+  - Tag clouds and analytics
+- [ ] **Keyboard Shortcuts**: Power user shortcuts (Ctrl+N, Ctrl+S, etc.)
+
+### Phase 4: Smart Features (Week 6-8)
+**Priority: MEDIUM**
+- [ ] **AI Integration UI**:
+  - Smart title suggestions
+  - Content summarization display
+  - AI-powered tag suggestions
+- [ ] **Related Notes**: Visual connections and suggestions
+- [ ] **Search Analytics**: Search performance and insights
+- [ ] **Content Organization**:
+  - Folders/categories
+  - Custom views and layouts
+  - Note templates
+
+### Phase 5: Collaboration & Sync (Week 9-12)
+**Priority: LOW**
+- [ ] **Multi-user Features**: If implementing multi-tenancy
+- [ ] **Export/Import**: Various formats (Markdown, JSON, PDF)
+- [ ] **Advanced Obsidian Integration**: Bi-directional sync UI
+- [ ] **Browser Extension Integration**: Enhanced popup and capture
+
+### Technical Architecture
+
+#### Frontend Stack
+- **Framework**: Vanilla JavaScript (for simplicity and speed)
+- **Styling**: TailwindCSS with custom design system
+- **Icons**: Heroicons (via TailwindCSS)
+- **State Management**: Simple JavaScript objects and local storage
+- **Build Process**: None (keeping it simple for now)
+
+#### API Design
+- **RESTful Endpoints**: `/api/notes`, `/api/search`, `/api/stats`
+- **Authentication**: Existing FastAPI session-based auth
+- **Response Format**: JSON with consistent error handling
+- **Rate Limiting**: To be implemented in Phase 2
+
+#### Performance Considerations
+- **Lazy Loading**: Implement for large note lists
+- **Search Debouncing**: 300ms delay on search input
+- **Caching**: Browser-side caching for static data
+- **Progressive Loading**: Load notes in batches of 20
+
+### Browser Support
+- **Target**: Modern browsers (Chrome 90+, Firefox 88+, Safari 14+)
+- **PWA**: Full Progressive Web App support
+- **Mobile**: iOS Safari, Android Chrome
+- **Offline**: Basic offline support via service worker
+
+### Development Commands (Updated)
+
+```bash
+# Start development server with new frontend
+.venv/bin/python -m uvicorn app:app --reload --port 8082
+
+# Access new dashboard
+# Visit: http://localhost:8082/dashboard/v2
+
+# API testing
+curl -X GET "http://localhost:8082/api/notes" -H "Authorization: Bearer YOUR_TOKEN"
+curl -X POST "http://localhost:8082/api/notes" -H "Content-Type: application/json" -d '{"content":"Test note"}'
+curl -X GET "http://localhost:8082/api/search?q=test"
+```
+
+### Migration Strategy
+- **Backward Compatibility**: Original dashboard remains at `/` route
+- **Gradual Migration**: Users can opt into new interface
+- **Feature Parity**: Ensure all existing features work in new UI
+- **Data Compatibility**: No database changes required
