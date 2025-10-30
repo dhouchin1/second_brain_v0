@@ -3792,7 +3792,8 @@
                 updateDynamicGreeting();
                 await Promise.all([
                     loadRecentNotes(),
-                    loadSidebarActivity(), 
+                    loadAllNotes(),
+                    loadSidebarActivity(),
                     loadTodaysActivity(),
                     loadProgressData(),
                     // Refresh analytics if analytics view is currently visible
