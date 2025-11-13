@@ -1150,21 +1150,43 @@
 
                                     <!-- Bulk Selection Bar (Hidden by default) -->
                                     <div id="bulk-selection-bar" class="mb-4 p-3 bg-discord-50 rounded-lg border border-discord-200 hidden">
-                                        <div class="flex items-center justify-between">
+                                        <div class="flex items-center justify-between flex-wrap gap-2">
                                             <div class="flex items-center space-x-2">
                                                 <input type="checkbox" id="select-all-notes" class="rounded">
                                                 <label for="select-all-notes" class="text-sm font-medium text-slate-700">Select All</label>
                                                 <span id="selection-count" class="text-xs text-slate-500">(0 selected)</span>
                                             </div>
                                             <div class="flex items-center space-x-2">
-                                                <button onclick="contentManager?.bulkTag()" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">Tag</button>
-                                                <button onclick="contentManager?.bulkArchive()" class="px-3 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700">Archive</button>
-                                                <button onclick="contentManager?.bulkDelete()" class="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700">Delete</button>
-                                                <button onclick="contentManager?.clearSelection()" class="px-3 py-1 bg-slate-400 text-white rounded text-xs hover:bg-slate-500">Cancel</button>
+                                                <!-- Bulk Actions -->
+                                                <button id="bulk-tag-btn" class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-all flex items-center space-x-1">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                                    </svg>
+                                                    <span>Tag</span>
+                                                </button>
+                                                <button id="bulk-archive-btn" class="px-3 py-1 text-xs bg-slate-600 hover:bg-slate-700 text-white rounded transition-all flex items-center space-x-1">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                                                    </svg>
+                                                    <span>Archive</span>
+                                                </button>
+                                                <button id="bulk-export-btn" class="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-all flex items-center space-x-1">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                                    </svg>
+                                                    <span>Export</span>
+                                                </button>
+                                                <button id="bulk-delete-btn" class="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-all flex items-center space-x-1">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                    </svg>
+                                                    <span>Delete</span>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
-                                    
+
+                                    <!-- Notes Grid Container -->
                                     <div id="recentNotes" class="space-y-3 notes-container main-content" data-view-mode="card" data-mobile-swipe="enabled">
                                         <!-- Skeleton loading for notes -->
                                         <div class="skeleton-notes">
@@ -5351,6 +5373,182 @@
 
             // Visual feedback
             showToast(`Added tag: ${tag}`, 'success', 1500);
+        }
+
+        // Bulk Operations Management
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize bulk operation buttons
+            document.getElementById('bulk-tag-btn')?.addEventListener('click', bulkTagNotes);
+            document.getElementById('bulk-archive-btn')?.addEventListener('click', bulkArchiveNotes);
+            document.getElementById('bulk-export-btn')?.addEventListener('click', bulkExportNotes);
+            document.getElementById('bulk-delete-btn')?.addEventListener('click', bulkDeleteNotes);
+
+            // Select All functionality
+            document.getElementById('select-all-notes')?.addEventListener('change', (e) => {
+                const checkboxes = document.querySelectorAll('input[data-note-checkbox]');
+                checkboxes.forEach(cb => {
+                    cb.checked = e.target.checked;
+                    cb.dispatchEvent(new Event('change'));
+                });
+            });
+        });
+
+        function getSelectedNoteIds() {
+            const checked = document.querySelectorAll('input[data-note-checkbox]:checked');
+            return Array.from(checked).map(cb => parseInt(cb.value));
+        }
+
+        async function bulkTagNotes() {
+            const noteIds = getSelectedNoteIds();
+            if (noteIds.length === 0) {
+                showToast('No notes selected', 'warning', 2000);
+                return;
+            }
+
+            const newTags = prompt(`Add tags to ${noteIds.length} note(s):\n(comma-separated)`);
+            if (!newTags) return;
+
+            try {
+                let successCount = 0;
+                for (const noteId of noteIds) {
+                    const note = allNotes.find(n => n.id === noteId);
+                    if (!note) continue;
+
+                    const currentTags = note.tags ? note.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+                    const tagsToAdd = newTags.split(',').map(t => t.trim()).filter(t => t);
+                    const mergedTags = [...new Set([...currentTags, ...tagsToAdd])];
+
+                    const response = await fetch(`/api/notes/${noteId}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            title: note.title,
+                            content: note.content || note.body,
+                            tags: mergedTags.join(', ')
+                        })
+                    });
+
+                    if (response.ok) successCount++;
+                }
+
+                showToast(`Tagged ${successCount} note(s) successfully`, 'success', 3000);
+                refreshDashboardData();
+                clearBulkSelection();
+
+            } catch (error) {
+                console.error('Error bulk tagging notes:', error);
+                showToast('Failed to tag some notes', 'error', 5000);
+            }
+        }
+
+        async function bulkArchiveNotes() {
+            const noteIds = getSelectedNoteIds();
+            if (noteIds.length === 0) {
+                showToast('No notes selected', 'warning', 2000);
+                return;
+            }
+
+            if (!confirm(`Archive ${noteIds.length} note(s)?`)) return;
+
+            try {
+                let successCount = 0;
+                for (const noteId of noteIds) {
+                    const note = allNotes.find(n => n.id === noteId);
+                    if (!note) continue;
+
+                    const response = await fetch(`/api/notes/${noteId}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            title: note.title,
+                            content: note.content || note.body,
+                            tags: note.tags,
+                            status: 'archived'
+                        })
+                    });
+
+                    if (response.ok) successCount++;
+                }
+
+                showToast(`Archived ${successCount} note(s) successfully`, 'success', 3000);
+                refreshDashboardData();
+                clearBulkSelection();
+
+            } catch (error) {
+                console.error('Error bulk archiving notes:', error);
+                showToast('Failed to archive some notes', 'error', 5000);
+            }
+        }
+
+        async function bulkExportNotes() {
+            const noteIds = getSelectedNoteIds();
+            if (noteIds.length === 0) {
+                showToast('No notes selected', 'warning', 2000);
+                return;
+            }
+
+            showToast(`Exporting ${noteIds.length} note(s) as JSON...`, 'info', 3000);
+
+            try {
+                const notesToExport = allNotes.filter(n => noteIds.includes(n.id));
+                const exportData = JSON.stringify(notesToExport, null, 2);
+
+                const blob = new Blob([exportData], {type: 'application/json'});
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `notes-export-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showToast(`Exported ${noteIds.length} note(s) successfully`, 'success', 3000);
+
+            } catch (error) {
+                console.error('Error bulk exporting notes:', error);
+                showToast('Failed to export notes', 'error', 5000);
+            }
+        }
+
+        async function bulkDeleteNotes() {
+            const noteIds = getSelectedNoteIds();
+            if (noteIds.length === 0) {
+                showToast('No notes selected', 'warning', 2000);
+                return;
+            }
+
+            if (!confirm(`Delete ${noteIds.length} note(s)? This action cannot be undone.`)) return;
+
+            try {
+                let successCount = 0;
+                for (const noteId of noteIds) {
+                    const response = await fetch(`/api/notes/${noteId}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) successCount++;
+                }
+
+                showToast(`Deleted ${successCount} note(s) successfully`, 'success', 3000);
+                refreshDashboardData();
+                clearBulkSelection();
+
+            } catch (error) {
+                console.error('Error bulk deleting notes:', error);
+                showToast('Failed to delete some notes', 'error', 5000);
+            }
+        }
+
+        function clearBulkSelection() {
+            document.querySelectorAll('input[data-note-checkbox]:checked').forEach(cb => {
+                cb.checked = false;
+                cb.dispatchEvent(new Event('change'));
+            });
+            document.getElementById('select-all-notes').checked = false;
         }
 
         // Populate note details modal
