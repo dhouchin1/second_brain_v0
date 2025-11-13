@@ -3989,7 +3989,7 @@
                 refreshBtn.textContent = '↻';
                 refreshBtn.disabled = true;
             }
-            
+
             try {
                 // Update greeting and refresh all data in parallel
                 updateDynamicGreeting();
@@ -3999,10 +3999,10 @@
                     loadSidebarActivity(),
                     loadTodaysActivity(),
                     loadProgressData(),
-                    // Refresh analytics if analytics view is currently visible
-                    document.getElementById('analytics-view')?.style.display !== 'none' ? loadAnalyticsData() : Promise.resolve()
+                    // Refresh analytics if analytics view is currently visible (silent mode to avoid error toasts)
+                    document.getElementById('analytics-view')?.style.display !== 'none' ? loadAnalytics(true) : Promise.resolve()
                 ]);
-                
+
                 console.log('Dashboard data refreshed successfully');
             } catch (error) {
                 console.error('Error refreshing dashboard data:', error);
@@ -6373,45 +6373,48 @@
         let hourlyPatternChart = null;
         let currentActivityView = 'daily';
 
-        async function loadAnalytics() {
+        async function loadAnalytics(silent = false) {
             try {
                 const response = await fetch('/api/analytics');
                 analyticsData = await response.json();
-                
+
                 // Update overview stats
                 document.getElementById('totalNotes').textContent = analyticsData.total_notes || 0;
                 document.getElementById('thisWeekNotes').textContent = analyticsData.this_week || 0;
                 document.getElementById('contentTypes').textContent = analyticsData.by_type?.length || 0;
                 document.getElementById('popularTagsCount').textContent = analyticsData.popular_tags?.length || 0;
-                
+
                 // Update enhanced stats
                 document.getElementById('avgNotesPerDay').textContent = analyticsData.avg_notes_per_day || 0;
                 document.getElementById('daysActive').textContent = analyticsData.days_active || 0;
                 document.getElementById('thisMonth').textContent = analyticsData.this_month || 0;
-                
+
                 // Update growth indicator
                 updateGrowthIndicator(analyticsData.growth_rate || 0);
-                
+
                 // Load content types breakdown
                 loadContentTypes(analyticsData.by_type || []);
-                
+
                 // Load popular tags
                 loadPopularTags(analyticsData.popular_tags || []);
-                
+
                 // Create charts
                 createActivityChart();
                 createContentTypesChart();
                 createHourlyPatternChart();
-                
+
                 // Load recent activity for analytics
                 loadAnalyticsActivity();
-                
+
                 // Update Discord health status
                 updateDiscordHealthInAnalytics();
-                
+
             } catch (error) {
                 console.error('Failed to load analytics:', error);
-                showMessage('Failed to load analytics data', 'error');
+                // Only show error message if not in silent mode (e.g., during background refresh)
+                if (!silent) {
+                    showMessage('Failed to load analytics data', 'error');
+                }
             }
         }
 
