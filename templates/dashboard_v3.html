@@ -4461,30 +4461,128 @@
         }
 
         // Perform advanced search (placeholder for Phase 2)
-        function performAdvancedSearch() {
-            console.log('Performing advanced search with state:', advancedSearchState);
-
-            // Placeholder: Just log the search state for now
-            // In Phase 2, this will make an API call to /api/search with the filters
-
+        async function performAdvancedSearch() {
+            const query = advancedSearchState.query;
             const resultsContainer = document.getElementById('advancedSearchResults');
             if (!resultsContainer) return;
 
-            if (advancedSearchState.query.length > 0) {
-                resultsContainer.innerHTML = `
-                    <div class="text-center text-slate-400 py-12">
-                        <div class="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                        <p class="text-sm">Searching for "${advancedSearchState.query}"...</p>
-                        <p class="text-xs text-slate-500 mt-2">Results will be displayed in Phase 2</p>
-                    </div>
-                `;
-            } else {
+            if (!query || query.length === 0) {
                 resultsContainer.innerHTML = `
                     <svg class="w-16 h-16 mx-auto mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                     <p class="text-lg font-medium mb-2">Start typing to search</p>
                     <p class="text-sm text-slate-500">Search results will appear here</p>
+                `;
+                return;
+            }
+
+            console.log('Performing advanced search with state:', advancedSearchState);
+
+            // Show loading state
+            resultsContainer.innerHTML = `
+                <div class="text-center text-slate-400 py-12">
+                    <div class="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p class="text-sm">Searching for "${query}"...</p>
+                </div>
+            `;
+
+            try {
+                // Build query parameters with filters
+                const params = new URLSearchParams({ q: query, limit: '50' });
+
+                // Add date filter
+                if (advancedSearchState.dateRange !== 'all') {
+                    params.append('date_range', advancedSearchState.dateRange);
+                }
+
+                // Add type filters
+                if (!advancedSearchState.contentTypes.includes('all')) {
+                    advancedSearchState.contentTypes.forEach(type => {
+                        params.append('type', type);
+                    });
+                }
+
+                // Add tag filter
+                if (advancedSearchState.tags.length > 0) {
+                    advancedSearchState.tags.forEach(tag => {
+                        params.append('tags', tag);
+                    });
+                }
+
+                // Add status filter
+                if (advancedSearchState.status !== 'all') {
+                    params.append('status', advancedSearchState.status);
+                }
+
+                const response = await fetch(`/api/search?${params.toString()}`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Search failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const results = data.results || [];
+
+                console.log('Search results:', results);
+
+                // Display results
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = `
+                        <div class="text-center text-slate-400 py-12">
+                            <svg class="w-16 h-16 mx-auto mb-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="text-lg font-medium mb-2">No results found</p>
+                            <p class="text-sm text-slate-500">Try adjusting your filters or search terms</p>
+                        </div>
+                    `;
+                } else {
+                    // Display results as cards
+                    resultsContainer.innerHTML = `
+                        <div class="mb-4">
+                            <p class="text-sm text-slate-400">Found <span class="text-indigo-400 font-semibold">${results.length}</span> result${results.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div class="space-y-3">
+                            ${results.map(note => `
+                                <div class="bg-slate-800 bg-opacity-50 border border-slate-700 rounded-lg p-4 hover:border-indigo-500 transition-all cursor-pointer" onclick="openNoteDetails(${note.id})">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <h3 class="text-white font-medium text-sm">${note.title || 'Untitled'}</h3>
+                                        <span class="text-xs text-slate-500">${note.type || 'note'}</span>
+                                    </div>
+                                    ${note.snippet ? `
+                                        <p class="text-slate-400 text-sm line-clamp-2 mb-2">${note.snippet}</p>
+                                    ` : ''}
+                                    <div class="flex items-center justify-between text-xs">
+                                        <div class="flex items-center space-x-2">
+                                            ${note.tags ? `
+                                                <div class="flex flex-wrap gap-1">
+                                                    ${note.tags.split(',').slice(0, 3).map(tag => `
+                                                        <span class="px-2 py-0.5 bg-indigo-500 bg-opacity-20 text-indigo-300 rounded">${tag.trim()}</span>
+                                                    `).join('')}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <span class="text-slate-500">${note.created_at ? new Date(note.created_at).toLocaleDateString() : ''}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                console.error('Search error:', error);
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-red-400 py-12">
+                        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-lg font-medium mb-2">Search failed</p>
+                        <p class="text-sm text-slate-500">${error.message}</p>
+                    </div>
                 `;
             }
         }
