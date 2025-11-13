@@ -1,0 +1,152 @@
+{
+  "name": "Second Brain - Quote Capture",
+  "description": "Save inspiring quotes with attribution and reflection",
+  "version": "2.0",
+  "category": "Reading",
+  "icon": "quote.bubble",
+  "color": "orange",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain Quote Capture - Save quotes with full attribution"
+    },
+    {
+      "type": "get_clipboard"
+    },
+    {
+      "type": "set_variable",
+      "variable": "clipboard_content",
+      "value": "${clipboard}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Enter the quote:",
+      "default_text": "${clipboard_content}",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "quote_text",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Who said it? (Author)",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "author",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Source (book, speech, etc.):",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "source",
+      "value": "${text_input}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Category:",
+      "items": [
+        "Motivation",
+        "Wisdom",
+        "Humor",
+        "Philosophy",
+        "Leadership",
+        "Creativity",
+        "Success",
+        "Life",
+        "Business",
+        "Other"
+      ]
+    },
+    {
+      "type": "set_variable",
+      "variable": "category",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Your reflection on this quote (optional):",
+      "default_text": "",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "reflection",
+      "value": "${text_input}"
+    },
+    {
+      "type": "get_current_date",
+      "format": "ISO8601"
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "quote_text": "${quote_text}",
+        "author": "${author}",
+        "source": "${source}",
+        "category": "${category}",
+        "reflection": "${reflection}",
+        "context": {
+          "timestamp": "${current_date}",
+          "device": "iOS"
+        }
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/quote",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "show_notification",
+          "title": "💬 Quote Saved",
+          "body": "Quote by ${author} saved successfully",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to save quote. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Save quote to Second Brain",
+  "share_sheet": true,
+  "share_sheet_types": ["Text"],
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token",
+    "3. Enable in Share Sheet for easy capture from books/web",
+    "4. Copy quote to clipboard before running for auto-fill"
+  ]
+}

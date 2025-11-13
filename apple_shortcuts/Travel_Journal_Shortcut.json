@@ -1,0 +1,219 @@
+{
+  "name": "Second Brain - Travel Journal",
+  "description": "Rich travel logging with photos and location",
+  "version": "2.0",
+  "category": "Travel",
+  "icon": "airplane",
+  "color": "teal",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain Travel Journal - Capture travel experiences"
+    },
+    {
+      "type": "get_current_location"
+    },
+    {
+      "type": "set_variable",
+      "variable": "current_location",
+      "value": "${location}"
+    },
+    {
+      "type": "get_details_of_location",
+      "location": "${current_location}",
+      "details": ["Name", "Street", "City", "Country", "Latitude", "Longitude"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "location_details",
+      "value": "${location_details}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "What's happening? Describe your experience:",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "entry_text",
+      "value": "${text_input}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "What kind of activity?",
+      "items": [
+        "Sightseeing",
+        "Food & Dining",
+        "Adventure",
+        "Relaxation",
+        "Culture",
+        "Shopping",
+        "Nature",
+        "Entertainment",
+        "Business",
+        "Other"
+      ]
+    },
+    {
+      "type": "set_variable",
+      "variable": "activity_type",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "ask",
+      "prompt": "Add photos?",
+      "default_answer": "Yes"
+    },
+    {
+      "type": "if",
+      "condition": "${ask_result} equals Yes",
+      "if_true": [
+        {
+          "type": "select_photos",
+          "select_multiple": true,
+          "maximum": 5
+        },
+        {
+          "type": "repeat_with_each",
+          "items": "${photos}",
+          "actions": [
+            {
+              "type": "resize_image",
+              "width": 1200,
+              "height": "auto"
+            },
+            {
+              "type": "base64_encode",
+              "input": "${resized_image}"
+            },
+            {
+              "type": "add_to_variable",
+              "variable": "photo_list",
+              "value": "${base64}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text_input",
+      "prompt": "Who are you with? (comma separated)",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": ","
+    },
+    {
+      "type": "set_variable",
+      "variable": "companions",
+      "value": "${split_text}"
+    },
+    {
+      "type": "ask",
+      "prompt": "Track expenses?",
+      "default_answer": "No"
+    },
+    {
+      "type": "if",
+      "condition": "${ask_result} equals Yes",
+      "if_true": [
+        {
+          "type": "number_input",
+          "prompt": "How much did you spend?"
+        },
+        {
+          "type": "set_variable",
+          "variable": "expense_amount",
+          "value": "${number}"
+        },
+        {
+          "type": "choose_from_list",
+          "prompt": "Currency:",
+          "items": ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "Other"]
+        },
+        {
+          "type": "set_variable",
+          "variable": "currency",
+          "value": "${chosen_item}"
+        }
+      ]
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "entry_text": "${entry_text}",
+        "location_data": {
+          "latitude": "${location_details.latitude}",
+          "longitude": "${location_details.longitude}",
+          "address": "${location_details.name}, ${location_details.city}, ${location_details.country}"
+        },
+        "photos": "${photo_list}",
+        "activity_type": "${activity_type}",
+        "companions": "${companions}",
+        "expenses": {
+          "amount": "${expense_amount}",
+          "currency": "${currency}"
+        }
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/travel-journal",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "get_dictionary_value",
+          "dictionary": "${web_request_result}",
+          "key": "location"
+        },
+        {
+          "type": "show_notification",
+          "title": "✈️ Travel Entry Saved",
+          "body": "${dictionary_value}",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to save travel entry. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Log travel experience",
+  "automation_suggestions": [
+    {
+      "type": "arrive_location",
+      "description": "Auto-prompt when arriving at tourist locations"
+    }
+  ],
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token",
+    "3. Grant location permissions in Settings",
+    "4. Grant photo library access",
+    "5. Consider creating location-based automations for frequent destinations"
+  ]
+}

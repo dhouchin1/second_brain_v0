@@ -1,0 +1,151 @@
+{
+  "name": "Second Brain - Dream Journal",
+  "description": "Morning dream logging with emotions and themes",
+  "version": "2.0",
+  "category": "Personal",
+  "icon": "moon.stars",
+  "color": "indigo",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain Dream Journal - Log your dreams with emotions and themes"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Describe your dream:",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "dream_text",
+      "value": "${text_input}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "What emotions did you feel?",
+      "items": [
+        "Happy",
+        "Anxious",
+        "Excited",
+        "Scared",
+        "Peaceful",
+        "Confused",
+        "Sad",
+        "Curious",
+        "Angry",
+        "Calm"
+      ],
+      "select_multiple": true
+    },
+    {
+      "type": "set_variable",
+      "variable": "emotions",
+      "value": "${chosen_items}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Any recurring themes? (comma separated)",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": ","
+    },
+    {
+      "type": "set_variable",
+      "variable": "themes",
+      "value": "${split_text}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Was this a lucid dream?",
+      "items": ["Yes", "No"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "lucid",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Sleep quality (1-5 stars):",
+      "items": ["1", "2", "3", "4", "5"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "sleep_quality",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "get_current_date",
+      "format": "ISO8601"
+    },
+    {
+      "type": "set_variable",
+      "variable": "timestamp",
+      "value": "${current_date}"
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "dream_text": "${dream_text}",
+        "emotions": "${emotions}",
+        "themes": "${themes}",
+        "lucid": "${lucid}",
+        "sleep_quality": "${sleep_quality}"
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/dream-journal",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "get_dictionary_value",
+          "dictionary": "${web_request_result}",
+          "key": "title"
+        },
+        {
+          "type": "show_notification",
+          "title": "🌙 Dream Logged",
+          "body": "${dictionary_value}",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to log dream. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Log my dream",
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token from Settings",
+    "3. Test with a sample dream",
+    "4. Add to Siri with custom phrase",
+    "5. Create morning automation (7 AM daily)"
+  ]
+}

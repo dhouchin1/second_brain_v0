@@ -346,26 +346,274 @@ async def health_check():
         }
     })
 
+@router.post("/reading-list")
+async def process_reading_list(request: Request):
+    """Process reading list article from Safari."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_reading_list(
+            url=data.get("url"),
+            title=data.get("title"),
+            preview_text=data.get("preview_text"),
+            added_date=data.get("added_date"),
+            context=data.get("context")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Reading list processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/contact-note")
+async def process_contact_note(request: Request):
+    """Create note about a contact/person."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_contact_note(
+            contact_name=data.get("contact_name"),
+            contact_info=data.get("contact_info"),
+            note_text=data.get("note_text", ""),
+            meeting_context=data.get("meeting_context"),
+            location_data=data.get("location_data")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Contact note processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/media-note")
+async def process_media_note(request: Request):
+    """Create note about book, movie, podcast, etc."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_media_note(
+            media_type=data.get("media_type"),
+            title=data.get("title"),
+            creator=data.get("creator"),
+            notes=data.get("notes", ""),
+            rating=data.get("rating"),
+            tags_custom=data.get("tags_custom"),
+            metadata_extra=data.get("metadata_extra")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Media note processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/recipe")
+async def process_recipe(request: Request):
+    """Save recipe with structured data."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_recipe(
+            recipe_name=data.get("recipe_name"),
+            ingredients=data.get("ingredients", []),
+            instructions=data.get("instructions", []),
+            prep_time=data.get("prep_time"),
+            cook_time=data.get("cook_time"),
+            servings=data.get("servings"),
+            source_url=data.get("source_url"),
+            tags_custom=data.get("tags_custom"),
+            image_data=data.get("image_data")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Recipe processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/dream-journal")
+async def process_dream_journal(request: Request):
+    """Log dream journal entry."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_dream_journal(
+            dream_text=data.get("dream_text"),
+            emotions=data.get("emotions"),
+            themes=data.get("themes"),
+            lucid=data.get("lucid", False),
+            sleep_quality=data.get("sleep_quality")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Dream journal processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/quote")
+async def process_quote(request: Request):
+    """Save inspirational quote with attribution."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_quote(
+            quote_text=data.get("quote_text"),
+            author=data.get("author"),
+            source=data.get("source"),
+            category=data.get("category"),
+            reflection=data.get("reflection"),
+            context=data.get("context")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Quote processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/code-snippet")
+async def process_code_snippet(request: Request):
+    """Save code snippet with syntax highlighting."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_code_snippet(
+            code=data.get("code"),
+            language=data.get("language"),
+            description=data.get("description"),
+            tags_custom=data.get("tags_custom"),
+            source_url=data.get("source_url")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Code snippet processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/travel-journal")
+async def process_travel_journal(request: Request):
+    """Create travel journal entry with rich location data."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_travel_journal(
+            entry_text=data.get("entry_text"),
+            location_data=data.get("location_data"),
+            photos=data.get("photos"),
+            activity_type=data.get("activity_type"),
+            companions=data.get("companions"),
+            expenses=data.get("expenses")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Travel journal processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/habit-log")
+async def process_habit_log(request: Request):
+    """Log habit completion/tracking."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_habit_log(
+            habit_name=data.get("habit_name"),
+            completed=data.get("completed", False),
+            notes=data.get("notes"),
+            mood=data.get("mood"),
+            difficulty=data.get("difficulty")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"Habit log processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/file-upload")
+async def process_file_upload(request: Request):
+    """Upload file from Files app."""
+    if not _service:
+        raise HTTPException(status_code=503, detail="Service not initialized")
+
+    try:
+        data = await request.json()
+        result = await _service.process_file_upload(
+            file_data=data.get("file_data"),
+            file_name=data.get("file_name"),
+            file_type=data.get("file_type"),
+            description=data.get("description"),
+            tags_custom=data.get("tags_custom")
+        )
+
+        if result["success"]:
+            return JSONResponse(content=result)
+        else:
+            return JSONResponse(status_code=422, content=result)
+    except Exception as e:
+        logger.error(f"File upload processing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/batch")
 async def process_batch_shortcuts(requests: List[Dict[str, Any]]):
     """
     Process multiple shortcuts requests in batch.
-    
+
     Useful for offline sync or bulk operations.
     """
     if not _service:
         raise HTTPException(status_code=503, detail="Service not initialized")
-    
+
     try:
         if len(requests) > 20:
             raise HTTPException(status_code=422, detail="Maximum 20 requests per batch")
-        
+
         results = []
-        
+
         for i, req_data in enumerate(requests):
             try:
                 req_type = req_data.get("type")
-                
+
                 if req_type == "voice_memo":
                     result = await _service.process_voice_memo(**req_data.get("data", {}))
                 elif req_type == "photo_ocr":
@@ -374,9 +622,29 @@ async def process_batch_shortcuts(requests: List[Dict[str, Any]]):
                     result = await _service.process_quick_note(**req_data.get("data", {}))
                 elif req_type == "web_clip":
                     result = await _service.process_web_clip(**req_data.get("data", {}))
+                elif req_type == "reading_list":
+                    result = await _service.process_reading_list(**req_data.get("data", {}))
+                elif req_type == "contact_note":
+                    result = await _service.process_contact_note(**req_data.get("data", {}))
+                elif req_type == "media_note":
+                    result = await _service.process_media_note(**req_data.get("data", {}))
+                elif req_type == "recipe":
+                    result = await _service.process_recipe(**req_data.get("data", {}))
+                elif req_type == "dream_journal":
+                    result = await _service.process_dream_journal(**req_data.get("data", {}))
+                elif req_type == "quote":
+                    result = await _service.process_quote(**req_data.get("data", {}))
+                elif req_type == "code_snippet":
+                    result = await _service.process_code_snippet(**req_data.get("data", {}))
+                elif req_type == "travel_journal":
+                    result = await _service.process_travel_journal(**req_data.get("data", {}))
+                elif req_type == "habit_log":
+                    result = await _service.process_habit_log(**req_data.get("data", {}))
+                elif req_type == "file_upload":
+                    result = await _service.process_file_upload(**req_data.get("data", {}))
                 else:
                     result = {"success": False, "error": f"Unknown request type: {req_type}"}
-                
+
                 results.append({
                     "index": i,
                     "type": req_type,
@@ -384,16 +652,16 @@ async def process_batch_shortcuts(requests: List[Dict[str, Any]]):
                     "note_id": result.get("note_id"),
                     "error": result.get("error")
                 })
-                
+
             except Exception as e:
                 results.append({
                     "index": i,
                     "success": False,
                     "error": str(e)
                 })
-        
+
         successful = sum(1 for r in results if r["success"])
-        
+
         return JSONResponse(content={
             "success": True,
             "total_requests": len(requests),
@@ -402,7 +670,7 @@ async def process_batch_shortcuts(requests: List[Dict[str, Any]]):
             "results": results,
             "message": f"Batch processed: {successful}/{len(requests)} successful"
         })
-        
+
     except Exception as e:
         logger.error(f"Batch processing failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
