@@ -5509,6 +5509,7 @@
                     console.log('🎤 Sending request to /webhook/audio...');
                     const response = await fetch('/webhook/audio', {
                         method: 'POST',
+                        credentials: 'include',  // Include authentication cookies
                         body: formData
                     });
                     

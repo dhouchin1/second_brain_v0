@@ -1738,6 +1738,7 @@ async def transcribe_requeue(
     return {"success": True, "requeued": count}
 @app.post("/webhook/audio")
 async def webhook_audio_upload(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     tags: str = Form(""),
@@ -1746,7 +1747,20 @@ async def webhook_audio_upload(
     """
     Fast audio webhook endpoint for Apple Shortcuts and external integrations.
     Quickly saves audio and queues for background processing without blocking.
+
+    If called from authenticated dashboard, uses the logged-in user's ID.
+    If called from external webhook (Apple Shortcuts, etc.), uses the provided user_id.
     """
+    # Try to get authenticated user first (for dashboard uploads)
+    try:
+        authenticated_user = get_current_user_silent(request)
+        if authenticated_user:
+            user_id = authenticated_user.id
+            logging.getLogger(__name__).info(f"Voice upload from authenticated user: {authenticated_user.username} (ID: {user_id})")
+    except Exception:
+        # No authentication, use provided user_id (webhook mode)
+        logging.getLogger(__name__).info(f"Voice upload from webhook with user_id: {user_id}")
+
     return await webhook_service.process_audio_webhook(background_tasks, file, tags, user_id)
     fields = {k: v for k, v in data.items() if k in {"title", "tags", "content"}}
     if not fields:
