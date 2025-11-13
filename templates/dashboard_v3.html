@@ -4974,14 +4974,30 @@
                 contentElement.innerHTML = `<textarea id="editContentInput" rows="12" class="bg-slate-700 border border-slate-600 text-slate-200 px-4 py-3 rounded-lg w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-y font-mono text-sm">${currentContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>`;
             }
 
-            // Make tags editable
+            // Make tags editable with autocomplete
             const tagsElement = document.getElementById('noteTags');
             if (tagsElement && !document.getElementById('tagsSection').classList.contains('hidden')) {
                 const currentTags = currentEditingNote.tags || '';
-                document.getElementById('tagsSection').querySelector('h3').insertAdjacentHTML('afterend',
-                    `<input type="text" id="editTagsInput" value="${currentTags.replace(/"/g, '&quot;')}" placeholder="Add tags (comma-separated)" class="bg-slate-800 border border-slate-600 text-slate-200 px-3 py-2 rounded-lg w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none mt-3 mb-3">`
-                );
+                const tagsSectionHeader = document.getElementById('tagsSection').querySelector('h3');
+
+                // Add tags input with autocomplete
+                tagsSectionHeader.insertAdjacentHTML('afterend', `
+                    <div class="mt-3 mb-3">
+                        <input type="text"
+                               id="editTagsInput"
+                               value="${currentTags.replace(/"/g, '&quot;')}"
+                               placeholder="Add tags (comma-separated)"
+                               list="tagSuggestions"
+                               class="bg-slate-800 border border-slate-600 text-slate-200 px-3 py-2 rounded-lg w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                               autocomplete="off">
+                        <datalist id="tagSuggestions"></datalist>
+                        <div id="quickTagsContainer" class="flex flex-wrap gap-2 mt-2"></div>
+                    </div>
+                `);
                 tagsElement.classList.add('hidden');
+
+                // Load popular tags for quick add
+                loadPopularTags();
             }
 
             // Change edit button to save/cancel buttons
@@ -5261,6 +5277,80 @@
                 console.error('Error exporting note:', error);
                 showToast(`Failed to export note: ${error.message}`, 'error', 5000);
             }
+        }
+
+        // Tag Management & Autocomplete
+        let allTags = [];
+
+        async function loadPopularTags() {
+            try {
+                const response = await fetch('/api/tags', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to fetch tags');
+                    return;
+                }
+
+                allTags = await response.json();
+                console.log('Loaded tags:', allTags);
+
+                // Populate datalist for autocomplete
+                const datalist = document.getElementById('tagSuggestions');
+                if (datalist) {
+                    datalist.innerHTML = allTags.map(tag =>
+                        `<option value="${tag.replace(/"/g, '&quot;')}">`
+                    ).join('');
+                }
+
+                // Show top 10 most popular tags as quick-add buttons
+                const quickTagsContainer = document.getElementById('quickTagsContainer');
+                if (quickTagsContainer && allTags.length > 0) {
+                    const topTags = allTags.slice(0, 10);
+                    quickTagsContainer.innerHTML = `
+                        <div class="text-xs text-slate-400 mb-1">Quick add:</div>
+                        ${topTags.map(tag => `
+                            <button type="button"
+                                    class="quick-tag-btn px-2 py-1 text-xs bg-slate-700 hover:bg-blue-600 text-slate-300 hover:text-white rounded border border-slate-600 hover:border-blue-500 transition-all"
+                                    data-tag="${tag.replace(/"/g, '&quot;')}">
+                                ${tag}
+                            </button>
+                        `).join('')}
+                    `;
+
+                    // Add click handlers to quick-add buttons
+                    quickTagsContainer.querySelectorAll('.quick-tag-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const tag = btn.dataset.tag;
+                            addQuickTag(tag);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading tags:', error);
+            }
+        }
+
+        function addQuickTag(tag) {
+            const tagsInput = document.getElementById('editTagsInput');
+            if (!tagsInput) return;
+
+            const currentTags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
+
+            // Don't add duplicate tags
+            if (currentTags.includes(tag)) {
+                showToast(`Tag "${tag}" already added`, 'info', 2000);
+                return;
+            }
+
+            // Add the tag
+            currentTags.push(tag);
+            tagsInput.value = currentTags.join(', ');
+
+            // Visual feedback
+            showToast(`Added tag: ${tag}`, 'success', 1500);
         }
 
         // Populate note details modal
