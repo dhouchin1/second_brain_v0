@@ -4468,21 +4468,105 @@
         }
 
         // Keyboard shortcut listener for Ctrl+K or Cmd+K
+        // ===============================
+        // Global Keyboard Shortcuts
+        // ===============================
         document.addEventListener('keydown', function(event) {
-            // Check for Ctrl+K or Cmd+K
+            // Don't interfere with typing in inputs/textareas (except for Escape and specific shortcuts)
+            const isTyping = (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA');
+            const isModifierKey = event.ctrlKey || event.metaKey || event.altKey;
+
+            // Escape key - always works
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                // Close note details modal if open
+                const noteModal = document.getElementById('noteDetailsModal');
+                if (noteModal && !noteModal.classList.contains('hidden')) {
+                    closeNoteDetails();
+                    return;
+                }
+                // Close voice recording modal if open
+                const voiceModal = document.getElementById('voiceRecordingModal');
+                if (voiceModal && !voiceModal.classList.contains('hidden')) {
+                    hideVoiceRecordingModal();
+                    return;
+                }
+                // Close advanced search if open
+                const searchModal = document.getElementById('advancedSearchModal');
+                if (searchModal && !searchModal.classList.contains('hidden')) {
+                    hideAdvancedSearchModal();
+                    return;
+                }
+                return;
+            }
+
+            // ? key - Show keyboard shortcuts help (when not typing)
+            if (event.key === '?' && !isTyping && !event.shiftKey) {
+                event.preventDefault();
+                showKeyboardShortcutsHelp();
+                return;
+            }
+
+            // Ctrl/Cmd + K - Quick search
             if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
                 event.preventDefault();
                 showAdvancedSearchModal();
+                return;
             }
 
-            // Check for Escape key to close modal
-            if (event.key === 'Escape') {
-                const modal = document.getElementById('advancedSearchModal');
-                if (modal && !modal.classList.contains('hidden')) {
-                    hideAdvancedSearchModal();
+            // Ctrl/Cmd + N - New note (when not typing)
+            if ((event.ctrlKey || event.metaKey) && event.key === 'n' && !isTyping) {
+                event.preventDefault();
+                showQuickNoteModal();
+                return;
+            }
+
+            // Ctrl/Cmd + S - Save note (when editing)
+            if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+                event.preventDefault();
+                if (window.noteEditMode) {
+                    saveNoteEdits();
                 }
+                return;
+            }
+
+            // Ctrl/Cmd + E - Toggle edit mode (when viewing note)
+            if ((event.ctrlKey || event.metaKey) && event.key === 'e' && !isTyping) {
+                event.preventDefault();
+                const noteModal = document.getElementById('noteDetailsModal');
+                if (noteModal && !noteModal.classList.contains('hidden') && currentEditingNote) {
+                    if (window.noteEditMode) {
+                        exitEditMode();
+                    } else {
+                        enterEditMode();
+                    }
+                }
+                return;
+            }
+
+            // Ctrl/Cmd + Delete - Delete current note (when viewing)
+            if ((event.ctrlKey || event.metaKey) && (event.key === 'Delete' || event.key === 'Backspace') && !isTyping) {
+                event.preventDefault();
+                const noteModal = document.getElementById('noteDetailsModal');
+                if (noteModal && !noteModal.classList.contains('hidden') && currentEditingNote) {
+                    confirmDeleteNote();
+                }
+                return;
+            }
+
+            // Ctrl/Cmd + R - Refresh dashboard
+            if ((event.ctrlKey || event.metaKey) && event.key === 'r' && !isTyping) {
+                event.preventDefault();
+                refreshDashboardData();
+                showToast('Dashboard refreshed', 'info', 2000);
+                return;
             }
         });
+
+        // Show keyboard shortcuts help overlay
+        function showKeyboardShortcutsHelp() {
+            showToast('Keyboard Shortcuts: Ctrl+N=New, Ctrl+K=Search, Ctrl+S=Save, Ctrl+E=Edit, Esc=Close, ?=Help', 'info', 8000);
+        }
 
         // ===============================
         // Notes Management Functions
