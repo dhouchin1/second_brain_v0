@@ -4800,27 +4800,30 @@
         // Open note details
         async function openNoteDetails(noteId) {
             console.log('Opening note details for ID:', noteId);
-            
+
             try {
                 // Show modal with loading state
                 document.getElementById('noteDetailsModal').classList.remove('hidden');
                 document.getElementById('noteDetailsTitle').textContent = 'Loading...';
-                
+
                 // Fetch note details
                 const response = await fetch(`/api/notes/${noteId}`, {
                     credentials: 'include'
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`Failed to fetch note: ${response.status}`);
                 }
-                
+
                 const note = await response.json();
                 console.log('Loaded note details:', note);
-                
+
+                // Store current note for editing
+                currentEditingNote = note;
+
                 // Populate the modal with note data
                 await populateNoteDetails(note);
-                
+
             } catch (error) {
                 console.error('Error loading note details:', error);
                 showToast('Failed to load note details', 'error', 3000);
@@ -4835,6 +4838,166 @@
             if (window.currentAudio) {
                 window.currentAudio.pause();
                 window.currentAudio = null;
+            }
+            // Exit edit mode if active
+            if (window.noteEditMode) {
+                exitEditMode();
+            }
+        }
+
+        // Note editing functionality
+        let currentEditingNote = null;
+        window.noteEditMode = false;
+
+        // Initialize edit button
+        document.addEventListener('DOMContentLoaded', () => {
+            const editBtn = document.getElementById('editNoteBtn');
+            if (editBtn) {
+                editBtn.addEventListener('click', enterEditMode);
+            }
+        });
+
+        function enterEditMode() {
+            if (window.noteEditMode || !currentEditingNote) return;
+
+            window.noteEditMode = true;
+            console.log('Entering edit mode for note:', currentEditingNote);
+
+            // Make title editable
+            const titleElement = document.getElementById('noteDetailsTitle');
+            const currentTitle = titleElement.textContent;
+            titleElement.innerHTML = `<input type="text" id="editTitleInput" value="${currentTitle.replace(/"/g, '&quot;')}" class="bg-slate-800 border border-slate-600 text-slate-200 px-3 py-1 rounded-lg w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">`;
+
+            // Make content editable if it exists
+            const contentElement = document.getElementById('noteContent');
+            if (contentElement && !contentElement.classList.contains('hidden')) {
+                const currentContent = currentEditingNote.content || currentEditingNote.body || '';
+                contentElement.innerHTML = `<textarea id="editContentInput" rows="12" class="bg-slate-700 border border-slate-600 text-slate-200 px-4 py-3 rounded-lg w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-y font-mono text-sm">${currentContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>`;
+            }
+
+            // Make tags editable
+            const tagsElement = document.getElementById('noteTags');
+            if (tagsElement && !document.getElementById('tagsSection').classList.contains('hidden')) {
+                const currentTags = currentEditingNote.tags || '';
+                document.getElementById('tagsSection').querySelector('h3').insertAdjacentHTML('afterend',
+                    `<input type="text" id="editTagsInput" value="${currentTags.replace(/"/g, '&quot;')}" placeholder="Add tags (comma-separated)" class="bg-slate-800 border border-slate-600 text-slate-200 px-3 py-2 rounded-lg w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none mt-3 mb-3">`
+                );
+                tagsElement.classList.add('hidden');
+            }
+
+            // Change edit button to save/cancel buttons
+            const editBtn = document.getElementById('editNoteBtn');
+            editBtn.classList.add('hidden');
+            editBtn.insertAdjacentHTML('afterend', `
+                <button id="saveNoteBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span>Save</span>
+                </button>
+                <button id="cancelEditBtn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium rounded-lg transition-all ml-2">
+                    Cancel
+                </button>
+            `);
+
+            // Add event listeners
+            document.getElementById('saveNoteBtn').addEventListener('click', saveNoteEdits);
+            document.getElementById('cancelEditBtn').addEventListener('click', exitEditMode);
+
+            showToast('Edit mode enabled', 'info', 2000);
+        }
+
+        function exitEditMode() {
+            if (!window.noteEditMode) return;
+
+            window.noteEditMode = false;
+            console.log('Exiting edit mode');
+
+            // Remove save/cancel buttons
+            const saveBtn = document.getElementById('saveNoteBtn');
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            if (saveBtn) saveBtn.remove();
+            if (cancelBtn) cancelBtn.remove();
+
+            // Show edit button again
+            document.getElementById('editNoteBtn').classList.remove('hidden');
+
+            // Reload the note to restore original view
+            if (currentEditingNote) {
+                populateNoteDetails(currentEditingNote);
+            }
+        }
+
+        async function saveNoteEdits() {
+            if (!currentEditingNote) return;
+
+            try {
+                // Get edited values
+                const titleInput = document.getElementById('editTitleInput');
+                const contentInput = document.getElementById('editContentInput');
+                const tagsInput = document.getElementById('editTagsInput');
+
+                const updates = {
+                    title: titleInput ? titleInput.value.trim() : currentEditingNote.title,
+                    content: contentInput ? contentInput.value.trim() : (currentEditingNote.content || currentEditingNote.body),
+                    tags: tagsInput ? tagsInput.value.trim() : currentEditingNote.tags
+                };
+
+                console.log('Saving note edits:', updates);
+
+                // Show saving state
+                const saveBtn = document.getElementById('saveNoteBtn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = `
+                    <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span>Saving...</span>
+                `;
+
+                // Call API to update note
+                const response = await fetch(`/api/notes/${currentEditingNote.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(updates)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to save note: ${response.status}`);
+                }
+
+                const updatedNote = await response.json();
+                console.log('Note saved successfully:', updatedNote);
+
+                // Update current note data
+                currentEditingNote = { ...currentEditingNote, ...updates };
+
+                // Exit edit mode and refresh display
+                exitEditMode();
+
+                // Refresh the dashboard to show updated note
+                refreshDashboardData();
+
+                showToast('Note saved successfully!', 'success', 3000);
+
+            } catch (error) {
+                console.error('Error saving note:', error);
+                showToast(`Failed to save note: ${error.message}`, 'error', 5000);
+
+                // Re-enable save button
+                const saveBtn = document.getElementById('saveNoteBtn');
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = `
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Save</span>
+                    `;
+                }
             }
         }
 
