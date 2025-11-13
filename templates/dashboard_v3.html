@@ -1004,13 +1004,16 @@
                                         
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
-                                                <button class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors">
+                                                <button type="button" onclick="showTemplates()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors" title="Choose from templates (Ctrl+T)">
+                                                    📝 Templates
+                                                </button>
+                                                <button type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors">
                                                     🏷️ Auto-tag
                                                 </button>
-                                                <button class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors">
+                                                <button type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors">
                                                     ✨ AI Summary
                                                 </button>
-                                                <button class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors">
+                                                <button type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors">
                                                     📎 Add Files
                                                 </button>
                                             </div>
@@ -2394,6 +2397,77 @@
         </div>
     </div>
 
+    <!-- Note Templates Modal -->
+    <div id="templatesModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-dark rounded-2xl max-w-3xl w-full p-8 shadow-large animate-scale-in max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-white flex items-center">
+                    <svg class="w-6 h-6 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Choose a Template
+                </h2>
+                <button onclick="hideTemplates()" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <p class="text-slate-300 mb-6">Select a template to quickly start your note with a pre-formatted structure.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Meeting Notes Template -->
+                <button onclick="applyTemplate('meeting')" class="glass-dark p-6 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all group text-left">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">👥</div>
+                    <div class="text-white font-medium mb-2">Meeting Notes</div>
+                    <div class="text-slate-400 text-sm">Agenda, discussion, and action items</div>
+                </button>
+
+                <!-- Daily Journal Template -->
+                <button onclick="applyTemplate('daily')" class="glass-dark p-6 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all group text-left">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">📔</div>
+                    <div class="text-white font-medium mb-2">Daily Journal</div>
+                    <div class="text-slate-400 text-sm">Morning reflections and evening review</div>
+                </button>
+
+                <!-- Project Plan Template -->
+                <button onclick="applyTemplate('project')" class="glass-dark p-6 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all group text-left">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">🎯</div>
+                    <div class="text-white font-medium mb-2">Project Plan</div>
+                    <div class="text-slate-400 text-sm">Goals, milestones, and resources</div>
+                </button>
+
+                <!-- Book Notes Template -->
+                <button onclick="applyTemplate('book')" class="glass-dark p-6 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all group text-left">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">📚</div>
+                    <div class="text-white font-medium mb-2">Book Notes</div>
+                    <div class="text-slate-400 text-sm">Summary, takeaways, and quotes</div>
+                </button>
+
+                <!-- Task List Template -->
+                <button onclick="applyTemplate('todo')" class="glass-dark p-6 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all group text-left">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">✅</div>
+                    <div class="text-white font-medium mb-2">Task List</div>
+                    <div class="text-slate-400 text-sm">Prioritized todos with checkboxes</div>
+                </button>
+
+                <!-- Blank Template -->
+                <button onclick="applyTemplate('blank')" class="glass-dark p-6 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all group text-left">
+                    <div class="text-4xl mb-3 group-hover:scale-110 transition-transform">📄</div>
+                    <div class="text-white font-medium mb-2">Blank Note</div>
+                    <div class="text-slate-400 text-sm">Start from scratch</div>
+                </button>
+            </div>
+
+            <div class="mt-6 pt-6 border-t border-slate-700">
+                <p class="text-slate-400 text-sm">
+                    <strong class="text-slate-300">Tip:</strong> Press <kbd class="px-2 py-1 bg-slate-700 rounded text-xs">Ctrl+T</kbd> anytime to open templates
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Advanced Search Modal -->
     <div id="advancedSearchModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-60 hidden flex items-center justify-center p-4">
         <div class="glass-dark rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-large animate-scale-in flex flex-col">
@@ -3400,7 +3474,7 @@
                 const date = new Date(timestamp);
                 const now = new Date();
                 const diffInSeconds = Math.floor((now - date) / 1000);
-                
+
                 if (diffInSeconds < 60) return 'now';
                 if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
                 if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
@@ -3409,6 +3483,105 @@
             } catch {
                 return timestamp;
             }
+        }
+
+        // ============================
+        // Note Templates System
+        // ============================
+
+        // Template definitions
+        const noteTemplates = {
+            meeting: {
+                name: "Meeting Notes",
+                icon: "👥",
+                content: "# Meeting Notes\n\n**Date:** {{date}}\n**Attendees:** \n**Topic:** \n\n## Agenda\n- \n\n## Discussion\n\n## Action Items\n- [ ] \n\n## Next Steps\n"
+            },
+            daily: {
+                name: "Daily Journal",
+                icon: "📔",
+                content: "# Daily Journal - {{date}}\n\n## Morning\n**Mood:** \n**Goals for today:**\n- \n\n## Evening\n**Accomplished:**\n- \n\n**Grateful for:**\n- \n\n**Tomorrow:**\n- "
+            },
+            project: {
+                name: "Project Plan",
+                icon: "🎯",
+                content: "# Project: {{title}}\n\n## Overview\n**Goal:** \n**Timeline:** \n**Status:** Planning\n\n## Objectives\n- \n\n## Milestones\n1. \n\n## Resources Needed\n- \n\n## Risks & Challenges\n- "
+            },
+            book: {
+                name: "Book Notes",
+                icon: "📚",
+                content: "# Book Notes: {{title}}\n\n**Author:** \n**Genre:** \n**Rating:** ⭐⭐⭐⭐⭐\n\n## Summary\n\n## Key Takeaways\n- \n\n## Favorite Quotes\n> \n\n## My Thoughts\n"
+            },
+            todo: {
+                name: "Task List",
+                icon: "✅",
+                content: "# Tasks - {{date}}\n\n## High Priority\n- [ ] \n\n## Medium Priority\n- [ ] \n\n## Low Priority\n- [ ] \n\n## Completed\n- [x] "
+            },
+            blank: {
+                name: "Blank Note",
+                icon: "📄",
+                content: ""
+            }
+        };
+
+        // Show templates modal
+        function showTemplates() {
+            document.getElementById('templatesModal').classList.remove('hidden');
+        }
+
+        // Hide templates modal
+        function hideTemplates() {
+            document.getElementById('templatesModal').classList.add('hidden');
+        }
+
+        // Apply selected template
+        function applyTemplate(templateKey) {
+            const template = noteTemplates[templateKey];
+            if (!template) {
+                console.error('Template not found:', templateKey);
+                return;
+            }
+
+            // Get current date in readable format
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            // Get title placeholder (or empty)
+            const titleInput = document.getElementById('quickTitle');
+            const currentTitle = titleInput ? titleInput.value.trim() : '';
+            const titlePlaceholder = currentTitle || 'Untitled';
+
+            // Replace placeholders in template content
+            let content = template.content;
+            content = content.replace(/\{\{date\}\}/g, dateStr);
+            content = content.replace(/\{\{title\}\}/g, titlePlaceholder);
+
+            // Populate the form
+            const noteTextarea = document.getElementById('note');
+            if (noteTextarea) {
+                noteTextarea.value = content;
+                noteTextarea.focus();
+            }
+
+            // Set title if it was in the template and current title is empty
+            if (!currentTitle && templateKey !== 'blank') {
+                const titleMatch = content.match(/^# (.+)$/m);
+                if (titleMatch && titleInput) {
+                    titleInput.value = titleMatch[1];
+                }
+            }
+
+            // Save last used template to localStorage
+            localStorage.setItem('lastUsedTemplate', templateKey);
+
+            // Hide the modal
+            hideTemplates();
+
+            // Show success toast
+            showToast(`${template.icon} ${template.name} template applied!`, 'success', 2000);
         }
 
         // File Upload Handling
@@ -4599,6 +4772,12 @@
             // Escape key - always works
             if (event.key === 'Escape') {
                 event.preventDefault();
+                // Close templates modal if open
+                const templatesModal = document.getElementById('templatesModal');
+                if (templatesModal && !templatesModal.classList.contains('hidden')) {
+                    hideTemplates();
+                    return;
+                }
                 // Close note details modal if open
                 const noteModal = document.getElementById('noteDetailsModal');
                 if (noteModal && !noteModal.classList.contains('hidden')) {
@@ -4637,8 +4816,20 @@
             // Ctrl/Cmd + N - New note (when not typing)
             if ((event.ctrlKey || event.metaKey) && event.key === 'n' && !isTyping) {
                 event.preventDefault();
-                showQuickNoteModal();
+                openNewNote();
                 return;
+            }
+
+            // Ctrl/Cmd + T - Show templates (when typing in note field)
+            if ((event.ctrlKey || event.metaKey) && event.key === 't') {
+                // Allow templates to be shown even when typing in the note textarea
+                const noteTextarea = document.getElementById('note');
+                const titleInput = document.getElementById('quickTitle');
+                if (event.target === noteTextarea || event.target === titleInput) {
+                    event.preventDefault();
+                    showTemplates();
+                    return;
+                }
             }
 
             // Ctrl/Cmd + S - Save note (when editing)
