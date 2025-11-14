@@ -1,0 +1,98 @@
+{
+  "name": "Photo OCR to Second Brain",
+  "description": "Take photo and extract text with OCR, capture location",
+  "icon": "📸",
+  "color": "purple",
+  "endpoint": "/api/shortcuts/photo-ocr",
+  "method": "POST",
+  "requires_permissions": ["camera", "photos", "location"],
+  "siri_phrase": "Extract text to Second Brain",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Capture photo and extract text using OCR with location context"
+    },
+    {
+      "type": "take_photo",
+      "camera": "back",
+      "show_preview": true,
+      "save_to": "Photo"
+    },
+    {
+      "type": "get_current_location",
+      "save_to": "CurrentLocation"
+    },
+    {
+      "type": "get_current_date",
+      "save_to": "CurrentDate"
+    },
+    {
+      "type": "base64_encode",
+      "input": "{{Photo}}",
+      "save_to": "EncodedImage"
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "image_data": "{{EncodedImage}}",
+        "location_data": {
+          "latitude": "{{CurrentLocation.Latitude}}",
+          "longitude": "{{CurrentLocation.Longitude}}",
+          "address": "{{CurrentLocation.FormattedAddress}}"
+        },
+        "context": {
+          "timestamp": "{{CurrentDate.ISO8601}}",
+          "captured_via": "iOS Camera"
+        }
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/photo-ocr",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "OCR Complete",
+      "body": "Extracted {{Response.extracted_text.length}} characters",
+      "sound": "default"
+    },
+    {
+      "type": "show_result",
+      "text": "✅ Photo OCR saved to Second Brain\n\nTitle: {{Response.title}}\nExtracted Text:\n{{Response.extracted_text}}"
+    }
+  ],
+  "sample_payload": {
+    "image_data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "location_data": {
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "address": "New York, NY 10013"
+    },
+    "context": {
+      "timestamp": "2024-12-15T15:45:00Z",
+      "captured_via": "iOS Camera"
+    }
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 124,
+    "title": "Business Card - Sarah Johnson",
+    "extracted_text": "Sarah Johnson\nSenior Product Manager\nTechCorp Inc.\nsarah.j@techcorp.com\n(555) 123-4567",
+    "tags": ["photo", "ocr", "ios-shortcut", "location", "business-card"],
+    "message": "Photo OCR processed successfully"
+  },
+  "use_cases": [
+    "Business cards",
+    "Whiteboards and presentations",
+    "Documents and receipts",
+    "Signs and menus",
+    "Handwritten notes"
+  ]
+}

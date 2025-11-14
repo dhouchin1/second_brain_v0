@@ -1,0 +1,141 @@
+{
+  "name": "Contact Note to Second Brain",
+  "description": "Save notes about people you meet with contact info and context",
+  "icon": "👤",
+  "color": "pink",
+  "endpoint": "/api/shortcuts/contact-note",
+  "method": "POST",
+  "requires_permissions": ["contacts", "location"],
+  "siri_phrase": "Save contact to Second Brain",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Create structured notes about people with contact info and meeting context"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Select contact or enter name:",
+      "items": "{{Contacts}}",
+      "allow_custom": true,
+      "save_to": "ContactName"
+    },
+    {
+      "type": "get_contact_details",
+      "contact": "{{ContactName}}",
+      "fields": ["Phone", "Email", "Company", "Title"],
+      "save_to": "ContactDetails",
+      "optional": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Notes about {{ContactName}}:",
+      "input_type": "text",
+      "multiline": true,
+      "save_to": "NoteText"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Was this a meeting?",
+      "input_type": "boolean",
+      "save_to": "IsMeeting",
+      "default": false
+    },
+    {
+      "type": "if",
+      "condition": "{{IsMeeting}}",
+      "actions": [
+        {
+          "type": "get_current_date",
+          "save_to": "MeetingDate"
+        },
+        {
+          "type": "ask_for_input",
+          "prompt": "Meeting topic:",
+          "input_type": "text",
+          "save_to": "MeetingTopic"
+        },
+        {
+          "type": "build_dictionary",
+          "fields": {
+            "date": "{{MeetingDate.ISO8601}}",
+            "topic": "{{MeetingTopic}}"
+          },
+          "save_to": "MeetingContext"
+        }
+      ]
+    },
+    {
+      "type": "get_current_location",
+      "save_to": "CurrentLocation",
+      "optional": true
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "contact_name": "{{ContactName}}",
+        "contact_info": {
+          "phone": "{{ContactDetails.Phone}}",
+          "email": "{{ContactDetails.Email}}",
+          "company": "{{ContactDetails.Company}}",
+          "title": "{{ContactDetails.Title}}"
+        },
+        "note_text": "{{NoteText}}",
+        "meeting_context": "{{MeetingContext}}",
+        "location_data": {
+          "latitude": "{{CurrentLocation.Latitude}}",
+          "longitude": "{{CurrentLocation.Longitude}}",
+          "address": "{{CurrentLocation.FormattedAddress}}"
+        }
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/contact-note",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Contact Note Saved",
+      "body": "{{Response.contact}} - {{Response.message}}",
+      "sound": "default"
+    }
+  ],
+  "sample_payload": {
+    "contact_name": "Alex Chen",
+    "contact_info": {
+      "phone": "+1-555-0123",
+      "email": "alex.chen@innovatetech.com",
+      "company": "InnovateTech Solutions",
+      "title": "VP of Engineering"
+    },
+    "note_text": "Met Alex at the tech conference. Very knowledgeable about distributed systems and microservices architecture. Interested in collaborating on the new cloud migration project. Mentioned they're hiring senior engineers - should follow up.",
+    "meeting_context": {
+      "date": "2024-12-15T18:30:00Z",
+      "topic": "Cloud Architecture & Migration Strategies"
+    },
+    "location_data": {
+      "latitude": 37.7749,
+      "longitude": -122.4194,
+      "address": "Moscone Center, San Francisco, CA 94103"
+    }
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 129,
+    "title": "Note: Alex Chen",
+    "contact": "Alex Chen",
+    "message": "Contact note for Alex Chen saved"
+  },
+  "use_cases": [
+    "Networking events and conferences",
+    "Client meetings with follow-up actions",
+    "Job interviews and candidates",
+    "Professional connections and referrals"
+  ]
+}

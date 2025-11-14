@@ -1,0 +1,105 @@
+{
+  "name": "Habit Tracker to Second Brain",
+  "description": "Log daily habit completions with mood and difficulty tracking",
+  "icon": "✅",
+  "color": "green",
+  "endpoint": "/api/shortcuts/habit-log",
+  "method": "POST",
+  "requires_permissions": ["none"],
+  "siri_phrase": "Log habit to Second Brain",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Track daily habits with completion status, mood, and difficulty"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Habit name:",
+      "input_type": "text",
+      "save_to": "HabitName",
+      "suggestions": ["Morning meditation", "Exercise", "Reading", "Journaling", "Water intake"]
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Did you complete this habit today?",
+      "input_type": "boolean",
+      "save_to": "Completed",
+      "default": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Additional notes (optional):",
+      "input_type": "text",
+      "save_to": "Notes",
+      "optional": true
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "How are you feeling?",
+      "items": ["energized", "good", "neutral", "tired", "stressed"],
+      "save_to": "Mood",
+      "optional": true
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Difficulty level:",
+      "items": ["⭐ Very Easy", "⭐⭐ Easy", "⭐⭐⭐ Moderate", "⭐⭐⭐⭐ Hard", "⭐⭐⭐⭐⭐ Very Hard"],
+      "save_to": "DifficultyText",
+      "optional": true
+    },
+    {
+      "type": "get_numbers_from_input",
+      "input": "{{DifficultyText}}",
+      "save_to": "Difficulty",
+      "optional": true
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "habit_name": "{{HabitName}}",
+        "completed": "{{Completed}}",
+        "notes": "{{Notes}}",
+        "mood": "{{Mood}}",
+        "difficulty": "{{Difficulty}}"
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/habit-log",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Habit Logged",
+      "body": "{{Response.habit}} - {{Response.completed ? '✅ Completed' : '❌ Missed'}}",
+      "sound": "default"
+    }
+  ],
+  "sample_payload": {
+    "habit_name": "Morning meditation",
+    "completed": true,
+    "notes": "20 minutes of focused breathing. Felt more centered and calm afterward. Good way to start the day.",
+    "mood": "energized",
+    "difficulty": 2
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 131,
+    "title": "Habit: Morning meditation - ✅ Completed",
+    "habit": "Morning meditation",
+    "completed": true,
+    "message": "Habit 'Morning meditation' logged"
+  },
+  "automation_ideas": [
+    "Set up morning reminder automation",
+    "Track streaks with search queries",
+    "Review weekly progress in dashboard",
+    "Identify patterns between mood and completion"
+  ]
+}

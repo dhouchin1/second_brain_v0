@@ -1,0 +1,137 @@
+{
+  "name": "Book Logger to Second Brain",
+  "description": "Track books, movies, podcasts with ratings and notes",
+  "icon": "📚",
+  "color": "brown",
+  "endpoint": "/api/shortcuts/media-note",
+  "method": "POST",
+  "requires_permissions": ["none"],
+  "siri_phrase": "Log book to Second Brain",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Track and review books, movies, podcasts, and other media"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Media type:",
+      "items": ["book", "movie", "podcast", "article", "video", "audiobook"],
+      "save_to": "MediaType"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Title:",
+      "input_type": "text",
+      "save_to": "MediaTitle"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Creator (author/director/host):",
+      "input_type": "text",
+      "save_to": "Creator"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Your notes and thoughts:",
+      "input_type": "text",
+      "multiline": true,
+      "save_to": "Notes"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Rating:",
+      "items": ["⭐ 1/5", "⭐⭐ 2/5", "⭐⭐⭐ 3/5", "⭐⭐⭐⭐ 4/5", "⭐⭐⭐⭐⭐ 5/5"],
+      "save_to": "RatingText"
+    },
+    {
+      "type": "get_numbers_from_input",
+      "input": "{{RatingText}}",
+      "save_to": "Rating"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Genre/Category:",
+      "input_type": "text",
+      "save_to": "Genre",
+      "optional": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Year:",
+      "input_type": "number",
+      "save_to": "Year",
+      "optional": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Tags (comma-separated):",
+      "input_type": "text",
+      "save_to": "TagsText",
+      "optional": true
+    },
+    {
+      "type": "split_text",
+      "text": "{{TagsText}}",
+      "separator": ",",
+      "save_to": "CustomTags",
+      "optional": true
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "media_type": "{{MediaType}}",
+        "title": "{{MediaTitle}}",
+        "creator": "{{Creator}}",
+        "notes": "{{Notes}}",
+        "rating": "{{Rating}}",
+        "tags_custom": "{{CustomTags}}",
+        "metadata_extra": {
+          "year": "{{Year}}",
+          "genre": "{{Genre}}"
+        }
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/media-note",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Media Logged",
+      "body": "{{Response.media_type}}: {{Response.title}}",
+      "sound": "default"
+    }
+  ],
+  "sample_payload": {
+    "media_type": "book",
+    "title": "Atomic Habits",
+    "creator": "James Clear",
+    "notes": "Excellent framework for building good habits and breaking bad ones. Key takeaway: focus on systems, not goals. The 1% improvement concept is powerful. Implementation: start habit stacking for morning routine.",
+    "rating": 5,
+    "tags_custom": ["productivity", "self-improvement", "habits", "highly-recommended"],
+    "metadata_extra": {
+      "year": "2018",
+      "genre": "Self-Help"
+    }
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 130,
+    "title": "Book: Atomic Habits",
+    "media_type": "book",
+    "message": "Book note saved"
+  },
+  "tracking_benefits": [
+    "Remember what you've consumed",
+    "Track your ratings and favorites",
+    "Build a personal recommendation database",
+    "Recall key insights and takeaways"
+  ]
+}

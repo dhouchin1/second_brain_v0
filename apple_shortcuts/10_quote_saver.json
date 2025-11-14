@@ -1,0 +1,122 @@
+{
+  "name": "Quote Saver to Second Brain",
+  "description": "Save inspiring quotes with attribution and personal reflections",
+  "icon": "💬",
+  "color": "yellow",
+  "endpoint": "/api/shortcuts/quote",
+  "method": "POST",
+  "requires_permissions": ["none"],
+  "siri_phrase": "Save quote to Second Brain",
+  "share_sheet": true,
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Capture inspiring quotes with proper attribution and personal reflections"
+    },
+    {
+      "type": "get_text_from_input",
+      "save_to": "QuoteText",
+      "optional": true
+    },
+    {
+      "type": "if",
+      "condition": "{{QuoteText}} is empty",
+      "actions": [
+        {
+          "type": "ask_for_input",
+          "prompt": "Enter the quote:",
+          "input_type": "text",
+          "multiline": true,
+          "save_to": "QuoteText"
+        }
+      ]
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Author:",
+      "input_type": "text",
+      "save_to": "Author",
+      "optional": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Source (book, speech, etc.):",
+      "input_type": "text",
+      "save_to": "Source",
+      "optional": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Category/Theme:",
+      "input_type": "text",
+      "save_to": "Category",
+      "suggestions": ["motivation", "wisdom", "leadership", "creativity", "philosophy"],
+      "optional": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Your reflection on this quote:",
+      "input_type": "text",
+      "multiline": true,
+      "save_to": "Reflection",
+      "optional": true
+    },
+    {
+      "type": "get_current_date",
+      "save_to": "CurrentDate"
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "quote_text": "{{QuoteText}}",
+        "author": "{{Author}}",
+        "source": "{{Source}}",
+        "category": "{{Category}}",
+        "reflection": "{{Reflection}}",
+        "context": {
+          "saved_date": "{{CurrentDate.ISO8601}}"
+        }
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/quote",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Quote Saved",
+      "body": "{{Response.author ? 'by ' + Response.author : 'Anonymous'}}",
+      "sound": "default"
+    }
+  ],
+  "sample_payload": {
+    "quote_text": "The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle.",
+    "author": "Steve Jobs",
+    "source": "Stanford Commencement Address",
+    "category": "motivation",
+    "reflection": "This really resonates with my current career transition. It's a reminder that passion and excellence are interconnected. I shouldn't compromise on finding work that truly excites me.",
+    "context": {
+      "saved_date": "2024-12-15T20:00:00Z"
+    }
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 132,
+    "title": "Quote by Steve Jobs",
+    "author": "Steve Jobs",
+    "message": "Quote saved successfully"
+  },
+  "use_cases": [
+    "Build personal quote collection",
+    "Capture insights from reading",
+    "Save motivational quotes",
+    "Track philosophical reflections"
+  ]
+}

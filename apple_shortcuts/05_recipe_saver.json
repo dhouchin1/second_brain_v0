@@ -1,0 +1,154 @@
+{
+  "name": "Recipe to Second Brain",
+  "description": "Save recipes with ingredients and cooking instructions",
+  "icon": "🍳",
+  "color": "red",
+  "endpoint": "/api/shortcuts/recipe",
+  "method": "POST",
+  "requires_permissions": ["none"],
+  "siri_phrase": "Save recipe to Second Brain",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Save structured recipe data with ingredients, instructions, and metadata"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Recipe name:",
+      "input_type": "text",
+      "save_to": "RecipeName"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Ingredients (one per line):",
+      "input_type": "text",
+      "multiline": true,
+      "save_to": "IngredientsText"
+    },
+    {
+      "type": "split_text",
+      "text": "{{IngredientsText}}",
+      "separator": "newline",
+      "save_to": "IngredientsList"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Instructions (one step per line):",
+      "input_type": "text",
+      "multiline": true,
+      "save_to": "InstructionsText"
+    },
+    {
+      "type": "split_text",
+      "text": "{{InstructionsText}}",
+      "separator": "newline",
+      "save_to": "InstructionsList"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Prep time (e.g., '15 minutes'):",
+      "input_type": "text",
+      "save_to": "PrepTime",
+      "default": ""
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Cook time (e.g., '30 minutes'):",
+      "input_type": "text",
+      "save_to": "CookTime",
+      "default": ""
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Servings:",
+      "input_type": "number",
+      "save_to": "Servings",
+      "default": "4"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Source URL (optional):",
+      "input_type": "url",
+      "save_to": "SourceURL",
+      "optional": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Tags (comma-separated, e.g., 'dinner, vegetarian, quick'):",
+      "input_type": "text",
+      "save_to": "TagsText",
+      "optional": true
+    },
+    {
+      "type": "split_text",
+      "text": "{{TagsText}}",
+      "separator": ",",
+      "save_to": "CustomTags",
+      "optional": true
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "recipe_name": "{{RecipeName}}",
+        "ingredients": "{{IngredientsList}}",
+        "instructions": "{{InstructionsList}}",
+        "prep_time": "{{PrepTime}}",
+        "cook_time": "{{CookTime}}",
+        "servings": "{{Servings}}",
+        "source_url": "{{SourceURL}}",
+        "tags_custom": "{{CustomTags}}"
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/recipe",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Recipe Saved",
+      "body": "{{RecipeName}} - {{Response.ingredients_count}} ingredients, {{Response.steps_count}} steps",
+      "sound": "default"
+    }
+  ],
+  "sample_payload": {
+    "recipe_name": "Classic Spaghetti Carbonara",
+    "ingredients": [
+      "400g spaghetti",
+      "200g pancetta or guanciale, diced",
+      "4 large egg yolks",
+      "1 whole egg",
+      "100g Pecorino Romano cheese, grated",
+      "Black pepper, freshly ground",
+      "Salt for pasta water"
+    ],
+    "instructions": [
+      "Bring a large pot of salted water to boil and cook spaghetti until al dente",
+      "While pasta cooks, fry pancetta in a large pan until crispy",
+      "In a bowl, whisk together egg yolks, whole egg, and grated cheese",
+      "Reserve 1 cup pasta water, then drain pasta",
+      "Remove pan from heat and add hot pasta to pancetta",
+      "Quickly stir in egg mixture, adding pasta water to create creamy sauce",
+      "Season generously with black pepper and serve immediately"
+    ],
+    "prep_time": "10 minutes",
+    "cook_time": "20 minutes",
+    "servings": 4,
+    "source_url": "https://www.example.com/carbonara-recipe",
+    "tags_custom": ["italian", "pasta", "dinner", "quick"]
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 127,
+    "title": "Recipe: Classic Spaghetti Carbonara",
+    "ingredients_count": 7,
+    "steps_count": 7,
+    "message": "Recipe saved successfully"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "name": "Web Clip to Second Brain",
+  "description": "Save web articles and selected text from Safari",
+  "icon": "🌐",
+  "color": "orange",
+  "endpoint": "/api/shortcuts/web-clip",
+  "method": "POST",
+  "requires_permissions": ["none"],
+  "siri_phrase": "Clip to Second Brain",
+  "share_sheet": true,
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Clip web content from Safari share sheet with optional text selection"
+    },
+    {
+      "type": "get_urls_from_input",
+      "save_to": "WebURL"
+    },
+    {
+      "type": "get_name_of_input",
+      "save_to": "PageTitle"
+    },
+    {
+      "type": "get_text_from_input",
+      "save_to": "SelectedText",
+      "optional": true
+    },
+    {
+      "type": "get_current_date",
+      "save_to": "CurrentDate"
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "url": "{{WebURL}}",
+        "selected_text": "{{SelectedText}}",
+        "page_title": "{{PageTitle}}",
+        "context": {
+          "timestamp": "{{CurrentDate.ISO8601}}",
+          "source": "Safari Share Sheet"
+        }
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/web-clip",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Web Clip Saved",
+      "body": "{{Response.content_type}} - {{Response.title}}",
+      "sound": "default"
+    }
+  ],
+  "sample_payload": {
+    "url": "https://blog.example.com/advanced-python-patterns",
+    "selected_text": "The decorator pattern is particularly useful for cross-cutting concerns like logging, caching, and authentication. By wrapping functions with decorators, you can add functionality without modifying the original code.",
+    "page_title": "Advanced Python Patterns: Decorators and Context Managers",
+    "context": {
+      "timestamp": "2024-12-15T16:00:00Z",
+      "source": "Safari Share Sheet"
+    }
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 126,
+    "title": "Advanced Python Patterns: Decorators",
+    "content_type": "selection",
+    "message": "Web selection clipped successfully"
+  },
+  "use_cases": [
+    "Save important passages from articles",
+    "Clip entire articles for later reading",
+    "Build research collections",
+    "Archive web content"
+  ]
+}

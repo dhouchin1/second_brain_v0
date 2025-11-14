@@ -1,0 +1,272 @@
+{
+  "description": "Sample data for testing Apple Shortcuts integrations with Second Brain",
+  "server_url": "http://localhost:8082",
+  "shortcuts": {
+    "voice_memo": {
+      "test_requests": [
+        {
+          "name": "Quick Meeting Note",
+          "payload": {
+            "transcription": "Meeting with Sarah tomorrow at 2 PM to discuss Q1 budget review. Need to prepare slides on cost optimization and resource allocation.",
+            "location_data": {
+              "latitude": 37.7749,
+              "longitude": -122.4194,
+              "address": "San Francisco, CA 94102"
+            },
+            "context": {
+              "timestamp": "2024-12-15T14:30:00Z",
+              "device": "iPhone 15 Pro",
+              "app_name": "Shortcuts"
+            }
+          }
+        },
+        {
+          "name": "Project Idea",
+          "payload": {
+            "transcription": "New feature idea for the app: implement dark mode with system preference sync. Users have been requesting this for months. Should be straightforward with CSS variables.",
+            "location_data": {
+              "latitude": 40.7128,
+              "longitude": -74.006,
+              "address": "New York, NY 10013"
+            },
+            "context": {
+              "timestamp": "2024-12-15T09:15:00Z",
+              "device": "iPhone",
+              "app_name": "Shortcuts"
+            }
+          }
+        }
+      ]
+    },
+    "photo_ocr": {
+      "test_requests": [
+        {
+          "name": "Business Card",
+          "payload": {
+            "image_data": "base64_encoded_image_would_go_here",
+            "location_data": {
+              "latitude": 34.0522,
+              "longitude": -118.2437,
+              "address": "Los Angeles, CA 90012"
+            },
+            "context": {
+              "timestamp": "2024-12-15T16:20:00Z",
+              "captured_via": "iOS Camera"
+            }
+          },
+          "note": "Replace image_data with actual base64 encoded image"
+        }
+      ]
+    },
+    "quick_thought": {
+      "test_requests": [
+        {
+          "name": "Random Insight",
+          "payload": {
+            "text": "The best debugging technique is often just explaining the problem out loud to someone else. Rubber duck debugging works because it forces you to articulate your assumptions.",
+            "note_type": "thought",
+            "location_data": {
+              "latitude": 47.6062,
+              "longitude": -122.3321,
+              "address": "Seattle, WA 98101"
+            },
+            "context": {
+              "timestamp": "2024-12-15T11:45:00Z",
+              "source_app": "Shortcuts"
+            },
+            "auto_tag": true
+          }
+        },
+        {
+          "name": "Task Reminder",
+          "payload": {
+            "text": "Remember to update the SSL certificate before it expires on Dec 31st. Also need to renew the domain registration.",
+            "note_type": "task",
+            "auto_tag": true
+          }
+        }
+      ]
+    },
+    "web_clip": {
+      "test_requests": [
+        {
+          "name": "Article with Selection",
+          "payload": {
+            "url": "https://www.example.com/article",
+            "selected_text": "Microservices architecture provides flexibility and scalability, but introduces complexity in deployment, monitoring, and inter-service communication. Consider the trade-offs carefully before adopting.",
+            "page_title": "Understanding Microservices: Benefits and Challenges",
+            "context": {
+              "timestamp": "2024-12-15T13:00:00Z",
+              "source": "Safari Share Sheet"
+            }
+          }
+        },
+        {
+          "name": "Full Page Clip",
+          "payload": {
+            "url": "https://blog.example.com/best-practices",
+            "page_title": "Software Engineering Best Practices 2024",
+            "context": {
+              "timestamp": "2024-12-15T10:30:00Z",
+              "source": "Safari Share Sheet"
+            }
+          }
+        }
+      ]
+    },
+    "recipe": {
+      "test_requests": [
+        {
+          "name": "Quick Dinner Recipe",
+          "payload": {
+            "recipe_name": "15-Minute Garlic Shrimp Pasta",
+            "ingredients": [
+              "12 oz linguine pasta",
+              "1 lb large shrimp, peeled and deveined",
+              "4 cloves garlic, minced",
+              "1/4 cup olive oil",
+              "1/2 cup white wine",
+              "1/4 cup fresh parsley, chopped",
+              "Red pepper flakes to taste",
+              "Salt and black pepper",
+              "Lemon wedges for serving"
+            ],
+            "instructions": [
+              "Cook linguine according to package directions, reserve 1 cup pasta water",
+              "Heat olive oil in a large skillet over medium-high heat",
+              "Add garlic and red pepper flakes, sauté for 30 seconds",
+              "Add shrimp, season with salt and pepper, cook 2-3 minutes per side",
+              "Pour in white wine, let simmer for 2 minutes",
+              "Add cooked pasta and toss to combine, adding pasta water as needed",
+              "Stir in fresh parsley",
+              "Serve with lemon wedges"
+            ],
+            "prep_time": "5 minutes",
+            "cook_time": "10 minutes",
+            "servings": 4,
+            "tags_custom": ["seafood", "pasta", "quick", "dinner", "italian"]
+          }
+        }
+      ]
+    },
+    "dream_journal": {
+      "test_requests": [
+        {
+          "name": "Lucid Dream Example",
+          "payload": {
+            "dream_text": "I was walking through a massive library with endless floors. The books were glowing with different colors - blue for fiction, green for science, purple for philosophy. I realized I was dreaming and decided to fly up to the top floor. Once there, I found a book with my name on it that showed my entire life story, but the pages about the future were blank.",
+            "emotions": ["curious", "amazed", "thoughtful", "empowered"],
+            "themes": ["library", "books", "flying", "knowledge", "future"],
+            "lucid": true,
+            "sleep_quality": 4
+          }
+        }
+      ]
+    },
+    "contact_note": {
+      "test_requests": [
+        {
+          "name": "Conference Contact",
+          "payload": {
+            "contact_name": "Dr. Maria Rodriguez",
+            "contact_info": {
+              "phone": "+1-555-0199",
+              "email": "m.rodriguez@airesearch.org",
+              "company": "AI Research Institute",
+              "title": "Senior Research Scientist"
+            },
+            "note_text": "Met at AI Conference 2024. Expert in reinforcement learning and robotics. Working on novel approaches to sim-to-real transfer. Very interested in our autonomous systems project. Agreed to review our paper draft and potentially collaborate on the robotics component.",
+            "meeting_context": {
+              "date": "2024-12-15T15:00:00Z",
+              "topic": "Reinforcement Learning in Robotics"
+            },
+            "location_data": {
+              "latitude": 42.3601,
+              "longitude": -71.0589,
+              "address": "Boston Convention Center, Boston, MA 02210"
+            }
+          }
+        }
+      ]
+    },
+    "media_note": {
+      "test_requests": [
+        {
+          "name": "Book Review",
+          "payload": {
+            "media_type": "book",
+            "title": "The Pragmatic Programmer",
+            "creator": "David Thomas & Andrew Hunt",
+            "notes": "Timeless advice on software craftsmanship. Key concepts: DRY principle, orthogonality, automation, and continuous learning. The tracer bullet development approach is particularly useful. Some sections feel dated but core principles remain relevant. Every developer should read this.",
+            "rating": 5,
+            "tags_custom": ["programming", "software-engineering", "must-read", "classic"],
+            "metadata_extra": {
+              "year": "1999",
+              "genre": "Programming"
+            }
+          }
+        },
+        {
+          "name": "Podcast Episode",
+          "payload": {
+            "media_type": "podcast",
+            "title": "Building Distributed Systems That Scale",
+            "creator": "Software Engineering Daily",
+            "notes": "Great discussion on horizontal scaling, load balancing, and database sharding. Interesting points about eventual consistency vs strong consistency trade-offs. Guest's experience with AWS autoscaling was particularly valuable.",
+            "rating": 4,
+            "tags_custom": ["distributed-systems", "architecture", "cloud"],
+            "metadata_extra": {
+              "year": "2024"
+            }
+          }
+        }
+      ]
+    },
+    "habit_log": {
+      "test_requests": [
+        {
+          "name": "Morning Routine - Success",
+          "payload": {
+            "habit_name": "Morning meditation",
+            "completed": true,
+            "notes": "15 minutes of focused breathing. Mind was particularly calm today. Starting the day this way really helps set a positive tone.",
+            "mood": "energized",
+            "difficulty": 2
+          }
+        },
+        {
+          "name": "Exercise - Missed",
+          "payload": {
+            "habit_name": "30-minute workout",
+            "completed": false,
+            "notes": "Missed due to early morning meeting that ran long. Will reschedule for evening.",
+            "mood": "stressed",
+            "difficulty": 4
+          }
+        }
+      ]
+    },
+    "quote": {
+      "test_requests": [
+        {
+          "name": "Inspirational Quote",
+          "payload": {
+            "quote_text": "We cannot solve our problems with the same thinking we used when we created them.",
+            "author": "Albert Einstein",
+            "category": "wisdom",
+            "reflection": "This applies so well to our current refactoring project. We keep trying to patch the old architecture, but what we really need is a fundamental rethink of the design patterns we're using.",
+            "context": {
+              "saved_date": "2024-12-15T19:00:00Z"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "testing_instructions": {
+    "step_1": "Start your Second Brain server on localhost:8082",
+    "step_2": "Use curl or Postman to test each endpoint",
+    "step_3": "Example curl command for voice memo:",
+    "example_curl": "curl -X POST http://localhost:8082/api/shortcuts/voice-memo -H 'Content-Type: application/json' -d '{\"transcription\":\"Test note\",\"location_data\":{\"latitude\":37.7749,\"longitude\":-122.4194,\"address\":\"San Francisco\"}}'"
+  }
+}

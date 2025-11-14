@@ -1,0 +1,111 @@
+{
+  "name": "Dream Journal to Second Brain",
+  "description": "Log dreams with emotions, themes, and AI analysis",
+  "icon": "🌙",
+  "color": "indigo",
+  "endpoint": "/api/shortcuts/dream-journal",
+  "method": "POST",
+  "requires_permissions": ["none"],
+  "siri_phrase": "Log dream to Second Brain",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Capture dream journal entries with metadata and AI-powered analysis"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Describe your dream:",
+      "input_type": "text",
+      "multiline": true,
+      "save_to": "DreamText"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Emotions felt (comma-separated):",
+      "input_type": "text",
+      "save_to": "EmotionsText",
+      "default": "peaceful, curious"
+    },
+    {
+      "type": "split_text",
+      "text": "{{EmotionsText}}",
+      "separator": ",",
+      "save_to": "EmotionsList"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Dream themes/symbols (comma-separated):",
+      "input_type": "text",
+      "save_to": "ThemesText",
+      "optional": true
+    },
+    {
+      "type": "split_text",
+      "text": "{{ThemesText}}",
+      "separator": ",",
+      "save_to": "ThemesList",
+      "optional": true
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Was this a lucid dream?",
+      "input_type": "boolean",
+      "save_to": "IsLucid",
+      "default": false
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "Sleep quality (1-5):",
+      "input_type": "number",
+      "save_to": "SleepQuality",
+      "default": "3"
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "dream_text": "{{DreamText}}",
+        "emotions": "{{EmotionsList}}",
+        "themes": "{{ThemesList}}",
+        "lucid": "{{IsLucid}}",
+        "sleep_quality": "{{SleepQuality}}"
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/dream-journal",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Dream Logged",
+      "body": "{{Response.title}}{{Response.lucid ? ' 🌟' : ''}}",
+      "sound": "default"
+    }
+  ],
+  "sample_payload": {
+    "dream_text": "I was flying over a vast ocean at sunset. The water was perfectly calm and reflected the orange and purple sky. I felt completely at peace and in control of my movements. Suddenly, I noticed a large sailing ship below me, and I descended to land on its deck. The crew seemed to expect me and welcomed me aboard.",
+    "emotions": ["peaceful", "curious", "excited", "free"],
+    "themes": ["flying", "ocean", "sailing", "sunset", "freedom"],
+    "lucid": true,
+    "sleep_quality": 4
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 128,
+    "title": "Dream Journal - Flying Over Ocean at Sunset",
+    "lucid": true,
+    "message": "Dream journal entry saved"
+  },
+  "tips": [
+    "Keep journal by bedside to log immediately upon waking",
+    "Include as many sensory details as possible",
+    "Note recurring symbols or themes",
+    "Track lucid dreaming progress over time"
+  ]
+}

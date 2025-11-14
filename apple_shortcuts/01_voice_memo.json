@@ -1,0 +1,97 @@
+{
+  "name": "Voice Memo to Second Brain",
+  "description": "Record and transcribe voice memos with location context",
+  "icon": "🎤",
+  "color": "blue",
+  "endpoint": "/api/shortcuts/voice-memo",
+  "method": "POST",
+  "requires_permissions": ["microphone", "location"],
+  "siri_phrase": "Voice note to Second Brain",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "This shortcut captures voice memos with automatic transcription and location data"
+    },
+    {
+      "type": "get_variable",
+      "variable": "CurrentLocation",
+      "description": "Get current GPS location"
+    },
+    {
+      "type": "dictate_text",
+      "description": "Record voice memo",
+      "save_to": "DictatedText"
+    },
+    {
+      "type": "get_current_date",
+      "save_to": "CurrentDate"
+    },
+    {
+      "type": "get_device_details",
+      "fields": ["Device Name", "Device Model"],
+      "save_to": "DeviceInfo"
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "transcription": "{{DictatedText}}",
+        "location_data": {
+          "latitude": "{{CurrentLocation.Latitude}}",
+          "longitude": "{{CurrentLocation.Longitude}}",
+          "address": "{{CurrentLocation.FormattedAddress}}"
+        },
+        "context": {
+          "timestamp": "{{CurrentDate.ISO8601}}",
+          "device": "{{DeviceInfo.DeviceName}}",
+          "app_name": "Shortcuts"
+        }
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/voice-memo",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Voice Memo Saved",
+      "body": "Transcription: {{DictatedText}}",
+      "sound": "default"
+    },
+    {
+      "type": "show_result",
+      "text": "✅ Voice memo saved to Second Brain\n\nTitle: {{Response.title}}\nNote ID: {{Response.note_id}}"
+    }
+  ],
+  "sample_payload": {
+    "transcription": "Remember to follow up with John about the project proposal. He mentioned wanting to discuss timeline changes for Q2.",
+    "location_data": {
+      "latitude": 37.7749,
+      "longitude": -122.4194,
+      "address": "San Francisco, CA 94102"
+    },
+    "context": {
+      "timestamp": "2024-12-15T14:30:00Z",
+      "device": "iPhone 15 Pro",
+      "app_name": "Shortcuts"
+    }
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 123,
+    "title": "Follow-up with John on Project Proposal",
+    "summary": "Action item to discuss Q2 timeline changes with John for project proposal",
+    "action_items": [
+      "Follow up with John about the project proposal",
+      "Discuss timeline changes for Q2"
+    ],
+    "tags": ["voice-memo", "audio", "ios-shortcut", "action-items", "meeting"],
+    "message": "Voice memo processed successfully"
+  }
+}

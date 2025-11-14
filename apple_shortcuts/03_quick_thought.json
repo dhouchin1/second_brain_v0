@@ -1,0 +1,92 @@
+{
+  "name": "Quick Thought to Second Brain",
+  "description": "Instantly capture thoughts and ideas with smart tagging",
+  "icon": "💭",
+  "color": "teal",
+  "endpoint": "/api/shortcuts/quick-note",
+  "method": "POST",
+  "requires_permissions": ["location"],
+  "siri_phrase": "Quick thought to Second Brain",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Quick capture for thoughts, ideas, and random insights"
+    },
+    {
+      "type": "ask_for_input",
+      "prompt": "What's on your mind?",
+      "input_type": "text",
+      "save_to": "ThoughtText"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Note type:",
+      "items": ["thought", "idea", "task", "meeting", "reminder", "random"],
+      "save_to": "NoteType"
+    },
+    {
+      "type": "get_current_location",
+      "save_to": "CurrentLocation",
+      "optional": true
+    },
+    {
+      "type": "get_current_date",
+      "save_to": "CurrentDate"
+    },
+    {
+      "type": "build_dictionary",
+      "fields": {
+        "text": "{{ThoughtText}}",
+        "note_type": "{{NoteType}}",
+        "location_data": {
+          "latitude": "{{CurrentLocation.Latitude}}",
+          "longitude": "{{CurrentLocation.Longitude}}",
+          "address": "{{CurrentLocation.FormattedAddress}}"
+        },
+        "context": {
+          "timestamp": "{{CurrentDate.ISO8601}}",
+          "source_app": "Shortcuts"
+        },
+        "auto_tag": true
+      },
+      "save_to": "RequestBody"
+    },
+    {
+      "type": "http_request",
+      "url": "http://localhost:8082/api/shortcuts/quick-note",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{{RequestBody}}",
+      "save_to": "Response"
+    },
+    {
+      "type": "show_notification",
+      "title": "Thought Captured",
+      "body": "Tagged: {{Response.tags}}",
+      "sound": "default"
+    }
+  ],
+  "sample_payload": {
+    "text": "Need to research alternative frameworks for the mobile app refactor. React Native vs Flutter - performance benchmarks and developer experience.",
+    "note_type": "idea",
+    "location_data": {
+      "latitude": 37.7749,
+      "longitude": -122.4194,
+      "address": "San Francisco, CA 94102"
+    },
+    "context": {
+      "timestamp": "2024-12-15T09:20:00Z",
+      "source_app": "Shortcuts"
+    },
+    "auto_tag": true
+  },
+  "expected_response": {
+    "success": true,
+    "note_id": 125,
+    "title": "Mobile App Framework Research",
+    "tags": ["idea", "ios-shortcut", "quick-note", "location", "mobile", "development", "react-native", "flutter"],
+    "message": "Idea note saved successfully"
+  }
+}
