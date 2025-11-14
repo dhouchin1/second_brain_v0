@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}{{ session.task }} - Build Log{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Back Button -->
+    <div class="mb-6">
+        <a href="/build-logs"
+           class="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Back to Build Logs
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 mb-6">
+        <div class="flex items-start justify-between mb-6">
+            <div class="flex-1">
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                    {{ session.task }}
+                </h1>
+                <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span class="flex items-center gap-1">
+                        📅 {{ session.created_display }}
+                    </span>
+                    {% if session.duration %}
+                    <span class="flex items-center gap-1">
+                        ⏱️ {{ session.duration }} minutes
+                    </span>
+                    {% endif %}
+                    <span class="flex items-center gap-1">
+                        🆔 <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{{ session.session_id }}</code>
+                    </span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                {% if session.success %}
+                <span class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    ✅ Success
+                </span>
+                {% elif session.success == false %}
+                <span class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                    ⚠️ Incomplete
+                </span>
+                {% endif %}
+                <button onclick="captureScreenshot()"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    📸 Screenshot
+                </button>
+            </div>
+        </div>
+
+        <!-- Tags -->
+        {% if session.tags_list %}
+        <div class="flex flex-wrap gap-2">
+            {% for tag in session.tags_list %}
+            <span class="inline-flex items-center px-3 py-1 text-sm rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                {{ tag }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Technical Context -->
+    {% if session.files_changed or session.commands_executed %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 mb-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            🔧 Technical Context
+        </h2>
+
+        <!-- Files Changed -->
+        {% if session.files_changed %}
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                Files Changed ({{ session.files_changed|length }})
+            </h3>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <ul class="space-y-2">
+                    {% for file in session.files_changed %}
+                    <li class="text-sm font-mono text-gray-700 dark:text-gray-300">
+                        {% if "Created:" in file %}
+                        <span class="text-green-600 dark:text-green-400">+</span>
+                        {% elif "Modified:" in file %}
+                        <span class="text-blue-600 dark:text-blue-400">~</span>
+                        {% elif "Deleted:" in file %}
+                        <span class="text-red-600 dark:text-red-400">-</span>
+                        {% endif %}
+                        {{ file }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Commands Executed -->
+        {% if session.commands_executed %}
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                Commands Executed ({{ session.commands_executed|length }})
+            </h3>
+            <div class="bg-gray-900 rounded-lg p-4">
+                <pre class="text-sm text-green-400 font-mono overflow-x-auto">{% for cmd in session.commands_executed %}$ {{ cmd }}
+{% endfor %}</pre>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Outcomes -->
+    {% if session.deliverables or session.next_steps or session.key_learnings %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 mb-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            ✨ Outcomes
+        </h2>
+
+        <!-- Deliverables -->
+        {% if session.deliverables %}
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                Deliverables
+            </h3>
+            <ul class="space-y-2">
+                {% for item in session.deliverables %}
+                <li class="flex items-start gap-2 text-gray-700 dark:text-gray-300">
+                    <span class="text-green-500 mt-1">✓</span>
+                    <span>{{ item }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Next Steps -->
+        {% if session.next_steps %}
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                Next Steps
+            </h3>
+            <ul class="space-y-2">
+                {% for item in session.next_steps %}
+                <li class="flex items-start gap-2 text-gray-700 dark:text-gray-300">
+                    <span class="text-blue-500 mt-1">□</span>
+                    <span>{{ item }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Key Learnings -->
+        {% if session.key_learnings %}
+        <div>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                Key Learnings
+            </h3>
+            <ul class="space-y-2">
+                {% for item in session.key_learnings %}
+                <li class="flex items-start gap-2 text-gray-700 dark:text-gray-300">
+                    <span class="text-yellow-500 mt-1">💡</span>
+                    <span>{{ item }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Conversation Log -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            📄 Conversation Log
+        </h2>
+        <div class="prose dark:prose-invert max-w-none">
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 whitespace-pre-wrap font-mono text-sm text-gray-800 dark:text-gray-200">{{ session.body }}</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function captureScreenshot() {
+    // Use html2canvas to capture the page
+    if (typeof html2canvas === 'undefined') {
+        alert('Screenshot functionality requires html2canvas library');
+        return;
+    }
+
+    html2canvas(document.body).then(canvas => {
+        // Convert canvas to blob
+        canvas.toBlob(blob => {
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `build-log-{{ session.session_id }}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    });
+}
+</script>
+{% endblock %}
