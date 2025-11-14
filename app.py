@@ -675,6 +675,14 @@ from services.build_log_router import router as build_log_router, init_build_log
 init_build_log_router(get_conn)
 app.include_router(build_log_router)
 
+# ---- Theme Router ----
+from services.theme_router import router as theme_router
+app.include_router(theme_router)
+
+# ---- Advanced Search Router ----
+from services.advanced_search_router import router as advanced_search_router
+app.include_router(advanced_search_router)
+
 # ---- Demo Data Router ----
 
 # --- Simple FIFO job worker for note processing ---
