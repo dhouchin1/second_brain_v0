@@ -1,0 +1,164 @@
+{
+  "name": "Second Brain - Code Snippet",
+  "description": "Save code snippets with syntax highlighting",
+  "version": "2.0",
+  "category": "Development",
+  "icon": "chevron.left.slash.chevron.right",
+  "color": "blue",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain Code Snippet - Save code with language and description"
+    },
+    {
+      "type": "get_clipboard"
+    },
+    {
+      "type": "set_variable",
+      "variable": "clipboard_content",
+      "value": "${clipboard}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Paste your code:",
+      "default_text": "${clipboard_content}",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "code",
+      "value": "${text_input}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Programming language:",
+      "items": [
+        "python",
+        "javascript",
+        "typescript",
+        "go",
+        "rust",
+        "java",
+        "cpp",
+        "c",
+        "swift",
+        "kotlin",
+        "ruby",
+        "php",
+        "sql",
+        "bash",
+        "html",
+        "css",
+        "json",
+        "yaml",
+        "other"
+      ]
+    },
+    {
+      "type": "set_variable",
+      "variable": "language",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "What does this code do?",
+      "default_text": "",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "description",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Tags (comma separated):",
+      "default_text": "algorithm, utility",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": ","
+    },
+    {
+      "type": "set_variable",
+      "variable": "tags_custom",
+      "value": "${split_text}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Source URL (optional):",
+      "default_text": "",
+      "keyboard_type": "url"
+    },
+    {
+      "type": "set_variable",
+      "variable": "source_url",
+      "value": "${text_input}"
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "code": "${code}",
+        "language": "${language}",
+        "description": "${description}",
+        "tags_custom": "${tags_custom}",
+        "source_url": "${source_url}"
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/code-snippet",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "get_dictionary_value",
+          "dictionary": "${web_request_result}",
+          "key": "title"
+        },
+        {
+          "type": "show_notification",
+          "title": "💻 Code Saved",
+          "body": "${dictionary_value}",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to save code snippet. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Save code snippet",
+  "share_sheet": true,
+  "share_sheet_types": ["Text"],
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token",
+    "3. Enable in Share Sheet for capturing from GitHub, Stack Overflow",
+    "4. Copy code to clipboard before running for auto-paste",
+    "5. Use with Xcode/VS Code for quick snippet saves"
+  ]
+}

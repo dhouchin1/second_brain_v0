@@ -428,6 +428,810 @@ class EnhancedAppleShortcutsService:
             logger.error(f"Web clip processing failed: {e}")
             return {"success": False, "error": str(e)}
     
+    async def process_reading_list(
+        self,
+        url: str,
+        title: str = None,
+        preview_text: str = None,
+        added_date: str = None,
+        context: Dict = None
+    ) -> Dict[str, Any]:
+        """
+        Process reading list article from Safari.
+
+        Args:
+            url: Article URL
+            title: Article title
+            preview_text: Preview/excerpt text
+            added_date: When added to reading list
+            context: Additional context
+        """
+        try:
+            # Use web ingestion for full article
+            from services.web_ingestion_service import WebIngestionService
+            web_service = WebIngestionService()
+
+            web_result = await web_service.extract_and_process_url(url)
+
+            if web_result:
+                # Use extracted title or provided title
+                final_title = web_result.title or title or "Reading List Article"
+
+                # Build content
+                content = f"**Source:** {url}\n"
+                if added_date:
+                    content += f"**Added to Reading List:** {added_date}\n"
+                content += f"\n{web_result.content}"
+
+                if preview_text and preview_text not in web_result.content[:200]:
+                    content = f"**Preview:** {preview_text}\n\n" + content
+
+                tags = ["reading-list", "article", "ios-shortcut", "to-read"]
+
+                # Auto-generate tags
+                try:
+                    ai_result = ollama_summarize(web_result.content[:1000])
+                    if ai_result.get("tags"):
+                        tags.extend(ai_result["tags"][:3])
+                except Exception as e:
+                    logger.warning(f"Auto-tagging failed: {e}")
+
+                note_id = await self._save_note(
+                    title=final_title,
+                    content=content,
+                    tags=tags,
+                    metadata={
+                        "content_type": "reading_list",
+                        "source": "ios_shortcuts",
+                        "source_url": url,
+                        "added_date": added_date,
+                        "context": context
+                    }
+                )
+
+                return {
+                    "success": True,
+                    "note_id": note_id,
+                    "title": final_title,
+                    "message": "Reading list article saved"
+                }
+            else:
+                return {"success": False, "error": "Failed to extract article content"}
+
+        except Exception as e:
+            logger.error(f"Reading list processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_contact_note(
+        self,
+        contact_name: str,
+        contact_info: Dict = None,
+        note_text: str = "",
+        meeting_context: Dict = None,
+        location_data: Dict = None
+    ) -> Dict[str, Any]:
+        """
+        Create note about a contact/person.
+
+        Args:
+            contact_name: Person's name
+            contact_info: Phone, email, company, etc.
+            note_text: Note content about the person
+            meeting_context: Meeting details if applicable
+            location_data: Location of meeting/interaction
+        """
+        try:
+            title = f"Note: {contact_name}"
+
+            # Build structured content
+            content = f"# {contact_name}\n\n"
+
+            if contact_info:
+                content += "## Contact Information\n"
+                if contact_info.get("phone"):
+                    content += f"- **Phone:** {contact_info['phone']}\n"
+                if contact_info.get("email"):
+                    content += f"- **Email:** {contact_info['email']}\n"
+                if contact_info.get("company"):
+                    content += f"- **Company:** {contact_info['company']}\n"
+                if contact_info.get("title"):
+                    content += f"- **Title:** {contact_info['title']}\n"
+                content += "\n"
+
+            if meeting_context:
+                content += "## Meeting Context\n"
+                if meeting_context.get("date"):
+                    content += f"- **Date:** {meeting_context['date']}\n"
+                if meeting_context.get("topic"):
+                    content += f"- **Topic:** {meeting_context['topic']}\n"
+                content += "\n"
+
+            if location_data:
+                lat = location_data.get("latitude")
+                lng = location_data.get("longitude")
+                address = location_data.get("address", "")
+                if lat and lng:
+                    content += f"**Location:** {address} ({lat:.4f}, {lng:.4f})\n\n"
+
+            content += "## Notes\n"
+            content += note_text if note_text else "_No notes yet_"
+
+            tags = ["contact", "person", "ios-shortcut", contact_name.lower().replace(" ", "-")]
+            if meeting_context:
+                tags.append("meeting")
+
+            note_id = await self._save_note(
+                title=title,
+                content=content,
+                tags=tags,
+                metadata={
+                    "content_type": "contact_note",
+                    "source": "ios_shortcuts",
+                    "contact_name": contact_name,
+                    "contact_info": contact_info,
+                    "meeting_context": meeting_context,
+                    "location": location_data
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": title,
+                "contact": contact_name,
+                "message": f"Contact note for {contact_name} saved"
+            }
+
+        except Exception as e:
+            logger.error(f"Contact note processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_media_note(
+        self,
+        media_type: str,
+        title: str,
+        creator: str = None,
+        notes: str = "",
+        rating: int = None,
+        tags_custom: List[str] = None,
+        metadata_extra: Dict = None
+    ) -> Dict[str, Any]:
+        """
+        Create note about book, movie, podcast, etc.
+
+        Args:
+            media_type: book, movie, podcast, article, video, etc.
+            title: Title of the media
+            creator: Author, director, host, etc.
+            notes: User's notes/thoughts
+            rating: 1-5 star rating
+            tags_custom: Custom tags
+            metadata_extra: ISBN, URL, duration, etc.
+        """
+        try:
+            note_title = f"{media_type.title()}: {title}"
+
+            # Build structured content
+            content = f"# {title}\n\n"
+            content += f"**Type:** {media_type.title()}\n"
+
+            if creator:
+                creator_label = {
+                    "book": "Author",
+                    "movie": "Director",
+                    "podcast": "Host",
+                    "article": "Author",
+                    "video": "Creator"
+                }.get(media_type.lower(), "Creator")
+                content += f"**{creator_label}:** {creator}\n"
+
+            if rating:
+                content += f"**Rating:** {'⭐' * rating} ({rating}/5)\n"
+
+            if metadata_extra:
+                if metadata_extra.get("year"):
+                    content += f"**Year:** {metadata_extra['year']}\n"
+                if metadata_extra.get("genre"):
+                    content += f"**Genre:** {metadata_extra['genre']}\n"
+                if metadata_extra.get("isbn"):
+                    content += f"**ISBN:** {metadata_extra['isbn']}\n"
+                if metadata_extra.get("url"):
+                    content += f"**URL:** {metadata_extra['url']}\n"
+
+            content += f"\n## My Notes\n{notes if notes else '_No notes yet_'}\n"
+
+            # Generate tags
+            base_tags = [media_type.lower(), "media", "ios-shortcut"]
+            if tags_custom:
+                base_tags.extend(tags_custom)
+            if rating and rating >= 4:
+                base_tags.append("highly-rated")
+
+            note_id = await self._save_note(
+                title=note_title,
+                content=content,
+                tags=base_tags,
+                metadata={
+                    "content_type": f"media_{media_type}",
+                    "source": "ios_shortcuts",
+                    "media_type": media_type,
+                    "media_title": title,
+                    "creator": creator,
+                    "rating": rating,
+                    **({} if not metadata_extra else metadata_extra)
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": note_title,
+                "media_type": media_type,
+                "message": f"{media_type.title()} note saved"
+            }
+
+        except Exception as e:
+            logger.error(f"Media note processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_recipe(
+        self,
+        recipe_name: str,
+        ingredients: List[str],
+        instructions: List[str],
+        prep_time: str = None,
+        cook_time: str = None,
+        servings: int = None,
+        source_url: str = None,
+        tags_custom: List[str] = None,
+        image_data: str = None
+    ) -> Dict[str, Any]:
+        """
+        Save recipe with structured data.
+
+        Args:
+            recipe_name: Recipe title
+            ingredients: List of ingredients
+            instructions: Step-by-step instructions
+            prep_time: Preparation time
+            cook_time: Cooking time
+            servings: Number of servings
+            source_url: Source URL if from web
+            tags_custom: Custom tags
+            image_data: Base64 image of recipe
+        """
+        try:
+            title = f"Recipe: {recipe_name}"
+
+            # Build structured content
+            content = f"# {recipe_name}\n\n"
+
+            # Metadata section
+            metadata_parts = []
+            if prep_time:
+                metadata_parts.append(f"⏱️ Prep: {prep_time}")
+            if cook_time:
+                metadata_parts.append(f"🍳 Cook: {cook_time}")
+            if servings:
+                metadata_parts.append(f"🍽️ Servings: {servings}")
+
+            if metadata_parts:
+                content += " | ".join(metadata_parts) + "\n\n"
+
+            if source_url:
+                content += f"**Source:** {source_url}\n\n"
+
+            # Ingredients
+            content += "## Ingredients\n\n"
+            for ingredient in ingredients:
+                content += f"- {ingredient}\n"
+            content += "\n"
+
+            # Instructions
+            content += "## Instructions\n\n"
+            for i, instruction in enumerate(instructions, 1):
+                content += f"{i}. {instruction}\n"
+            content += "\n"
+
+            # Tags
+            base_tags = ["recipe", "cooking", "food", "ios-shortcut"]
+            if tags_custom:
+                base_tags.extend(tags_custom)
+
+            note_id = await self._save_note(
+                title=title,
+                content=content,
+                tags=base_tags,
+                metadata={
+                    "content_type": "recipe",
+                    "source": "ios_shortcuts",
+                    "recipe_name": recipe_name,
+                    "prep_time": prep_time,
+                    "cook_time": cook_time,
+                    "servings": servings,
+                    "source_url": source_url,
+                    "has_image": bool(image_data),
+                    "ingredient_count": len(ingredients),
+                    "step_count": len(instructions)
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": title,
+                "ingredients_count": len(ingredients),
+                "steps_count": len(instructions),
+                "message": "Recipe saved successfully"
+            }
+
+        except Exception as e:
+            logger.error(f"Recipe processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_dream_journal(
+        self,
+        dream_text: str,
+        emotions: List[str] = None,
+        themes: List[str] = None,
+        lucid: bool = False,
+        sleep_quality: int = None
+    ) -> Dict[str, Any]:
+        """
+        Log dream journal entry.
+
+        Args:
+            dream_text: Dream description
+            emotions: Emotions felt in dream
+            themes: Dream themes/symbols
+            lucid: Whether it was a lucid dream
+            sleep_quality: 1-5 sleep quality rating
+        """
+        try:
+            # Generate title from dream content
+            title = ollama_generate_title(dream_text) or f"Dream Journal - {datetime.now().strftime('%Y-%m-%d')}"
+
+            # Build content
+            content = f"# {title}\n\n"
+            content += f"**Date:** {datetime.now().strftime('%A, %B %d, %Y')}\n"
+
+            if lucid:
+                content += "**Type:** 🌟 Lucid Dream\n"
+
+            if sleep_quality:
+                content += f"**Sleep Quality:** {'⭐' * sleep_quality} ({sleep_quality}/5)\n"
+
+            if emotions:
+                content += f"**Emotions:** {', '.join(emotions)}\n"
+
+            if themes:
+                content += f"**Themes:** {', '.join(themes)}\n"
+
+            content += f"\n## Dream Description\n\n{dream_text}\n"
+
+            # Auto-analyze with AI
+            try:
+                ai_result = ollama_summarize(dream_text)
+                if ai_result.get("summary"):
+                    content += f"\n## AI Analysis\n\n{ai_result['summary']}\n"
+            except Exception as e:
+                logger.warning(f"AI analysis failed: {e}")
+
+            tags = ["dream", "journal", "ios-shortcut", "morning"]
+            if lucid:
+                tags.append("lucid-dream")
+            if emotions:
+                tags.extend([e.lower() for e in emotions[:3]])
+
+            note_id = await self._save_note(
+                title=title,
+                content=content,
+                tags=tags,
+                metadata={
+                    "content_type": "dream_journal",
+                    "source": "ios_shortcuts",
+                    "dream_date": datetime.now().date().isoformat(),
+                    "lucid": lucid,
+                    "sleep_quality": sleep_quality,
+                    "emotions": emotions,
+                    "themes": themes
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": title,
+                "lucid": lucid,
+                "message": "Dream journal entry saved"
+            }
+
+        except Exception as e:
+            logger.error(f"Dream journal processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_quote(
+        self,
+        quote_text: str,
+        author: str = None,
+        source: str = None,
+        category: str = None,
+        reflection: str = None,
+        context: Dict = None
+    ) -> Dict[str, Any]:
+        """
+        Save inspirational quote with attribution.
+
+        Args:
+            quote_text: The quote
+            author: Quote author
+            source: Book, speech, etc.
+            category: Quote category/theme
+            reflection: User's reflection on the quote
+            context: Additional context
+        """
+        try:
+            # Generate title
+            title_text = quote_text[:50] + "..." if len(quote_text) > 50 else quote_text
+            title = f"Quote: {title_text}"
+            if author:
+                title = f"Quote by {author}"
+
+            # Build content
+            content = f"# Quote\n\n"
+            content += f"> {quote_text}\n\n"
+
+            if author:
+                content += f"**— {author}"
+                if source:
+                    content += f", _{source}_"
+                content += "**\n\n"
+            elif source:
+                content += f"**Source:** {source}\n\n"
+
+            if category:
+                content += f"**Category:** {category}\n\n"
+
+            if reflection:
+                content += f"## My Reflection\n\n{reflection}\n"
+
+            # Tags
+            tags = ["quote", "inspiration", "ios-shortcut"]
+            if author:
+                tags.append(author.lower().replace(" ", "-"))
+            if category:
+                tags.append(category.lower())
+
+            # Auto-generate thematic tags
+            try:
+                ai_result = ollama_summarize(quote_text + (f"\n\nReflection: {reflection}" if reflection else ""))
+                if ai_result.get("tags"):
+                    tags.extend(ai_result["tags"][:3])
+            except Exception as e:
+                logger.warning(f"Auto-tagging failed: {e}")
+
+            note_id = await self._save_note(
+                title=title,
+                content=content,
+                tags=tags,
+                metadata={
+                    "content_type": "quote",
+                    "source": "ios_shortcuts",
+                    "author": author,
+                    "source_work": source,
+                    "category": category,
+                    "has_reflection": bool(reflection),
+                    "context": context
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": title,
+                "author": author,
+                "message": "Quote saved successfully"
+            }
+
+        except Exception as e:
+            logger.error(f"Quote processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_code_snippet(
+        self,
+        code: str,
+        language: str,
+        description: str = None,
+        tags_custom: List[str] = None,
+        source_url: str = None
+    ) -> Dict[str, Any]:
+        """
+        Save code snippet with syntax highlighting.
+
+        Args:
+            code: Code content
+            language: Programming language
+            description: What the code does
+            tags_custom: Custom tags
+            source_url: Source URL if from web
+        """
+        try:
+            # Generate title
+            if description:
+                title = f"Code: {description[:50]}"
+            else:
+                title = f"{language.title()} Snippet"
+
+            # Build content
+            content = f"# {title}\n\n"
+
+            if description:
+                content += f"{description}\n\n"
+
+            if source_url:
+                content += f"**Source:** {source_url}\n\n"
+
+            content += f"```{language}\n{code}\n```\n"
+
+            # Tags
+            tags = ["code", "snippet", language.lower(), "ios-shortcut", "development"]
+            if tags_custom:
+                tags.extend(tags_custom)
+
+            note_id = await self._save_note(
+                title=title,
+                content=content,
+                tags=tags,
+                metadata={
+                    "content_type": "code_snippet",
+                    "source": "ios_shortcuts",
+                    "language": language,
+                    "source_url": source_url,
+                    "line_count": len(code.split('\n'))
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": title,
+                "language": language,
+                "message": "Code snippet saved"
+            }
+
+        except Exception as e:
+            logger.error(f"Code snippet processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_travel_journal(
+        self,
+        entry_text: str,
+        location_data: Dict,
+        photos: List[str] = None,
+        activity_type: str = None,
+        companions: List[str] = None,
+        expenses: Dict = None
+    ) -> Dict[str, Any]:
+        """
+        Create travel journal entry with rich location data.
+
+        Args:
+            entry_text: Journal entry text
+            location_data: GPS and location details
+            photos: Base64 encoded photos
+            activity_type: Type of activity (sightseeing, food, etc.)
+            companions: People you're traveling with
+            expenses: Cost tracking
+        """
+        try:
+            # Extract location info
+            place_name = location_data.get("address", "Unknown Location")
+            lat = location_data.get("latitude")
+            lng = location_data.get("longitude")
+
+            title = f"Travel: {place_name}"
+
+            # Build content
+            content = f"# {place_name}\n\n"
+            content += f"**Date:** {datetime.now().strftime('%A, %B %d, %Y')}\n"
+
+            if lat and lng:
+                content += f"**Coordinates:** [{lat:.4f}, {lng:.4f}](https://maps.google.com/?q={lat},{lng})\n"
+
+            if activity_type:
+                content += f"**Activity:** {activity_type}\n"
+
+            if companions:
+                content += f"**With:** {', '.join(companions)}\n"
+
+            if expenses:
+                total = expenses.get("amount", 0)
+                currency = expenses.get("currency", "USD")
+                content += f"**Cost:** {total} {currency}\n"
+
+            content += f"\n## Journal Entry\n\n{entry_text}\n"
+
+            if photos:
+                content += f"\n_📸 {len(photos)} photo(s) attached_\n"
+
+            # Tags
+            tags = ["travel", "journal", "location", "ios-shortcut"]
+            if activity_type:
+                tags.append(activity_type.lower())
+
+            note_id = await self._save_note(
+                title=title,
+                content=content,
+                tags=tags,
+                metadata={
+                    "content_type": "travel_journal",
+                    "source": "ios_shortcuts",
+                    "location": location_data,
+                    "activity_type": activity_type,
+                    "companions": companions,
+                    "expenses": expenses,
+                    "photo_count": len(photos) if photos else 0
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": title,
+                "location": place_name,
+                "message": "Travel journal entry saved"
+            }
+
+        except Exception as e:
+            logger.error(f"Travel journal processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_habit_log(
+        self,
+        habit_name: str,
+        completed: bool,
+        notes: str = None,
+        mood: str = None,
+        difficulty: int = None
+    ) -> Dict[str, Any]:
+        """
+        Log habit completion/tracking.
+
+        Args:
+            habit_name: Name of habit
+            completed: Whether habit was completed
+            notes: Additional notes
+            mood: How you felt
+            difficulty: 1-5 difficulty rating
+        """
+        try:
+            status = "✅ Completed" if completed else "❌ Missed"
+            title = f"Habit: {habit_name} - {status}"
+
+            # Build content
+            content = f"# {habit_name}\n\n"
+            content += f"**Date:** {datetime.now().strftime('%A, %B %d, %Y')}\n"
+            content += f"**Status:** {status}\n"
+
+            if mood:
+                content += f"**Mood:** {mood}\n"
+
+            if difficulty:
+                content += f"**Difficulty:** {'⭐' * difficulty} ({difficulty}/5)\n"
+
+            if notes:
+                content += f"\n## Notes\n\n{notes}\n"
+
+            # Tags
+            tags = ["habit", "tracking", "ios-shortcut", habit_name.lower().replace(" ", "-")]
+            if completed:
+                tags.append("completed")
+            else:
+                tags.append("missed")
+
+            note_id = await self._save_note(
+                title=title,
+                content=content,
+                tags=tags,
+                metadata={
+                    "content_type": "habit_log",
+                    "source": "ios_shortcuts",
+                    "habit_name": habit_name,
+                    "completed": completed,
+                    "log_date": datetime.now().date().isoformat(),
+                    "mood": mood,
+                    "difficulty": difficulty
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": title,
+                "habit": habit_name,
+                "completed": completed,
+                "message": f"Habit '{habit_name}' logged"
+            }
+
+        except Exception as e:
+            logger.error(f"Habit log processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def process_file_upload(
+        self,
+        file_data: str,
+        file_name: str,
+        file_type: str,
+        description: str = None,
+        tags_custom: List[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Upload file from Files app.
+
+        Args:
+            file_data: Base64 encoded file
+            file_name: Original file name
+            file_type: MIME type
+            description: File description
+            tags_custom: Custom tags
+        """
+        try:
+            title = f"File: {file_name}"
+
+            # Build content
+            content = f"# {file_name}\n\n"
+            content += f"**Type:** {file_type}\n"
+            content += f"**Uploaded:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+
+            if description:
+                content += f"\n## Description\n\n{description}\n"
+
+            # Determine file category
+            category = "document"
+            if file_type.startswith("image/"):
+                category = "image"
+            elif file_type.startswith("video/"):
+                category = "video"
+            elif file_type.startswith("audio/"):
+                category = "audio"
+            elif "pdf" in file_type:
+                category = "pdf"
+
+            tags = ["file", "upload", category, "ios-shortcut"]
+            if tags_custom:
+                tags.extend(tags_custom)
+
+            # Get file size estimate
+            file_size_kb = len(file_data) * 3 / 4 / 1024  # Approximate base64 to bytes
+
+            note_id = await self._save_note(
+                title=title,
+                content=content,
+                tags=tags,
+                metadata={
+                    "content_type": "file_upload",
+                    "source": "ios_shortcuts",
+                    "file_name": file_name,
+                    "file_type": file_type,
+                    "file_category": category,
+                    "file_size_kb": round(file_size_kb, 2),
+                    "has_file_data": True
+                }
+            )
+
+            return {
+                "success": True,
+                "note_id": note_id,
+                "title": title,
+                "file_name": file_name,
+                "file_type": file_type,
+                "message": f"File '{file_name}' uploaded successfully"
+            }
+
+        except Exception as e:
+            logger.error(f"File upload processing failed: {e}")
+            return {"success": False, "error": str(e)}
+
     def get_shortcut_templates(self) -> List[Dict[str, Any]]:
         """Get pre-built iOS Shortcuts templates."""
         return [
@@ -491,7 +1295,7 @@ class EnhancedAppleShortcutsService:
             {
                 "name": "Meeting Notes Starter",
                 "description": "Quick meeting notes with attendees and agenda",
-                "endpoint": "/api/shortcuts/quick-note", 
+                "endpoint": "/api/shortcuts/quick-note",
                 "method": "POST",
                 "parameters": {
                     "text": "Meeting with [attendees] about [topic]",
@@ -499,6 +1303,66 @@ class EnhancedAppleShortcutsService:
                     "auto_tag": True
                 },
                 "shortcut_url": f"{settings.base_dir}/shortcuts/meeting_notes.shortcut"
+            },
+            {
+                "name": "Reading List Saver",
+                "description": "Save articles from Safari reading list",
+                "endpoint": "/api/shortcuts/reading-list",
+                "method": "POST"
+            },
+            {
+                "name": "Contact Notes",
+                "description": "Quick notes about people you meet",
+                "endpoint": "/api/shortcuts/contact-note",
+                "method": "POST"
+            },
+            {
+                "name": "Book/Media Logger",
+                "description": "Track books, movies, podcasts",
+                "endpoint": "/api/shortcuts/media-note",
+                "method": "POST"
+            },
+            {
+                "name": "Recipe Saver",
+                "description": "Save recipes with ingredients and steps",
+                "endpoint": "/api/shortcuts/recipe",
+                "method": "POST"
+            },
+            {
+                "name": "Dream Journal",
+                "description": "Morning dream logging",
+                "endpoint": "/api/shortcuts/dream-journal",
+                "method": "POST"
+            },
+            {
+                "name": "Quote Capture",
+                "description": "Save inspiring quotes with attribution",
+                "endpoint": "/api/shortcuts/quote",
+                "method": "POST"
+            },
+            {
+                "name": "Code Snippet Saver",
+                "description": "Save code snippets with syntax highlighting",
+                "endpoint": "/api/shortcuts/code-snippet",
+                "method": "POST"
+            },
+            {
+                "name": "Travel Journal",
+                "description": "Rich travel logging with location",
+                "endpoint": "/api/shortcuts/travel-journal",
+                "method": "POST"
+            },
+            {
+                "name": "Habit Tracker",
+                "description": "Log daily habit completions",
+                "endpoint": "/api/shortcuts/habit-log",
+                "method": "POST"
+            },
+            {
+                "name": "File Uploader",
+                "description": "Upload files from Files app",
+                "endpoint": "/api/shortcuts/file-upload",
+                "method": "POST"
             }
         ]
     
