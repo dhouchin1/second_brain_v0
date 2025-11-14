@@ -1,0 +1,176 @@
+{
+  "name": "Second Brain - File Upload",
+  "description": "Upload files from Files app with OCR and metadata",
+  "version": "2.0",
+  "category": "Productivity",
+  "icon": "doc.fill",
+  "color": "teal",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain File Upload - Upload documents, PDFs, images with automatic processing"
+    },
+    {
+      "type": "select_file",
+      "select_multiple": false
+    },
+    {
+      "type": "set_variable",
+      "variable": "selected_file",
+      "value": "${file}"
+    },
+    {
+      "type": "get_name_of_input",
+      "input": "${selected_file}"
+    },
+    {
+      "type": "set_variable",
+      "variable": "file_name",
+      "value": "${name}"
+    },
+    {
+      "type": "get_type_of_input",
+      "input": "${selected_file}"
+    },
+    {
+      "type": "set_variable",
+      "variable": "file_type",
+      "value": "${type}"
+    },
+    {
+      "type": "base64_encode",
+      "input": "${selected_file}"
+    },
+    {
+      "type": "set_variable",
+      "variable": "file_data",
+      "value": "${base64}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Add a description or context (optional):",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "description",
+      "value": "${text_input}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "What should we do with this file?",
+      "items": ["Extract Text (OCR)", "Store as Reference", "Process as PDF", "Just Upload"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "processing_type",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Add tags (comma separated, optional):",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": ","
+    },
+    {
+      "type": "set_variable",
+      "variable": "tags",
+      "value": "${split_text}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Category:",
+      "items": ["Document", "Reference", "Receipt", "Contract", "Notes", "Article", "Other"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "category",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "get_current_location"
+    },
+    {
+      "type": "set_variable",
+      "variable": "location",
+      "value": "${current_location}"
+    },
+    {
+      "type": "get_current_date",
+      "format": "ISO8601"
+    },
+    {
+      "type": "set_variable",
+      "variable": "timestamp",
+      "value": "${current_date}"
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "file_name": "${file_name}",
+        "file_type": "${file_type}",
+        "file_data": "${file_data}",
+        "description": "${description}",
+        "processing_type": "${processing_type}",
+        "tags": "${tags}",
+        "category": "${category}",
+        "location": "${location}"
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/file-upload",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "get_dictionary_value",
+          "dictionary": "${web_request_result}",
+          "key": "title"
+        },
+        {
+          "type": "show_notification",
+          "title": "📄 File Uploaded",
+          "body": "${dictionary_value}",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to upload file. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Upload file to Second Brain",
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token from Settings",
+    "3. Run from Files app Share Sheet",
+    "4. Add to Siri with custom phrase",
+    "5. Supports PDFs, images, documents with automatic OCR"
+  ]
+}

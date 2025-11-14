@@ -1,0 +1,184 @@
+{
+  "name": "Second Brain - Media Note",
+  "description": "Track books, movies, podcasts, and other media",
+  "version": "2.0",
+  "category": "Personal",
+  "icon": "play.rectangle.fill",
+  "color": "purple",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain Media Note - Log books, movies, podcasts, and media consumption"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "What type of media?",
+      "items": ["Book", "Movie", "TV Show", "Podcast", "Article", "Video", "Course"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "media_type",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Title:",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "title",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Author/Creator (optional):",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "author",
+      "value": "${text_input}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Status:",
+      "items": ["Want to Experience", "In Progress", "Completed", "Abandoned"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "status",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Rating (1-5 stars):",
+      "items": ["1", "2", "3", "4", "5", "Not rated"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "rating",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Your thoughts and key takeaways:",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "notes",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Favorite quotes or moments (optional):",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "highlights",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Add tags (comma separated, optional):",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": ","
+    },
+    {
+      "type": "set_variable",
+      "variable": "tags",
+      "value": "${split_text}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Would you recommend this?",
+      "items": ["Highly Recommend", "Recommend", "Neutral", "Not Recommend"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "recommendation",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "get_current_date",
+      "format": "ISO8601"
+    },
+    {
+      "type": "set_variable",
+      "variable": "timestamp",
+      "value": "${current_date}"
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "media_type": "${media_type}",
+        "title": "${title}",
+        "author": "${author}",
+        "status": "${status}",
+        "rating": "${rating}",
+        "notes": "${notes}",
+        "highlights": "${highlights}",
+        "tags": "${tags}",
+        "recommendation": "${recommendation}"
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/media-note",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "get_dictionary_value",
+          "dictionary": "${web_request_result}",
+          "key": "title"
+        },
+        {
+          "type": "show_notification",
+          "title": "🎬 Media Note Saved",
+          "body": "${dictionary_value}",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to save media note. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Log media",
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token from Settings",
+    "3. Test with a book or movie you recently finished",
+    "4. Add to Siri with custom phrase",
+    "5. Build your media consumption log"
+  ]
+}

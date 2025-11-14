@@ -1,0 +1,158 @@
+{
+  "name": "Second Brain - Reading List",
+  "description": "Save articles from Safari Reading List with AI summary",
+  "version": "2.0",
+  "category": "Productivity",
+  "icon": "book.fill",
+  "color": "orange",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain Reading List - Save and process reading list articles"
+    },
+    {
+      "type": "receive_input",
+      "input_type": "Safari Web Page"
+    },
+    {
+      "type": "get_urls_from_input",
+      "input": "${received_input}"
+    },
+    {
+      "type": "set_variable",
+      "variable": "article_url",
+      "value": "${urls}"
+    },
+    {
+      "type": "get_name_of_input",
+      "input": "${received_input}"
+    },
+    {
+      "type": "set_variable",
+      "variable": "article_title",
+      "value": "${name}"
+    },
+    {
+      "type": "get_contents_of_webpage",
+      "url": "${article_url}"
+    },
+    {
+      "type": "make_markdown_from_rich_text",
+      "rich_text": "${webpage_contents}"
+    },
+    {
+      "type": "set_variable",
+      "variable": "content",
+      "value": "${markdown}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Reading priority?",
+      "items": ["Must Read", "Soon", "Someday"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "priority",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Why did you save this? (optional)",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "reason",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Add tags (comma separated, optional):",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": ","
+    },
+    {
+      "type": "set_variable",
+      "variable": "tags",
+      "value": "${split_text}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Estimated reading time?",
+      "items": ["< 5 min", "5-15 min", "15-30 min", "30+ min"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "reading_time",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "url": "${article_url}",
+        "title": "${article_title}",
+        "content": "${content}",
+        "priority": "${priority}",
+        "reason": "${reason}",
+        "tags": "${tags}",
+        "reading_time": "${reading_time}",
+        "generate_summary": "true"
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/reading-list",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "get_dictionary_value",
+          "dictionary": "${web_request_result}",
+          "key": "title"
+        },
+        {
+          "type": "show_notification",
+          "title": "📚 Article Saved",
+          "body": "${dictionary_value}",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to save article. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Save to reading list",
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token from Settings",
+    "3. Run from Safari Share Sheet or Reading List",
+    "4. Add to Siri with custom phrase",
+    "5. AI will generate summary automatically"
+  ]
+}
