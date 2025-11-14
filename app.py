@@ -670,6 +670,11 @@ app.include_router(notification_router)
 from api.routes_chat import router as chat_router
 app.include_router(chat_router)
 
+# ---- Build Log Router ----
+from services.build_log_router import router as build_log_router, init_build_log_router
+init_build_log_router(get_conn)
+app.include_router(build_log_router)
+
 # ---- Demo Data Router ----
 
 # --- Simple FIFO job worker for note processing ---
