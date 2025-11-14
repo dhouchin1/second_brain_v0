@@ -23,6 +23,8 @@
     <link rel="manifest" href="/static/manifest.json">
     
     <!-- Static CSS Files -->
+    <link rel="stylesheet" href="/static/css/themes.css">
+    <link rel="stylesheet" href="/static/css/theme-picker.css">
     <link rel="stylesheet" href="/static/css/design-system.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/dashboard-enhanced.css">
@@ -749,7 +751,23 @@
                         </svg>
                         Voice Note
                     </button>
-                    
+
+                    <!-- Quick Theme Switcher -->
+                    <div class="theme-selector-dropdown relative">
+                        <button id="quick-theme-toggle" class="nav-item flex items-center w-full px-3 py-2.5 rounded-lg font-medium transition-all text-sm text-left">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                            </svg>
+                            Themes
+                            <svg class="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="quick-theme-menu" class="hidden absolute left-0 top-full mt-1 w-full bg-white rounded-lg shadow-xl border border-slate-200 py-2 z-50">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
                     <button onclick="showView('settings')" class="nav-item flex items-center w-full px-3 py-2.5 rounded-lg font-medium transition-all text-sm text-left">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -1487,9 +1505,81 @@
                             </div>
                         </div>
 
+                        <!-- Saved Searches & History -->
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Saved Searches -->
+                            <div class="glass rounded-xl p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-sm font-medium text-slate-200">💾 Saved Searches</h4>
+                                    <button id="saveCurrentSearchBtn" class="text-xs text-blue-400 hover:text-blue-300" onclick="saveCurrentSearch()">
+                                        Save Current
+                                    </button>
+                                </div>
+                                <div id="savedSearchesList" class="space-y-2 max-h-48 overflow-y-auto">
+                                    <p class="text-xs text-slate-400 italic">No saved searches yet</p>
+                                </div>
+                            </div>
+
+                            <!-- Search History -->
+                            <div class="glass rounded-xl p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-sm font-medium text-slate-200">🕒 Recent Searches</h4>
+                                    <button class="text-xs text-slate-400 hover:text-slate-300" onclick="clearSearchHistory()">
+                                        Clear
+                                    </button>
+                                </div>
+                                <div id="searchHistoryList" class="space-y-2 max-h-48 overflow-y-auto">
+                                    <p class="text-xs text-slate-400 italic">No recent searches</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Search Syntax Help -->
+                        <div class="mt-6 glass rounded-xl p-6">
+                            <h4 class="text-sm font-medium text-slate-200 mb-3">🔍 Advanced Search Syntax</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-400">
+                                <div class="space-y-2">
+                                    <div class="flex items-start space-x-2">
+                                        <span class="text-blue-400 font-mono">title:</span>
+                                        <span>Search in titles: <code class="bg-slate-300 text-slate-700 px-1 rounded">title:python</code></span>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <span class="text-blue-400 font-mono">tag:</span>
+                                        <span>Filter by tag: <code class="bg-slate-300 text-slate-700 px-1 rounded">tag:work</code></span>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <span class="text-blue-400 font-mono">type:</span>
+                                        <span>Filter by type: <code class="bg-slate-300 text-slate-700 px-1 rounded">type:audio</code></span>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <span class="text-blue-400 font-mono">AND</span>
+                                        <span>Combine terms: <code class="bg-slate-300 text-slate-700 px-1 rounded">python AND tutorial</code></span>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex items-start space-x-2">
+                                        <span class="text-blue-400 font-mono">created:</span>
+                                        <span>Date filter: <code class="bg-slate-300 text-slate-700 px-1 rounded">created:last-week</code></span>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <span class="text-blue-400 font-mono">OR</span>
+                                        <span>Either term: <code class="bg-slate-300 text-slate-700 px-1 rounded">python OR javascript</code></span>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <span class="text-blue-400 font-mono">NOT</span>
+                                        <span>Exclude: <code class="bg-slate-300 text-slate-700 px-1 rounded">python NOT tutorial</code></span>
+                                    </div>
+                                    <div class="flex items-start space-x-2">
+                                        <span class="text-blue-400 font-mono">"..."</span>
+                                        <span>Exact phrase: <code class="bg-slate-300 text-slate-700 px-1 rounded">"machine learning"</code></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Search Tips -->
                         <div class="mt-6 glass rounded-xl p-6">
-                            <h4 class="text-sm font-medium text-slate-200 mb-3">Search Tips</h4>
+                            <h4 class="text-sm font-medium text-slate-200 mb-3">💡 Search Tips</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-400">
                                 <div class="flex items-start space-x-2">
                                     <span class="text-blue-400">•</span>
@@ -1824,7 +1914,15 @@
                                 </div>
                             </div>
                         </div>
-                        
+
+                        <!-- Theme Preferences -->
+                        <div class="bg-white rounded-xl shadow-medium p-6 mb-6">
+                            <h3 class="text-lg font-semibold text-slate-900 mb-4">
+                                <span class="mr-2">🎨</span>Theme Preferences
+                            </h3>
+                            <div id="theme-picker-container"></div>
+                        </div>
+
                         <!-- More settings coming soon -->
                         <div class="text-center text-slate-500 mt-12">
                             <p>More configuration options coming soon...</p>
@@ -2613,6 +2711,12 @@
     
     <!-- Mobile Interface Revolution JavaScript -->
     <script src="/static/js/mobile-interface.js"></script>
+
+    <!-- Theme Management JavaScript -->
+    <script src="/static/js/theme-manager.js"></script>
+
+    <!-- Advanced Search Enhancement JavaScript -->
+    <script src="/static/js/advanced-search-enhancement.js"></script>
 
     <script>
         // Global App State
@@ -8805,6 +8909,69 @@
 
         // Make SessionFormManager globally available for other scripts
         window.SessionFormManager = SessionFormManager;
+    </script>
+
+    <!-- Initialize Theme Picker -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize theme picker in settings view
+            const themePickerContainer = document.querySelector('#theme-picker-container');
+            if (themePickerContainer && window.themeManager) {
+                new ThemePicker('#theme-picker-container', window.themeManager);
+                console.log('Theme picker initialized');
+            }
+
+            // Initialize quick theme switcher in sidebar
+            const quickThemeToggle = document.getElementById('quick-theme-toggle');
+            const quickThemeMenu = document.getElementById('quick-theme-menu');
+
+            if (quickThemeToggle && quickThemeMenu && window.themeManager) {
+                // Populate theme menu
+                function populateQuickThemeMenu() {
+                    const themes = window.themeManager.getAvailableThemes();
+                    const currentTheme = window.themeManager.getCurrentTheme();
+
+                    quickThemeMenu.innerHTML = themes.map(theme => `
+                        <button
+                            class="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${theme.id === currentTheme.id ? 'bg-blue-50 text-blue-600' : 'text-slate-700'}"
+                            data-theme-id="${theme.id}">
+                            <span>${theme.name}</span>
+                            ${theme.id === currentTheme.id ? '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>' : ''}
+                        </button>
+                    `).join('');
+
+                    // Add click handlers
+                    quickThemeMenu.querySelectorAll('[data-theme-id]').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const themeId = this.dataset.themeId;
+                            window.themeManager.setTheme(themeId);
+                            quickThemeMenu.classList.add('hidden');
+                            // Re-populate to update active state
+                            setTimeout(populateQuickThemeMenu, 100);
+                        });
+                    });
+                }
+
+                // Toggle dropdown
+                quickThemeToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    quickThemeMenu.classList.toggle('hidden');
+                    if (!quickThemeMenu.classList.contains('hidden')) {
+                        populateQuickThemeMenu();
+                    }
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!quickThemeToggle.contains(e.target) && !quickThemeMenu.contains(e.target)) {
+                        quickThemeMenu.classList.add('hidden');
+                    }
+                });
+
+                console.log('Quick theme switcher initialized');
+            }
+        });
     </script>
 
 </body>
