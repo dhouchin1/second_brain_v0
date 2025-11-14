@@ -1,0 +1,225 @@
+{
+  "name": "Second Brain - Recipe",
+  "description": "Save recipes with ingredients, instructions, and notes",
+  "version": "2.0",
+  "category": "Lifestyle",
+  "icon": "fork.knife",
+  "color": "red",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain Recipe - Save recipes with structured ingredients and instructions"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Recipe name:",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "recipe_name",
+      "value": "${text_input}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Recipe source:",
+      "items": ["Original", "Website", "Book", "Friend", "Restaurant", "Video", "Other"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "source",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Source details (URL, book name, etc.):",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "source_url",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Ingredients (one per line):",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": "newline"
+    },
+    {
+      "type": "set_variable",
+      "variable": "ingredients",
+      "value": "${split_text}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Instructions (step by step):",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "instructions",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Prep time (e.g., 15 min):",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "prep_time",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Cook time (e.g., 30 min):",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "cook_time",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Servings:",
+      "keyboard_type": "number_pad"
+    },
+    {
+      "type": "set_variable",
+      "variable": "servings",
+      "value": "${text_input}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Difficulty:",
+      "items": ["Easy", "Medium", "Hard", "Expert"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "difficulty",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Meal type:",
+      "items": ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Appetizer", "Drink"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "meal_type",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Your notes and modifications (optional):",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "notes",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Tags (comma separated - e.g., vegan, quick, italian):",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": ","
+    },
+    {
+      "type": "set_variable",
+      "variable": "tags",
+      "value": "${split_text}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "Rating (1-5 stars):",
+      "items": ["1", "2", "3", "4", "5", "Not rated"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "rating",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "recipe_name": "${recipe_name}",
+        "source": "${source}",
+        "source_url": "${source_url}",
+        "ingredients": "${ingredients}",
+        "instructions": "${instructions}",
+        "prep_time": "${prep_time}",
+        "cook_time": "${cook_time}",
+        "servings": "${servings}",
+        "difficulty": "${difficulty}",
+        "meal_type": "${meal_type}",
+        "notes": "${notes}",
+        "tags": "${tags}",
+        "rating": "${rating}"
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/recipe",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "get_dictionary_value",
+          "dictionary": "${web_request_result}",
+          "key": "title"
+        },
+        {
+          "type": "show_notification",
+          "title": "🍳 Recipe Saved",
+          "body": "${dictionary_value}",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to save recipe. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Save recipe",
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token from Settings",
+    "3. Test with a favorite recipe",
+    "4. Add to Siri with custom phrase",
+    "5. Build your personal cookbook"
+  ]
+}

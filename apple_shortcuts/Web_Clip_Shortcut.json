@@ -1,0 +1,179 @@
+{
+  "name": "Second Brain - Web Clip",
+  "description": "Clip web pages from Safari with notes and tags",
+  "version": "2.0",
+  "category": "Productivity",
+  "icon": "globe",
+  "color": "blue",
+  "actions": [
+    {
+      "type": "comment",
+      "text": "Second Brain Web Clip - Save web pages and articles from Safari"
+    },
+    {
+      "type": "receive_input",
+      "input_type": "Safari Web Page"
+    },
+    {
+      "type": "get_urls_from_input",
+      "input": "${received_input}"
+    },
+    {
+      "type": "set_variable",
+      "variable": "page_url",
+      "value": "${urls}"
+    },
+    {
+      "type": "get_name_of_input",
+      "input": "${received_input}"
+    },
+    {
+      "type": "set_variable",
+      "variable": "page_title",
+      "value": "${name}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "What would you like to clip?",
+      "items": ["Full Page", "Selected Text", "Just URL & Title"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "clip_type",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "if",
+      "condition": "${clip_type} equals Full Page",
+      "if_true": [
+        {
+          "type": "get_contents_of_webpage",
+          "url": "${page_url}"
+        },
+        {
+          "type": "make_markdown_from_rich_text",
+          "rich_text": "${webpage_contents}"
+        },
+        {
+          "type": "set_variable",
+          "variable": "content",
+          "value": "${markdown}"
+        }
+      ],
+      "if_false": []
+    },
+    {
+      "type": "if",
+      "condition": "${clip_type} equals Selected Text",
+      "if_true": [
+        {
+          "type": "get_clipboard"
+        },
+        {
+          "type": "set_variable",
+          "variable": "content",
+          "value": "${clipboard}"
+        }
+      ],
+      "if_false": []
+    },
+    {
+      "type": "text_input",
+      "prompt": "Add notes or thoughts (optional):",
+      "allow_multiline": true,
+      "keyboard_type": "default"
+    },
+    {
+      "type": "set_variable",
+      "variable": "notes",
+      "value": "${text_input}"
+    },
+    {
+      "type": "text_input",
+      "prompt": "Add tags (comma separated, optional):",
+      "default_text": "",
+      "keyboard_type": "default"
+    },
+    {
+      "type": "split_text",
+      "text": "${text_input}",
+      "separator": ","
+    },
+    {
+      "type": "set_variable",
+      "variable": "tags",
+      "value": "${split_text}"
+    },
+    {
+      "type": "choose_from_list",
+      "prompt": "How important is this?",
+      "items": ["High", "Medium", "Low"]
+    },
+    {
+      "type": "set_variable",
+      "variable": "priority",
+      "value": "${chosen_item}"
+    },
+    {
+      "type": "dictionary",
+      "items": {
+        "url": "${page_url}",
+        "title": "${page_title}",
+        "content": "${content}",
+        "notes": "${notes}",
+        "tags": "${tags}",
+        "priority": "${priority}",
+        "clip_type": "${clip_type}"
+      }
+    },
+    {
+      "type": "web_request",
+      "method": "POST",
+      "url": "https://YOUR_DOMAIN.com/api/shortcuts/web-clip",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+      },
+      "body": "${dictionary}",
+      "request_body_type": "JSON"
+    },
+    {
+      "type": "get_dictionary_value",
+      "dictionary": "${web_request_result}",
+      "key": "success"
+    },
+    {
+      "type": "if",
+      "condition": "${dictionary_value} equals true",
+      "if_true": [
+        {
+          "type": "get_dictionary_value",
+          "dictionary": "${web_request_result}",
+          "key": "title"
+        },
+        {
+          "type": "show_notification",
+          "title": "🌐 Web Page Clipped",
+          "body": "${dictionary_value}",
+          "sound": "default"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "show_notification",
+          "title": "❌ Error",
+          "body": "Failed to clip web page. Try again.",
+          "sound": "default"
+        }
+      ]
+    }
+  ],
+  "siri_phrase": "Clip this page",
+  "setup_instructions": [
+    "1. Replace YOUR_DOMAIN with your Second Brain URL",
+    "2. Replace YOUR_API_TOKEN with your API token from Settings",
+    "3. Run from Safari Share Sheet",
+    "4. Add to Siri with custom phrase",
+    "5. Use the Safari Share button to trigger"
+  ]
+}
