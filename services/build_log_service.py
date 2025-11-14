@@ -263,15 +263,15 @@ class BuildLogService:
         cursor = conn.cursor()
 
         try:
-            # Use FTS5 for full-text search
+            # Use LIKE-based search (FTS5 table not available)
+            search_pattern = f"%{query}%"
             cursor.execute("""
-                SELECT n.* FROM notes n
-                JOIN notes_fts fts ON n.id = fts.rowid
-                WHERE fts MATCH ?
-                AND (n.tags LIKE '%build-log%' OR n.metadata LIKE '%build_log%')
-                ORDER BY fts.rank
+                SELECT * FROM notes
+                WHERE (tags LIKE '%build-log%' OR metadata LIKE '%build_log%')
+                AND (title LIKE ? OR body LIKE ? OR tags LIKE ?)
+                ORDER BY created_at DESC
                 LIMIT ?
-            """, (query, limit))
+            """, (search_pattern, search_pattern, search_pattern, limit))
 
             sessions = []
             for row in cursor.fetchall():
